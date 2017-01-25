@@ -1,0 +1,18 @@
+[root]
+name = "rrust"
+version = "0.1.0"
+dependencies = [
+ "nom 1.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rel_isa 0.1.0 (git+https://github.com/1011X/REL-16)",
+]
+
+[[package]]
+name = "nom"
+version = "1.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "rel_isa"
+version = "0.1.0"
+source = "git+https://github.com/1011X/REL-16#4edd9e6d370868c169290a8de049e7e8bd3e09bd"
+

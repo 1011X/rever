@@ -1,0 +1,56 @@
+<id> ::= /[A-Za-z_][A-Za-z0-9_]*/
+<num-type> ::= 'u16' | 'i16' | 'usize' | 'isize'
+
+<num-lit> ::=
+	/[-+]?[1-9][0-9_]*/   ; base   10
+	/0x[A-Fa-f0-9_]+/     ; base 0x10
+	/0b[01_]+/            ; base 0b10
+
+<type-list> ::= <type> [',' <type-list>]
+<type> ::= <id> ['<' <type-list> '>']
+	| 'bool'
+	| 'u16'
+	| 'i16'
+	| 'usize'
+	| 'isize'
+	| '[' <type> [';' <num>] ']'
+	| '^' <type>
+	| 'proc' '(' [<type> {',' <type>} [',']] ')'
+
+<param> ::= ['mut'] <id> ':' <type>
+
+<bin-op> ::= '|' | '<' | '>' | '<=' | '>=' | '=' | '!=' | '<<' | '>>'
+<mod-op> ::= '<<=' | '>>='
+
+<lval> ::= <id> ['[' <factor> ']']
+
+<factor> ::= <num> | <lval>
+
+<stmt> ::=
+	'let' ['mut'] <id> [':' <type>] '=' <expr>
+	| 'reset' <id> '=' <expr>
+	
+	| <lval> '^=' <factor> '&' <factor>
+	| <lval> '^=' <factor> {'^' <factor>}
+	
+	| <lval> '+=' <factor> {'+' <factor> | '-' <factor>}
+	| <lval> '-=' <factor> {'+' <factor> | '-' <factor>}
+	
+	| <lval> '<>' <lval>
+	| <factor> '?' <lval> '<>' <lval>
+	
+	| 'if' <expr> '{' <stmtlist> '}'
+	  ['else' '{' <stmtlist> '}']
+	  'assert' <expr>
+	
+	| 'from'  <expr> ['{' <stmtlist> '}']
+	  'until' <expr> ['{' <stmtlist> '}']
+	
+	| 'call' <id> '(' [<factor> {',' <factor>} [',']] ')'
+	| 'uncall' <id> '(' [<factor> {',' <factor>} [',']] ')'
+
+<stmtlist> ::= [<stmt> ';' <stmtlist>]
+
+<proc> ::=
+	'proc' <id> '(' [<param> {',' <param>} [',']] ')'
+	'{' <stmtlist> '}'
