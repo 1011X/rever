@@ -1,35 +1,37 @@
 <id> ::= /[A-Za-z_][A-Za-z0-9_]*/
 
-<num-lit> ::=
-	/[-+]?[1-9][0-9_]*(u16|i16|usize|isize)/     ; base   10
-	| /0x[A-Fa-f0-9_]+(u16|i16|usize|isize)/     ; base 0x10
-	| /0b[01_]+(u16|i16|usize|isize)/            ; base 0b10
+<num> ::=
+	/[-+]?[1-9][0-9_]*/     ; base   10
+	| /0x[A-Fa-f0-9_]+/     ; base 0x10
+	| /0b[01_]+/            ; base 0b10
 
-<type-list> ::= <type> [',' <type-list>]
-<type> ::= <id> ['<' <type-list> '>']
+<type> ::= <id> ['<' <type> {',' <type>} '>']
 	| 'bool'
 	| 'u16' | 'i16' | 'usize' | 'isize'
-	| '[' <type> [';' <num>] ']'
+	| '[' <type> ';' <num> ']'
 	| '^' <type>
-	| 'proc' '(' [<type> {',' <type>} [',']] ')'
+	| 'proc' '(' [<type> {',' <type>}] ')'
 
-<param> ::= ['mut'] <id> ':' <type>
+<param> ::= ['var'] <id> ':' <type>
 
-<bin-op> ::= '|' | '<' | '>' | '<=' | '>=' | '=' | '!=' | '<<' | '>>'
-<mod-op> ::= '<<=' | '>>='
+<bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
+<bin-expr> ::= <factor> <bin-op> <factor>
 
 <lval> ::= <id> {'*' | '[' <factor> ']'}
 
 <lit> ::= <num>
-
 <factor> ::= <lit> | <lval>
 
 <stmt> ::=
-	'let' ['mut'] <id> [':' <type>] '=' <expr>
+	'let' <id> [':' <type>] '=' <expr>
+	| 'var' <id> [':' <type>] '=' <expr>
 	| 'drop' <id> '=' <expr>
 	
-	| '~' <lval>
+	| '!' <lval>
 	| '-' <lval>
+	
+	| <lval> '<<=' <factor>
+	| <lval> '>>=' <factor>
 	
 	| <lval> '^=' <factor> '&' <factor>
 	| <lval> '^=' <factor> {'^' <factor>}
@@ -40,23 +42,17 @@
 	| <lval> '<>' <lval>
 	| <factor> '?' <lval> '<>' <lval>
 	
-	| 'if' <expr> '{' <stmtlist> '}'
-	  ['else' '{' <stmtlist> '}']
-	  'assert' <expr>
+	| 'if' <bin-expr> <block>
+	  ['else' <block>]
+	  'fi' <bin-expr>
 	
-	| 'rev' 'if' <expr> '{' <stmtlist> '}'
-	  ['else' '{' <stmtlist> '}']
+	| 'from'  <bin-expr> [<block>]
+	  'until' <bin-expr> [<block>]
 	
-	| 'from'  <expr> ['{' <stmtlist> '}']
-	  'until' <expr> ['{' <stmtlist> '}']
-	
-	| 'for' <id> 'in' 
-	
-	| <lval> '(' [<factor> {',' <factor>} [',']] ')'
-	| 'rev' <lval> '(' [<factor> {',' <factor>} [',']] ')'
+	| 'call' <lval> '(' [<factor> {',' <factor>}] ')'
+	| 'uncall' <lval> '(' [<factor> {',' <factor>}] ')'
 
-<stmtlist> ::= [<stmt> ';' <stmtlist>]
+<block> ::= '{' { <stmt> ';' } '}'
 
 <proc> ::=
-	'proc' <id> '(' [<param> {',' <param>} [',']] ')'
-	'{' <stmtlist> '}'
+	'proc' <id> '(' [<param> {',' <param>}] ')' <block>
