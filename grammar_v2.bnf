@@ -1,0 +1,97 @@
+<id> ::= /[A-Za-z_][A-Za-z0-9_]*/
+
+<str> ::= /"[^\n]"/
+<char> ::= /'([^\\]|\\\\|\\n|\\t|\\')'/
+<num> ::=
+	/[-+]?[1-9][0-9_]*/     ; base   10
+	| /0x[A-Fa-f0-9_]+/     ; base 0x10
+	| /0b[01_]+/            ; base 0b10
+
+<typelist> ::= <type> {',' <type>}
+<type> ::=
+	<id>
+	| 'unit'
+	| 'bool'
+	| 'u16' | 'i16' | 'usize' | 'isize'
+	| '[' <type> ';' <num> ']'
+	| '^' <type>
+	| '?' <type>
+	| '(' <type> {',' <type>} ')'
+	| 'fn' '(' [<typelist>] ')' ['->' <type>]
+	| 'type' <id> ['(' <typelist> ')']
+
+<type-decl> ::=
+	'type' <id> ['(' <id> {',' <id>} ')'] '{' {
+		<id> ':' <type> ','
+		| [<id>] <type> '|'
+	} '}'
+
+<bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
+<bin-expr> ::= <factor> <bin-op> <factor>
+
+<lval> ::= <id> {'*' | '[' <factor> ']'}
+
+<lit> ::= <num>
+<factor> ::= <lit> | <lval>
+
+<arglist> ::= [<factor> {',' <factor>}]
+
+<stmt> ::=
+	'let' <id> [':' <type>] '=' <lit>
+	| 'var' <id> [':' <type>] '=' <lit>
+	| 'drop' <id> '=' <lit>
+	
+	| '!' <lval>
+	| '-' <lval>
+	
+	| <lval> '<<=' <factor>
+	| <lval> '>>=' <factor>
+	
+	| <lval> '^=' <factor> '&' <factor>
+	| <lval> '^=' <factor> {'^' <factor>}
+	
+	| <lval> '+=' <factor> {'+' <factor> | '-' <factor>}
+	| <lval> '-=' <factor> {'+' <factor> | '-' <factor>}
+	
+	| <lval> '<>' <lval>
+	| <factor> '?' <lval> '<>' <lval>
+	
+	| 'if' <bin-expr> <block>
+	  ['else' <block>]
+	  ['fi' <bin-expr>]
+	
+	| 'from'  <bin-expr> [<block>]
+	  'until' <bin-expr> [<block>]
+	
+	| 'do' <lval> '(' <arglist> ')' ['->' <factor>]
+	| 'undo' <lval> '(' <arglist> ')' ['->' <factor>]
+
+<block> ::= '{' { <stmt> ';' } '}'
+
+<param> ::= ['var'] <id> ':' <type>
+<params> ::= [<param> {',' <param>}]
+
+<fn> ::=
+	'fn' <id> '(' <params> ')' ['->' <type>]
+	['where' <id> ':' <id> ['(' <typelist> ')']]
+	<block>
+
+<macro-type> ::=
+	'ident'
+	| 'expr'
+	| 'item'
+	| 'stmt'
+	| 'block'
+	| 'tt'
+	| 'meta'
+	| 'path'
+<macro-param> ::= '$' <id> ':' <macro-type>
+<macro> ::= 'macro' <id> '(' <macro-param> {',' <macro-param>} ')'
+
+<item> ::= <fn> | <macro>
+
+<attr-item> ::= '#' ['!'] '[' <attr> ']'
+<attr> ::=
+	<id>
+	| <id> '=' <lit>
+	| <id> '(' <attr> {',' <attr>} ')'
