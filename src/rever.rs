@@ -19,6 +19,7 @@ named!(type_<Type>, alt!(
 	| map!(tag!("i16"), |_| Type::I16)
 	| map!(tag!("usize"), |_| Type::Usize)
 	| map!(tag!("isize"), |_| Type::Isize)
+	| map!(ws!(preceded!(tag!("^"), type_)), |t| Type::Pointer(Box::new(t)))
 	| ws!(do_parse!(
 		tag!("[") >>
 		t: type_ >>
@@ -28,7 +29,6 @@ named!(type_<Type>, alt!(
 		
 		(Type::Array(t, n))
 	))
-	| map!(ws!(preceded!(tag!("^"), type_)), |t| Type::Pointer(Box::new(t)))
 ));
 
 #[derive(Debug)]
