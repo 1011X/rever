@@ -5,16 +5,18 @@ named!(constant<Num>, map_res!(digit, str::from_utf8));
 
 #[derive(Debug, Clone, Copy)]
 pub enum Type {
-	Composite(String, Vec<Type>),
+	Unit,
 	Bool,
 	U16, I16, Usize, Isize,
-	Array(Box<Type>, usize),
 	Pointer(Box<Type>),
-	Proc(Vec<Type>),
+	Array(Box<Type>, usize),
+	Fn(Vec<Type>),
+	Composite(String),
 }
 
 named!(type_<Type>, alt!(
-	map!(tag!("bool"), |_| Type::Bool)
+	map!(tag!("unit"), |_| Type::Unit)
+	| map!(tag!("bool"), |_| Type::Bool)
 	| map!(tag!("u16"), |_| Type::U16)
 	| map!(tag!("i16"), |_| Type::I16)
 	| map!(tag!("usize"), |_| Type::Usize)
@@ -29,6 +31,17 @@ named!(type_<Type>, alt!(
 		
 		(Type::Array(t, n))
 	))
+	| ws!(do_parse!(
+		tag!("fn") >>
+		p: ws!(delimited!(
+			tag!("("),
+			separated_list!(tag!(","), type_),
+			tag!(")")
+		)) >>
+		
+		(Type::Fn(p))
+	))
+	| ws!(preceded!(tag!("type"), ident))
 ));
 
 #[derive(Debug)]

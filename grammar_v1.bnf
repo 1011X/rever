@@ -1,6 +1,6 @@
 <id> ::= /[A-Za-z_][A-Za-z0-9_]*/
 
-<str> ::= /"[^\n]"/
+<str> ::= /"[^\n"]"/
 <char> ::= /'([^\\]|\\\\|\\n|\\t|\\')'/
 <num> ::=
 	/[-+]?[1-9][0-9_]*/     ; base   10
@@ -9,8 +9,8 @@
 
 <typelist> ::= <type> {',' <type>}
 <type> ::=
-	'bool'
-	| 'unit'
+	'unit'
+	| 'bool'
 	| 'u16' | 'i16' | 'usize' | 'isize'
 	| '^' <type>
 	| '[' <type> ';' <num> ']'
@@ -26,7 +26,7 @@
 <bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
 <bin-expr> ::= <factor> <bin-op> <factor>
 
-<lval> ::= <id> {'*' | '[' <factor> ']'}
+<lval> ::= <id> {'*' | '[' <factor> ']' | '.' <id> }
 
 <lit> ::= <num> | <char> | <str>
 <factor> ::= <lit> | <lval>

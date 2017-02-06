@@ -16,22 +16,22 @@
 	| '[' <type> ';' <num> ']'
 	| '^' <type>
 	| '?' <type>
-	| '(' <type> {',' <type>} ')'
+	| '(' <typelist> ')'
 	| 'fn' '(' [<typelist>] ')' ['->' <type>]
 	| 'type' <id> ['(' <typelist> ')']
 
 <type-decl> ::=
 	'type' <id> ['(' <id> {',' <id>} ')'] '{' {
-		<id> ':' <type> ','
+		[<id> ':'] <type> ','
 		| [<id>] <type> '|'
 	} '}'
 
 <bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
 <bin-expr> ::= <factor> <bin-op> <factor>
 
-<lval> ::= <id> {'*' | '[' <factor> ']'}
+<lval> ::= <id> {'*' | '[' <factor> ']' | '.' <id> }
 
-<lit> ::= <num>
+<lit> ::= <num> | <char> | <str>
 <factor> ::= <lit> | <lval>
 
 <arglist> ::= [<factor> {',' <factor>}]
