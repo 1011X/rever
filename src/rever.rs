@@ -1,9 +1,9 @@
 use std::str;
 
-named!(ident, re_bytes_find!("^[A-Za-z_][A-Za-z0-9_]*"));
+named!(ident<String>, re_bytes_find!("^[A-Za-z_][A-Za-z0-9_]*"));
 named!(constant<Num>, map_res!(digit, str::from_utf8));
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug)]
 pub enum Type {
 	Unit,
 	Bool,
@@ -90,6 +90,7 @@ pub enum Item {
 
 named!(item<Item>, map!(proc_, Item::Proc));
 
+#[derive(Debug)]
 enum Factor {
 	Lit(Literal),
 	LVal(LValue),
@@ -100,18 +101,20 @@ named!(factor<Factor>, alt!(
 	| map!(lval, Factor::Lval)
 ));
 
+#[derive(Debug)]
 enum Literal {
 	Num(Number),
 }
 
 named!(lit<Literal>, map!(num, Literal::Num));
 
+#[derive(Debug)]
 enum Number {
 	Unknown(u16),
 	U16(u16),
 	I16(i16),
-	Usize(usize),
-	Isize(isize),
+	Usize(u16),
+	Isize(i16),
 }
 
 named!(num<Number>, alt!(
@@ -120,6 +123,14 @@ named!(num<Number>, alt!(
 	| re_bytes_find!("^0b[01_]+")
 ));
 
+#[derive(Debug)]
+enum Deref {
+	Direct,
+	Indexed(Factor),
+	Field(String),
+}
+
+#[derive(Debug)]
 struct LValue {
 	id: String,
 	ops: Vec<Deref>,
@@ -134,6 +145,7 @@ named!(lval<LValue>, ws!(do_parse!(
 			map!(factor, Deref::Indexed),
 			tag!("]")
 		))
+		| ws!(preceded!(tag!("."), map!(ident, Deref::Field)))
 	))) >>
 	
 	(LValue {
@@ -142,35 +154,30 @@ named!(lval<LValue>, ws!(do_parse!(
 	})
 )));
 
-enum Deref {
-	Direct,
-	Indexed(Factor),
-}
-
 #[derive(Debug)]
 pub enum Statement {
-	Let(String, Option<Type>, Expression),
-	Var(String, Option<Type>, Expression),
-	Drop(String, Option<Type>, Expression),
+	Let(String, Option<Type>, Lit),
+	Var(String, Option<Type>, Lit),
+	Drop(String, Lit),
 	
-	//Not(String),
-	//Neg(String),
+	Not(LValue),
+	Neg(LValue),
 	
-	RotLeft(String, Factor),
-	RotRight(String, Factor),
+	RotLeft(LValue, Factor),
+	RotRight(LValue, Factor),
 	
-	CCNot(String, Factor, Factor),
-	Xor(String, Vec<Factor>),
+	CCNot(LValue, Factor, Factor),
+	Xor(LValue, Vec<Factor>),
 	
-	Add(String, Vec<(bool, Factor)>),
-	Sub(String, Vec<(bool, Factor)>),
+	Add(LValue, Vec<(bool, Factor)>),
+	Sub(LValue, Vec<(bool, Factor)>),
 	
 	Swap(LValue, LValue),
 	CSwap(Factor, LValue, LValue),
 	
-	//If(BinExpr, Vec<Statement>, Option<Vec<Statement>>, BinExpr),
+	If(BinExpr, Vec<Statement>, Option<Vec<Statement>>, BinExpr),
 	
-	//From(BinExpr, Option<Vec<Statement>>, Option<Vec<Statement>>, BinExpr),
+	From(BinExpr, Option<Vec<Statement>>, Option<Vec<Statement>>, BinExpr),
 	
 	Call(LValue, Vec<Factor>),
 	Uncall(LValue, Vec<Factor>),
@@ -229,41 +236,41 @@ named!(block<Vec<Statement>>, ws!(delimited!(
 )));
 
 named!(stmt<Statement>, alt!(
-	ws!(preceded!(tag!("!"), map!(ident, Statement::Not))
-	| ws!(preceded!(tag!("-"), map!(ident, Statement::Neg))
+	ws!(preceded!(tag!("!"), map!(lval, Statement::Not)))
+	| ws!(preceded!(tag!("-"), map!(lval, Statement::Neg)))
 	| ws!(do_parse!(
-		left: ident >>
+		left: lval >>
 		tag!("<>") >>
-		right: ident >>
+		right: lval >>
 		
 		(Statement::Swap(left, right))
 	))
 	| ws!(do_parse!(
-		dest: ident >>
+		dest: lval >>
 		tag!("^=") >>
-		lctrl: expression >>
+		lctrl: factor >>
 		tag!("&") >>
-		rctrl: expression >>
+		rctrl: factor >>
 		
 		(Statement::CCNot(dest, lctrl, rctrl))
 	))
 	| ws!(do_parse!(
 		control: expression >>
 		tag!("?") >>
-		left: ident >>
+		left: lval >>
 		tag!("<>") >>
-		right: ident >>
+		right: lval >>
 		
 		(Statement::CSwap(control, left, right))
 	))
 	| ws!(do_parse!(
-		l: ident >>
+		l: lval >>
 		m: alt!(
 			tag!("+=") | tag!("-=") |
 			tag!("^=") |
 			tag!("<<=") | tag!(">>=")
 		) >>
-		r: expression >>
+		r: factor >>
 		
 		(match m {
 			b"+="  => Statement::Add(l, r),
@@ -286,14 +293,14 @@ named!(stmt<Statement>, alt!(
 	))
 	*/
 	| ws!(do_parse!(
-		tag!("call") >>
-		name: ident >>
+		tag!("do") >>
+		name: lval >>
 		args: args >>
 		(Statement::Call(name, args))
 	))
 	| ws!(do_parse!(
-		tag!("uncall") >>
-		name: ident >>
+		tag!("undo") >>
+		name: lval >>
 		args: args >>
 		(Statement::Uncall(name, args))
 	))
@@ -302,33 +309,33 @@ named!(stmt<Statement>, alt!(
 		name: ident >>
 		ty: opt!(ws!(preceded!(tag!(":"), type_))) >>
 		tag!("=") >>
-		e: expression >>
+		l: lit >>
 		
-		(Statement::Let(name, ty, e))
+		(Statement::Let(name, ty, l))
 	))
 	| ws!(do_parse!(
 		tag!("var") >>
 		name: ident >>
 		ty: opt!(ws!(preceded!(tag!(":"), type_))) >>
 		tag!("=") >>
-		e: expression >>
+		l: lit >>
 		
-		(Statement::Var(name, ty, e))
+		(Statement::Var(name, ty, l))
 	))
 	| ws!(do_parse!(
 		tag!("drop") >>
 		name: ident >>
 		tag!("=") >>
-		e: expression >>
+		l: lit >>
 		
-		(Statement::Drop(name, None, e))
+		(Statement::Drop(name, l))
 	))
 	| ws!(do_parse!(
 		tag!("if") >>
 		p: expr >>
 		t: block >>
-		e: opt!(ws!(preceded!(tag!("else"),  block))) >>
-		tag!("assert") >>
+		e: opt!(ws!(preceded!(tag!("else"), block))) >>
+		tag!("fi") >>
 		a: expr >>
 		
 		(Statement::If(p, t, e, a))
@@ -348,78 +355,3 @@ named!(stmt<Statement>, alt!(
 named!(pub program<Vec<Item> >, complete!(
 	ws!(many0!(parse_item))
 ));
-/*
-fn main() {
-	println!("{:?}", parse_statement(b"a <> b"));
-	println!("{:?}", parse_statement(b"a   <>    b"));
-	println!("{:?}", parse_statement(b"a<>b"));
-	
-	println!("{:?}", parse_statement(b"a--"));
-	println!("{:?}", parse_statement(b"a  --"));
-	
-	println!("{:?}", parse_statement(b"a++"));
-	println!("{:?}", parse_statement(b"a  ++"));
-	
-	println!("{:?}", parse_statement(b"-a"));
-	println!("{:?}", parse_statement(b"- a"));
-	
-	println!("{:?}", parse_statement(b"!a"));
-	println!("{:?}", parse_statement(b"! a"));
-	
-	println!("{:?}", parse_block(b"{
-		a <> b
-		a --
-		b++
-		!a
-		-b
-	}"));
-	println!("{:?}", parse_block(b"{a<>b;a--;b++;!a;-b;}"));
-	
-	println!("{:?}", parse_procedure(b"proc main() {}"));
-	println!("{:?}", parse_procedure(b"proc f(a: u16) {}"));
-	println!("{:?}", parse_procedure(b"proc f(mut a: u16) {}"));
-	println!("{:?}", parse_procedure(b"proc f(mut a: usize){}"));
-	println!("{:?}", parse_procedure(b"proc s(mut a: u16, mut b: u16) {
-		a <> b
-	}"));
-	
-	println!("{:?}", parse_procedure(b"proc swap(mut a: u16, mut b: u16) {
-		a <> b
-		a <<= 3
-		b >>= a
-	}"));
-	
-	println!("{:?}", parse_procedure(b"proc t(mut a: u16, b: u16) {
-		a ^= b
-		
-		a <<= 3_usize
-	}"));
-	
-	println!("{:?}", parse_program(b"
-	proc hello(mut a: u16, mut b: u16) {
-		3 ? a <> b
-		a ^= 4 & b
-		
-		a += b
-		b -= a
-		
-		unsafe {
-			a ^= b
-			
-			hello(a, b)
-			rev hello(a, b)
-		}
-	}
-	
-	proc main() {
-		let a = 3
-		let mut b=5
-		let mut c = 6
-		hello(b, c)
-		rev hello(b, c)
-		delete mut c = 6
-		delete mut b=5
-		delete a = 3
-	}"));
-}
-*/
