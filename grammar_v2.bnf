@@ -10,7 +10,7 @@
 <typelist> ::= <type> {',' <type>}
 <type> ::=
 	<id>
-	| 'unit'
+	| '()' | 'unit'
 	| 'bool'
 	| 'u16' | 'i16' | 'usize' | 'isize'
 	| '[' <type> ';' <num> ']'
@@ -21,10 +21,12 @@
 	| 'type' <id> ['(' <typelist> ')']
 
 <type-decl> ::=
-	'type' <id> ['(' <id> {',' <id>} ')'] '{' {
-		[<id> ':'] <type> ','
-		| [<id>] <type> '|'
-	} '}'
+	'type' <id> [';' | '(' <id> {',' <id>} ')' '{'
+		<type> {',' <type>}
+		| <type> {'|' <type>}
+		| <id> <type> {'|' <id> <type>}
+		| <id> ':' <type> {',' <id> ':' <type>}
+	'}']
 
 <bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
 <bin-expr> ::= <factor> <bin-op> <factor>

@@ -18,10 +18,10 @@
 	| 'type' <id>
 
 <type-decl> ::=
-	'type' <id> '{' {
-		<id> ':' <type> ','
-		| <type> '|'
-	} '}'
+	'type' <id> '{'
+		<id> ':' <type> {',' <id> ':' <type>}
+		| <type> {'|' <type>}
+	'}'
 
 <bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
 <bin-expr> ::= <factor> <bin-op> <factor>
