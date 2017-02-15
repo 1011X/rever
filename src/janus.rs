@@ -1,5 +1,6 @@
-use std::str;
-use std::str::FromStr;
+#![allow(dead_code)]
+
+use std::str::{self, FromStr};
 
 use nom::{
 	IResult, Needed,
@@ -10,20 +11,20 @@ use nom::{
 
 #[derive(Debug)]
 pub enum Binop {
-	Plus,
-	Minus,
+	Add,
+	Sub,
 	Xor,
-	LessThan,
-	GreaterThan,
+	Lt,
+	Gt,
 	And,
 	Or,
-	Equal,
-	NotEqual,
-	LessThanOrEqual,
-	GreaterThanOrEqual,
-	Times,
-	DividedBy,
-	Modulus,
+	Eq,
+	Neq,
+	Lte,
+	Gte,
+	Mul,
+	Div,
+	Mod,
 }
 
 #[derive(Debug)]
@@ -79,6 +80,13 @@ pub struct Expression<'a> {
 }
 
 #[derive(Debug)]
+pub enum Expression<'a> {
+	Constant(usize),
+	Variable(&'a str, Option<usize>),
+	BinOp(Box<Expression<'a>>, BinOp, Box<Expression<'a>>),
+}
+
+#[derive(Debug)]
 pub enum Minexp<'a> {
 	Group(Box<Expression<'a>>),
 	Neg(Box<Expression<'a>>),
@@ -100,129 +108,125 @@ named!(num<usize>, map_res!(
 ));
 
 named!(binop<Binop>, alt!(
-	  tag!("+")  => { |_| Binop::Plus               }
-	| tag!("-")  => { |_| Binop::Minus              }
+	  tag!("+")  => { |_| Binop::Add               }
+	| tag!("-")  => { |_| Binop::Sub              }
 	| tag!("!")  => { |_| Binop::Xor                }
-	| tag!("<")  => { |_| Binop::LessThan           }
-	| tag!(">")  => { |_| Binop::GreaterThan        }
+	| tag!("<")  => { |_| Binop::Lt           }
+	| tag!(">")  => { |_| Binop::Gt        }
 	| tag!("&")  => { |_| Binop::And                }
 	| tag!("|")  => { |_| Binop::Or                 }
-	| tag!("=")  => { |_| Binop::Equal              }
-	| tag!("#")  => { |_| Binop::NotEqual           }
-	| tag!("<=") => { |_| Binop::LessThanOrEqual    }
-	| tag!(">=") => { |_| Binop::GreaterThanOrEqual }
-	| tag!("*")  => { |_| Binop::Times              }
-	| tag!("/")  => { |_| Binop::DividedBy          }
-	| tag!("\\") => { |_| Binop::Modulus            }
+	| tag!("=")  => { |_| Binop::Eq              }
+	| tag!("#")  => { |_| Binop::Neq           }
+	| tag!("<=") => { |_| Binop::Lte    }
+	| tag!(">=") => { |_| Binop::Gte }
+	| tag!("*")  => { |_| Binop::Mul              }
+	| tag!("/")  => { |_| Binop::Div          }
+	| tag!("\\") => { |_| Binop::Mod            }
 ));
 
-named!(pub parse_program<Program>, chain!(
-	multispace? ~
-	globals: many0!(chain!(
-		name: ident ~
-		multispace? ~
-		size: delimited!(
-			char!('['),
-			chain!(multispace? ~ n: num ~ multispace?, || n),
-			char!(']')
-		)?,
+named!(pub program<Program>, ws!(do_parse!(
+	globals: ws!(many0!(ws!(do_parse!(
+		name: ident >>
+		size: opt!(ws!(delimited!(
+			tag!("["),
+			num,
+			tag!("]")
+		))) >>
 	
-		|| (name, size.unwrap_or(1))
-	)) ~
-	procedures: many0!(chain!(
-		tag!("procedure") ~ multispace ~
-		name: ident ~ multispace ~
-		body: many0!(parse_statement),
+		(name, size.unwrap_or(1))
+	)))) >>
+	procedures: ws!(many0!(ws!(do_parse!(
+		tag!("procedure") >>
+		name: ident >>
+		body: ws!(many0!(stmt)) >>
 	
-		|| (name, body)
-	)),
+		(name, body)
+	)))) >>
 	
-	|| Program {
+	(Program {
 		globals: globals,
 		procedures: procedures,
-	}
+	})
 ));
 
-named!(parse_statement<Statement>, alt!(
-	parse_ifstmt   => { |s| Statement::If(s) }
-	| parse_dostmt => { |s| Statement::Do(s) }
-	| parse_callstmt => { |s| Statement::Call(s) }
-	| chain!(tag!("read") ~ multispace ~ name: ident, || Statement::Read(name))
-	| chain!(tag!("write") ~ multispace ~ name: ident, || Statement::Write(name))
-	| parse_modstmt => { |s| Statement::Mod(s) }
+named!(stmt<Statement>, alt!(
+	ws!(do_parse!(
+		ident
+	))
+	| ifstmt => { Statement::If }
+	| dostmt => { Statement::Do }
+	| callstmt => { Statement::Call }
+	| preceded!(tag!("read"), ident) => { Statement::Read }
+	| preceded!(tag!("write"), ident) => { Statement::Write }
+	| modstmt => { Statement::Mod }
 ));
 
-named!(parse_ifstmt<Ifstmt>, chain!(
-	tag!("if") ~ multispace ~ _if: parse_expression ~ multispace ~
-	then:  chain!(
-		tag!("then") ~ multispace ~
-		b: many0!(parse_statement),
-		
-		|| b
-	)? ~
-	_else: chain!(
-		tag!("else") ~ multispace ~
-		b: many0!(parse_statement),
-		
-		|| b
-	)? ~
-	tag!("fi") ~ multispace ~ fi: parse_expression ~ multispace,
+named!(ifstmt<Ifstmt>, ws!(chain!(
+	tag!("if") >>
+	_if: expr >>
+	then: opt!(ws!(preceded!(
+		tag!("then"),
+		many0!(parse_statement)
+	))) >>
+	_else: opt!(ws!(preceded!(
+		tag!("else"),
+		many0!(parse_statement)
+	))) >>
+	tag!("fi") >>
+	fi: expr >>
 	
-	|| Ifstmt {
+	(Ifstmt {
 		_if: _if,
 		then: then.unwrap_or(Vec::new()),
 		_else: _else.unwrap_or(Vec::new()),
 		fi: fi,
-	}
-));
+	})
+)));
 
-named!(parse_dostmt<Dostmt>, chain!(
-	tag!("from") ~ multispace ~ from: parse_expression ~ multispace ~
-	_do:  chain!(
-		tag!("do") ~ multispace ~
-		b: many0!(parse_statement),
-		
-		|| b
-	)? ~
-	_loop: chain!(
-		tag!("loop") ~ multispace ~
-		b: many0!(parse_statement),
-		
-		|| b
-	)? ~
-	tag!("until") ~ multispace ~ until: parse_expression ~ multispace,
+named!(dostmt<Dostmt>, ws!(do_parse!(
+	tag!("from") >>
+	from: expr >>
+	_do: opt!(ws!(preceded!(
+		tag!("do"),
+		many0!(stmt)
+	))) >>
+	_loop: opt!(ws!(preceded!(
+		tag!("loop"),
+		many0!(stmt)
+	))) ~
+	tag!("until") >>
+	until: expr >>
 	
-	|| Dostmt {
+	(Dostmt {
 		from: from,
 		_do: _do.unwrap_or(Vec::new()),
 		_loop: _loop.unwrap_or(Vec::new()),
 		until: until,
-	}
+	})
+)));
+
+named!(callstmt<Callstmt>, alt!(
+	ws!(preceded!(tag!("call"), ident)) => { Callstmt::Call }
+	| ws!(preceded!(tag!("uncall"), ident)) => { Callstmt::Uncall }
 ));
 
-named!(parse_callstmt<Callstmt>, alt!(
-	chain!(tag!("call") ~ multispace ~ f: ident, || Callstmt::Call(f))
-	| chain!(tag!("uncall") ~ multispace ~ f: ident, || Callstmt::Uncall(f))
+named!(modstmt<Modstmt>, alt!(
+	ws!(separated_pair!(lval, tag!(":"), lval)) => { |(l,r)| Modstmt::Swap(l, r) }
 ));
 
-named!(parse_modstmt<Modstmt>, alt!(
-	chain!(l: parse_lvalue ~ multispace? ~ tag!(":") ~ multispace? ~ r: parse_lvalue, || Modstmt::Swap(l, r))
-));
-
-named!(parse_expression<Expression>, chain!(
+named!(expr<Expression>, chain!(
 	m: parse_minexp ~
-	b: many0!(chain!(
-		multispace? ~
-		op: binop ~ multispace? ~
-		e: parse_minexp,
+	b: ws!(many0!(ws!(do_parse!(
+		op: binop >>
+		e: minexp >>
 		
-		|| (op, e)
-	)),
+		(op, e)
+	)))),
 	
-	|| Expression {min: m, more: b}
+	(Expression {min: m, more: b})
 ));
 
-named!(parse_minexp<Minexp>, alt!(
+named!(minexp<Minexp>, alt!(
 	delimited!(
 		char!('('),
 		chain!(
@@ -238,21 +242,20 @@ named!(parse_minexp<Minexp>, alt!(
 		tag!("-") ~ multispace ~ e: parse_expression,
 		|| Minexp::Neg(Box::new(e))
 	)
-	| chain!(
-		tag!("~") ~ multispace ~ e: parse_expression,
-		|| Minexp::Not(Box::new(e))
-	)
-	| parse_lvalue => { |l| Minexp::Lval(l) }
-	| num => { |n| Minexp::Constant(n) }
+	| lval => { Minexp::Lval }
+	| num => { Minexp::Constant }
 ));
 
-named!(parse_lvalue<Lvalue>, chain!(
-	name: ident ~ multispace ~
-	off: delimited!(
-		char!('['),
-		chain!(multispace? ~ e: parse_expression ~ multispace?, || e),
-		char!(']')
-	),
+named!(lval<LValue>, ws!(do_parse!(
+	name: ident >>
+	off: ws!(delimited!(
+		tag!("["),
+		expr,
+		tag!("]")
+	)) >>
 	
-	|| Lvalue {name: name, off: Box::new(off)}
+	(LValue {
+		name: name,
+		off: Box::new(off),
+	})
 ));

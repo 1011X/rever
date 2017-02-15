@@ -3,7 +3,7 @@ extern crate nom;
 extern crate regex;
 
 //mod janus;
-//mod janus_extended;
+mod janus_extended;
 mod rever;
 
 fn main() {
