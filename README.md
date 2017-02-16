@@ -6,6 +6,7 @@ RCC
 Currently, the compiler is no more than just a set of incomplete parsers that build ASTs for Rever, Janus, and Extended Janus. After the Rever parser is done, I'll start writing the code generator for REL assembly instructions.
 
 So basically, the plan is:
+
 1. Parser for Rever
 2. Code generator for REL
 3. Parser for other languages
