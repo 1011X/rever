@@ -18,10 +18,13 @@
 	| 'type' <id>
 
 <type-decl> ::=
-	'type' <id> '{'
-		<id> ':' <type> {',' <id> ':' <type>}
-		| <type> {'|' <type>}
-	'}'
+	'type' <id> [
+		'=' <type> ';'
+		| '{'
+			<type> {'|' <type>}
+			| <id> ':' <type> {',' <id> ':' <type>}
+		'}'
+	]
 
 <bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
 <bin-expr> ::= <factor> <bin-op> <factor>
@@ -34,8 +37,7 @@
 <arglist> ::= [<factor> {',' <factor>}]
 
 <stmt> ::=
-	'let' <id> [':' <type>] '=' <lit>
-	| 'var' <id> [':' <type>] '=' <lit>
+	'let' ['mut'] <id> [':' <type>] '=' <lit>
 	| 'drop' <id> '=' <lit>
 	
 	| '!' <lval>
@@ -65,7 +67,7 @@
 
 <block> ::= '{' { <stmt> ';' } '}'
 
-<param> ::= ['var'] <id> ':' <type>
+<param> ::= ['mut'] <id> ':' <type>
 <params> ::= [<param> {',' <param>}]
 
 <fn> ::= 'fn' <id> '(' <params> ')' <block>

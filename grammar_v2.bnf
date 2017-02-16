@@ -21,12 +21,16 @@
 	| 'type' <id> ['(' <typelist> ')']
 
 <type-decl> ::=
-	'type' <id> [';' | '(' <id> {',' <id>} ')' '{'
-		<type> {',' <type>}
-		| <type> {'|' <type>}
-		| <id> <type> {'|' <id> <type>}
-		| <id> ':' <type> {',' <id> ':' <type>}
-	'}']
+	'type' <id> [
+		';'
+		| '=' <type> ';'
+		| '(' <id> {',' <id>} ')' '{'
+			<type> {',' <type>}
+			| <type> {'|' <type>}
+			| <id> <type> {'|' <id> <type>}
+			| <id> ':' <type> {',' <id> ':' <type>}
+		'}'
+	]
 
 <bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
 <bin-expr> ::= <factor> <bin-op> <factor>
@@ -39,8 +43,7 @@
 <arglist> ::= [<factor> {',' <factor>}]
 
 <stmt> ::=
-	'let' <id> [':' <type>] '=' <lit>
-	| 'var' <id> [':' <type>] '=' <lit>
+	'let' ['mut'] <id> [':' <type>] '=' <lit>
 	| 'drop' <id> '=' <lit>
 	
 	| '!' <lval>
@@ -68,9 +71,9 @@
 	| 'do' <lval> '(' <arglist> ')' ['->' <factor>]
 	| 'undo' <lval> '(' <arglist> ')' ['->' <factor>]
 
-<block> ::= '{' { <stmt> ';' } '}'
+<block> ::= '{' {<stmt> ';' | <item>} '}'
 
-<param> ::= ['var'] <id> ':' <type>
+<param> ::= ['mut'] <id> ':' <type>
 <params> ::= [<param> {',' <param>}]
 
 <fn> ::=
