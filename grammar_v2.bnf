@@ -74,10 +74,10 @@
 <block> ::= '{' {<stmt> ';' | <item>} '}'
 
 <param> ::= ['mut'] <id> ':' <type>
-<params> ::= [<param> {',' <param>}]
+<paramlist> ::= [<param> {',' <param>}]
 
 <fn> ::=
-	'fn' <id> '(' <params> ')' ['->' <type>]
+	'fn' <id> '(' <paramlist> ')' ['->' <type>]
 	['where' <id> ':' <id> ['(' <typelist> ')']]
 	<block>
 
@@ -93,7 +93,7 @@
 <macro-param> ::= '$' <id> ':' <macro-type>
 <macro> ::= 'macro' <id> '(' <macro-param> {',' <macro-param>} ')'
 
-<item> ::= <fn> | <macro>
+<item> ::= <fn> | <macro> | <type-decl>
 
 <attr-item> ::= '#' ['!'] '[' <attr> ']'
 <attr> ::=

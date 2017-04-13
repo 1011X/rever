@@ -1,7 +1,4 @@
-#![allow(dead_code)]
-
 use std::str;
-
 
 macro_rules! reb_parse {
 	($i:expr, $e:expr) => {
@@ -15,7 +12,7 @@ macro_rules! reb_parse {
 
 
 named!(ident<String>, reb_parse!("^[A-Za-z_][A-Za-z0-9_]*"));
-named!(num<u16>, reb_parse!("^[-+]?[1-9][0-9]*"));
+named!(num<u16>, reb_parse!("^[-+]?[0-9]+"));
 
 
 #[derive(Debug)]
@@ -77,28 +74,28 @@ named!(binexpr<BinExpr>, alt!(
 	))
 	| ws!(do_parse!(
 		l: factor >>
-		tag!("&") >>
+		alt!(tag!("&") | tag!("and")) >>
 		r: factor >>
 		
 		(BinExpr::And(l, r))
 	))
 	| ws!(do_parse!(
 		l: factor >>
-		tag!("|") >>
+		alt!(tag!("|") | tag!("or")) >>
 		r: factor >>
 		
 		(BinExpr::Or(l, r))
 	))
 	| ws!(do_parse!(
 		l: factor >>
-		tag!("^") >>
+		alt!(tag!("^") | tag!("xor")) >>
 		r: factor >>
 		
 		(BinExpr::Xor(l, r))
 	))
 ));
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Type {
 	Unit,
 	Bool,
@@ -136,21 +133,21 @@ named!(type_<Type>, alt!(
 ));
 
 #[derive(Debug)]
-pub struct Procedure {
+pub struct Function {
 	name: String,
 	args: Vec<(bool, String, Type)>,
 	code: Vec<Statement>,
 }
 
-named!(proc_<Procedure>, ws!(do_parse!(
-	tag!("proc") >>
+named!(fn_<Function>, ws!(do_parse!(
+	tag!("fn") >>
 	name: ident >>
 	args: ws!(delimited!(
 		tag!("("),
 		ws!(separated_list!(
 			tag!(","),
 			ws!(do_parse!(
-				m: opt!(tag!("var")) >>
+				m: opt!(tag!("mut")) >>
 				name: ident >>
 				tag!(":") >>
 				t: type_ >>
@@ -162,12 +159,10 @@ named!(proc_<Procedure>, ws!(do_parse!(
 	)) >>
 	code: block >>
 	
-	// some extra work can be done here if it's really needed
-	(Procedure {
+	(Function {
 		name: name,
 		args: args,
-		code: code.into_iter()
-			.collect(),
+		code: code,
 	})
 )));
 
@@ -176,10 +171,10 @@ named!(proc_<Procedure>, ws!(do_parse!(
 pub enum Item {
 	//Static(bool, String, Type, ConstExpr),
 	//Mod(Vec<Item>),
-	Proc(Procedure),
+	Fn(Function),
 }
 
-named!(item<Item>, map!(proc_, Item::Proc));
+named!(item<Item>, map!(fn_, Item::Fn));
 
 #[derive(Debug)]
 pub enum Factor {
@@ -257,8 +252,7 @@ pub enum FlatOp {
 
 #[derive(Debug)]
 pub enum Statement {
-	Let(String, Option<Type>, Literal),
-	Var(String, Option<Type>, Literal),
+	Let(bool, String, Option<Type>, Literal),
 	Drop(String, Literal),
 	
 	Not(LValue),
@@ -298,17 +292,16 @@ named!(args<Vec<Factor> >, ws!(delimited!(
 
 named!(block<Vec<Statement>>, ws!(delimited!(
 	tag!("{"),
+	// many0! is supressing error in stmt
 	ws!(many0!(
 		ws!(terminated!(stmt, tag!(";")))
 	)),
 	tag!("}")
 )));
 
-//named!(stmt<Statement>, value!(Statement::Not(LValue {id: String::from("hi"), ops: vec![]})));
-
 named!(stmt<Statement>, alt!(
-	ws!(preceded!(tag!("!"), map!(lval, Statement::Not)))
-	| ws!(preceded!(tag!("-"), map!(lval, Statement::Neg)))
+	ws!(preceded!(tag!("!"), lval)) => {Statement::Not}
+	| ws!(preceded!(tag!("-"), lval)) => {Statement::Neg}
 	| ws!(do_parse!(
 		left: lval >>
 		tag!("<>") >>
@@ -373,26 +366,25 @@ named!(stmt<Statement>, alt!(
 			m
 		}))
 	))
-	// stuff is backwards here because we're distributing the negative sign
 	| ws!(do_parse!(
 		l: lval >>
 		tag!("-=") >>
 		r: factor >>
 		m: ws!(many0!(alt!(
-			ws!(preceded!(tag!("+"), factor)) => {FlatOp::Sub}
-			| ws!(preceded!(tag!("-"), factor)) => {FlatOp::Add}
+			ws!(preceded!(tag!("+"), factor)) => {FlatOp::Add}
+			| ws!(preceded!(tag!("-"), factor)) => {FlatOp::Sub}
 		))) >>
 		
-		(Statement::Add(l, {
+		(Statement::Sub(l, {
 			let mut m = m;
-			m.insert(0, FlatOp::Sub(r));
+			m.insert(0, FlatOp::Add(r));
 			m
 		}))
 	))
 	/*
 	| ws!(do_parse!(
 		tag!("unsafe") >>
-		b: parse_block >>
+		b: block >>
 		
 		(Statement::Unsafe(b.into_iter()
 			.filter_map(|s| s)
@@ -414,21 +406,13 @@ named!(stmt<Statement>, alt!(
 	))
 	| ws!(do_parse!(
 		tag!("let") >>
+		m: opt!(tag!("mut")) >>
 		name: ident >>
 		ty: opt!(ws!(preceded!(tag!(":"), type_))) >>
 		tag!("=") >>
 		l: lit >>
 		
-		(Statement::Let(name, ty, l))
-	))
-	| ws!(do_parse!(
-		tag!("var") >>
-		name: ident >>
-		ty: opt!(ws!(preceded!(tag!(":"), type_))) >>
-		tag!("=") >>
-		l: lit >>
-		
-		(Statement::Var(name, ty, l))
+		(Statement::Let(m.is_some(), name, ty, l))
 	))
 	| ws!(do_parse!(
 		tag!("drop") >>
@@ -452,14 +436,12 @@ named!(stmt<Statement>, alt!(
 		tag!("from") >>
 		a: binexpr >>
 		d: opt!(block) >>
-		l: opt!(block) >>
 		tag!("until") >>
 		p: binexpr >>
+		l: opt!(block) >>
 		
 		(Statement::From(a, d, l, p))
 	))
 ));
 
-named!(pub program<Vec<Item> >, complete!(
-	ws!(many0!(item))
-));
+named!(pub program<Vec<Item> >, ws!(many0!(item)));
