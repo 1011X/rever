@@ -1,9 +1,9 @@
 RCC
 ===
 
-`rcc` is meant to be a compiler for reversible programming languages. Some examples of such languages are [Janus](https://en.wikipedia.org/wiki/Janus_(time-reversible_computing_programming_language)), [rFun](http://topps.diku.dk/pirc/?id=rfun), and my own language, Rever. The compiler *will* support compiling reversible languages for irreversible architectures eventually, but for now it's easier to target a reversible architecture, like [REL](https://github.com/1011X/REL-16). Other reversible architectures will be supported too, of course, like [Pendulum](https://dspace.mit.edu/bitstream/handle/1721.1/36039/33342527-MIT.pdf?sequence=2).
+`rcc` is a compiler for reversible programming languages. Some examples of such languages are [Janus](https://en.wikipedia.org/wiki/Janus_(time-reversible_computing_programming_language)), [rFun](http://topps.diku.dk/pirc/?id=rfun), and my own language, Rever. I plan to add LLVM support for compiling reversible languages to irreversible architectures eventually, but for now it's easier to start with my own reversible architecture, [REL](https://github.com/1011X/REL-16). Other reversible architectures will also be supported, like [Bob](https://link.springer.com/chapter/10.1007/978-3-642-29517-1_3).
 
-Currently, the compiler is no more than just a set of incomplete parsers that build ASTs for Rever, Janus, and Extended Janus. After the Rever parser is done, I'll start writing the code generator for REL assembly instructions.
+Currently, the compiler is no more than just a set of incomplete parsers that builds ASTs for Rever, Janus, and Extended Janus. After the Rever parser is done, I'll start writing the code generator for REL assembly instructions.
 
 So basically, the plan is:
 
@@ -11,4 +11,4 @@ So basically, the plan is:
 2. Code generator for REL
 3. Parser for other languages
 4. Code generator for other (reversible) architectures
-5. Hook-up to LLVM to generate code for irreversible architectures
+5. Hook up to LLVM to generate code for irreversible architectures
