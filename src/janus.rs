@@ -108,20 +108,20 @@ named!(num<usize>, map_res!(
 ));
 
 named!(binop<Binop>, alt!(
-	  tag!("+")  => { |_| Binop::Add               }
-	| tag!("-")  => { |_| Binop::Sub              }
-	| tag!("!")  => { |_| Binop::Xor                }
-	| tag!("<")  => { |_| Binop::Lt           }
-	| tag!(">")  => { |_| Binop::Gt        }
-	| tag!("&")  => { |_| Binop::And                }
-	| tag!("|")  => { |_| Binop::Or                 }
-	| tag!("=")  => { |_| Binop::Eq              }
-	| tag!("#")  => { |_| Binop::Neq           }
-	| tag!("<=") => { |_| Binop::Lte    }
-	| tag!(">=") => { |_| Binop::Gte }
-	| tag!("*")  => { |_| Binop::Mul              }
-	| tag!("/")  => { |_| Binop::Div          }
-	| tag!("\\") => { |_| Binop::Mod            }
+	  value!(Binop::Add, tag!("+"))
+	| value!(Binop::Sub, tag!("-"))
+	| value!(Binop::Xor, tag!("!"))
+	| value!(Binop::Lt,  tag!("<"))
+	| value!(Binop::Gt,  tag!(">"))
+	| value!(Binop::And, tag!("&"))
+	| value!(Binop::Or,  tag!("|"))
+	| value!(Binop::Eq,  tag!("="))
+	| value!(Binop::Neq, tag!("#"))
+	| value!(Binop::Lte, tag!("<="))
+	| value!(Binop::Gte, tag!(">="))
+	| value!(Binop::Mul, tag!("*"))
+	| value!(Binop::Div, tag!("/"))
+	| value!(Binop::Mod, tag!("\\"))
 ));
 
 named!(pub program<Program>, ws!(do_parse!(
@@ -161,7 +161,7 @@ named!(stmt<Statement>, alt!(
 	| modstmt => { Statement::Mod }
 ));
 
-named!(ifstmt<Ifstmt>, ws!(chain!(
+named!(ifstmt<Ifstmt>, ws!(do_parse!(
 	tag!("if") >>
 	_if: expr >>
 	then: opt!(ws!(preceded!(
@@ -173,9 +173,9 @@ named!(ifstmt<Ifstmt>, ws!(chain!(
 		many0!(parse_statement)
 	))) >>
 	tag!("fi") >>
-	fi: expr >>
+	fi: expr
 	
-	(Ifstmt {
+	>> (Ifstmt {
 		_if: _if,
 		then: then.unwrap_or(Vec::new()),
 		_else: _else.unwrap_or(Vec::new()),
