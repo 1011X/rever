@@ -4,14 +4,13 @@ extern crate regex;
 
 extern crate rel_isa as rel;
 
-//mod janus;
-mod janus_extended;
-mod rever;
+mod janus;
+//mod rever;
 
 // TODO: fix below example.
 // for some reason `a ^= 1 ^ 2` can't be parsed
 fn main() {
-	
+	/*
 	let (_, ast) = rever::Program::parse(br#"
 	fn f(a: u16 , b: bool , mut c : fn ( ) , d : ^ type A ) {
 		let mut a =0;
@@ -42,11 +41,11 @@ fn main() {
 	
 	println!("{:#?}", ast);
 	
-	/*
 	ast.verify();
 	ast.compile();
+	*/
 	
-	let res = janus_extended::Program::parse(br#"
+	let res = janus::Program::parse(br#"
 	procedure fib(int x1, int x2, int n)
 		if n = 0 then
 			x1 += 1
@@ -63,11 +62,7 @@ fn main() {
 		local int x2 = 0
 		local int n = 4
 		call fib(x1, x2, n)
-		delocal int n = 0
-		delocal int x2 = 8
-		delocal int x1 = 5
 	"#);
 	
 	println!("{:#?}", res);
-	*/
 }
