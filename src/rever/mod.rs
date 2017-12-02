@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::str;
 use std::collections::HashMap;
 use rel;
@@ -66,7 +68,7 @@ pub enum BinExpr {
 }
 
 impl BinExpr {
-	named!(parse<BinExpr>, alt!(
+	named!(parse<BinExpr>, ws!(alt_complete!(
 		do_parse!( // a = b
 			l: call!(Factor::parse) >> tag!("=") >> r: call!(Factor::parse)
 			>> (BinExpr::Eq(l, r))
@@ -104,7 +106,7 @@ impl BinExpr {
 			l: call!(Factor::parse) >> alt!(tag!("^") | tag!("xor")) >> r: call!(Factor::parse)
 			>> (BinExpr::Xor(l, r))
 		)
-	));
+	)));
 }
 
 
@@ -121,7 +123,7 @@ pub enum Type {
 }
 
 impl Type {
-	named!(parse<Type>, alt!(
+	named!(parse<Type>, alt_complete!(
 		value!(Type::Unit, tag!("unit"))
 		| value!(Type::Bool, tag!("bool"))
 		| value!(Type::U16, tag!("u16"))
@@ -253,10 +255,10 @@ pub enum Factor {
 }
 
 impl Factor {
-	named!(parse<Factor>, alt!(
+	named!(parse<Factor>, ws!(alt_complete!(
 		map!(Literal::parse, Factor::Lit)
 		| map!(LValue::parse, Factor::LVal)
-	));
+	)));
 	
 	fn compile(&self, st: &mut SymbolTable) -> Vec<rel::Op> {
 		use rel::Op;
@@ -300,7 +302,7 @@ pub struct LValue {
 impl LValue {
 	named!(parse<LValue>, ws!(do_parse!(
 		id: ident >>
-		ops: many0!(alt!(
+		ops: many0!(alt_complete!(
 			value!(Deref::Direct, tag!("*"))
 			| ws!(delimited!(
 				tag!("["),
@@ -416,9 +418,59 @@ pub enum Statement {
 }
 
 impl Statement {
-	named!(parse<Statement>, alt!(
+	named!(parse<Statement>, ws!(alt_complete!(
 		map!(preceded!(tag!("!"), LValue::parse), Statement::Not)
 		| map!(preceded!(tag!("-"), LValue::parse), Statement::Neg)
+		| do_parse!( // do
+			tag!("do") >>
+			name: call!(LValue::parse) >>
+			args: delimited!(
+				tag!("("),
+				ws!(separated_list!(tag!(","), Factor::parse)),
+				tag!(")")
+			)
+			>> (Statement::Call(name, args))
+		)
+		| do_parse!( // undo
+			tag!("undo") >>
+			name: call!(LValue::parse) >>
+			args: delimited!(
+				tag!("("),
+				ws!(separated_list!(tag!(","), Factor::parse)),
+				tag!(")")
+			)
+			>> (Statement::Uncall(name, args))
+		)
+		| do_parse!( // let var
+			tag!("let") >>
+			m: opt!(tag!("mut")) >>
+			name: ident >>
+			ty: opt!(ws!(preceded!(tag!(":"), Type::parse))) >>
+			tag!("=") >>
+			l: call!(Literal::parse)
+			>> (Statement::Let(m.is_some(), name, ty, l))
+		)
+		| do_parse!( // drop var
+			tag!("drop") >>
+			name: ident >>
+			tag!("=") >>
+			l: call!(Literal::parse)
+			>> (Statement::Drop(name, l))
+		)
+		| do_parse!(
+			tag!("if") >> p: call!(BinExpr::parse) >>
+			t: block >>
+			e: opt!(ws!(preceded!(tag!("else"), block))) >>
+			tag!("fi") >> a: call!(BinExpr::parse)
+			>> (Statement::If(p, t, e, a))
+		)
+		| do_parse!(
+			tag!("from") >> a: call!(BinExpr::parse) >>
+			d: opt!(block) >>
+			tag!("until") >> p: call!(BinExpr::parse) >>
+			l: opt!(block)
+			>> (Statement::From(a, d, l, p))
+		)
 		| do_parse!( // swap
 			left: call!(LValue::parse) >>
 			tag!("<>") >>
@@ -441,35 +493,35 @@ impl Statement {
 			right: call!(LValue::parse)
 			>> (Statement::CSwap(ctrl, left, right))
 		)
-		| ws!(do_parse!( // left rotate
+		| do_parse!( // left rotate
 			l: call!(LValue::parse) >>
 			m: tag!("<<=") >>
 			r: call!(Factor::parse)
 			>> (Statement::RotLeft(l, r))
-		))
-		| ws!(do_parse!( // right rotate
+		)
+		| do_parse!( // right rotate
 			l: call!(LValue::parse) >>
 			m: tag!(">>=") >>
 			r: call!(Factor::parse)
 			>> (Statement::RotRight(l, r))
-		))
-		| ws!(do_parse!( // xor
+		)
+		| do_parse!( // xor
 			l: call!(LValue::parse) >>
 			tag!("^=") >>
-			r: ws!(separated_nonempty_list!(
+			r: separated_nonempty_list!(
 				tag!("^"),
 				Factor::parse
-			))
+			)
 			>> (Statement::Xor(l, r))
-		))
+		)
 		| do_parse!( // increment, add
 			l: call!(LValue::parse) >>
 			tag!("+=") >>
 			r: call!(Factor::parse) >>
-			m: many0!(alt!(
+			m: many0!(ws!(alt_complete!(
 				map!(preceded!(tag!("+"), Factor::parse), FlatOp::Add)
 				| map!(preceded!(tag!("-"), Factor::parse), FlatOp::Sub)
-			))
+			)))
 			
 			>> (Statement::Add(l, {
 				let mut m = m;
@@ -481,10 +533,10 @@ impl Statement {
 			l: call!(LValue::parse) >>
 			tag!("-=") >>
 			r: call!(Factor::parse) >>
-			m: many0!(alt!(
+			m: many0!(ws!(alt_complete!(
 				map!(preceded!(tag!("+"), Factor::parse), FlatOp::Add)
 				| map!(preceded!(tag!("-"), Factor::parse), FlatOp::Sub)
-			))
+			)))
 			
 			>> (Statement::Sub(l, {
 				let mut m = m;
@@ -493,7 +545,7 @@ impl Statement {
 			}))
 		)
 		/*
-		| ws!(do_parse!(
+		| do_parse!(
 			tag!("unsafe") >>
 			b: block >>
 			
@@ -501,59 +553,9 @@ impl Statement {
 				.filter_map(|s| s)
 				.collect()
 			))
-		))
+		)
 		*/
-		| do_parse!( // call
-			tag!("do") >>
-			name: call!(LValue::parse) >>
-			args: delimited!(
-				tag!("("),
-				ws!(separated_list!(tag!(","), Factor::parse)),
-				tag!(")")
-			)
-			>> (Statement::Call(name, args))
-		)
-		| do_parse!( // uncall
-			tag!("undo") >>
-			name: call!(LValue::parse) >>
-			args: delimited!(
-				tag!("("),
-				ws!(separated_list!(tag!(","), Factor::parse)),
-				tag!(")")
-			)
-			>> (Statement::Uncall(name, args))
-		)
-		| ws!(do_parse!( // declare var
-			tag!("let") >>
-			m: opt!(tag!("mut")) >>
-			name: ident >>
-			ty: opt!(ws!(preceded!(tag!(":"), Type::parse))) >>
-			tag!("=") >>
-			l: call!(Literal::parse)
-			>> (Statement::Let(m.is_some(), name, ty, l))
-		))
-		| ws!(do_parse!(
-			tag!("drop") >>
-			name: ident >>
-			tag!("=") >>
-			l: call!(Literal::parse)
-			>> (Statement::Drop(name, l))
-		))
-		| do_parse!(
-			tag!("if") >> p: call!(BinExpr::parse) >>
-			t: block >>
-			e: opt!(ws!(preceded!(tag!("else"), block))) >>
-			tag!("fi") >> a: call!(BinExpr::parse)
-			>> (Statement::If(p, t, e, a))
-		)
-		| do_parse!(
-			tag!("from") >> a: call!(BinExpr::parse) >>
-			d: opt!(block) >>
-			tag!("until") >> p: call!(BinExpr::parse) >>
-			l: opt!(block)
-			>> (Statement::From(a, d, l, p))
-		)
-	));
+	)));
 	
 	fn verify(&mut self) {
 		match *self {
