@@ -7,8 +7,6 @@ extern crate rel_isa as rel;
 mod janus;
 //mod rever;
 
-// TODO: fix below example.
-// for some reason `a ^= 1 ^ 2` can't be parsed
 fn main() {
 	/*
 	let (_, ast) = rever::Program::parse(br#"
@@ -46,22 +44,57 @@ fn main() {
 	*/
 	
 	let res = janus::Program::parse(br#"
-	procedure fib(int x1, int x2, int n)
-		if n = 0 then
-			x1 += 1
-			x2 += 1
-		else
-			n -= 1
-			call fib(x1, x2, n)
-			x1 += x2
-			x1 <=> x2
-		fi x1 = x2
+	/* Various stack operations */
 
+	/* Move n stack elements from one stack to another */
+	procedure move_stack(stack src, stack dst, int n)
+		local int m = 0
+		from m = 0 loop
+			local int x = 0
+			pop(x, src)
+			push(x, dst)
+			delocal int x = 0
+			m += 1
+		until m = n
+		delocal int m = n
+
+	/* Reverse the elements of a stack */
+	procedure reverse(stack s)
+		if !empty(s) then
+			local int x = 0
+			local int n_move = size(s) - 1
+
+			pop(x, s)
+			call reverse(s)
+			// Place x at the bottom of the stack
+			// by moving all elements to a temporary stack
+			local stack ss = nil
+			call move_stack(s, ss, n_move)
+			push(x, s)
+			call move_stack(ss, s, n_move)
+			delocal stack ss = nil
+
+			delocal int n_move = size(s) - 1
+			delocal int x = 0
+		fi !empty(s)
+
+	stack s
 	procedure main()
-		local int x1 = 0
-		local int x2 = 0
-		local int n = 4
-		call fib(x1, x2, n)
+		local int x = 0
+		x += 1
+		push(x, s)
+		x += 2
+		push(x, s)
+		x += 3
+		push(x, s)
+		x += 4
+		push(x, s)
+		x += 5
+		push(x, s)
+		delocal int x = 0
+
+		show(s)
+		call reverse(s)
 	"#);
 	
 	println!("{:#?}", res);

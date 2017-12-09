@@ -10,6 +10,27 @@ macro_rules! reb_parse {
 	}
 }
 
+named!(useless, recognize!(many1!(alt_complete!(
+	preceded!(
+		tag!("//"),
+		take_until!("\n")
+	)
+	| delimited!(
+		tag!("/*"),
+		take_until!("*/"),
+		tag!("*/")
+	)
+	| call!(::nom::sp)
+))));
+
+macro_rules! sp (
+  ($i:expr, $($args:tt)*) => (
+    {
+      sep!($i, useless, $($args)*)
+    }
+  )
+);
+
 named!(ident<String>, reb_parse!("^[A-Za-z_][A-Za-z0-9_]*"));
 named!(num<i16>, reb_parse!("^[-+]?[0-9]+"));
 named!(boolean<bool>, reb_parse!("^(true|false)"));
@@ -30,7 +51,7 @@ named!(st<String>, delimited!(
 #[derive(Debug)]
 enum Type {
 	Int, Stack,
-	IntArray(Expr)
+	IntArray(Option<Expr>)
 }
 
 #[derive(Debug)]
@@ -41,21 +62,21 @@ pub struct Decl {
 
 impl Decl {
 	named!(parse<Decl>, alt_complete!(
-		ws!(do_parse!(
+		sp!(do_parse!(
+			tag!("int") >>
+			name: ident >>
+			len: delimited!(tag!("["), opt!(Expr::parse), tag!("]"))
+			>> (Decl {name, _type: Type::IntArray(len)})
+		))
+		| sp!(do_parse!(
 			tag!("int") >>
 			name: ident
 			>> (Decl {name, _type: Type::Int})
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("stack") >>
 			name: ident
 			>> (Decl {name, _type: Type::Stack})
-		))
-		| ws!(do_parse!(
-			tag!("int") >>
-			name: ident >>
-			len: delimited!(tag!("["), call!(Expr::parse), tag!("]"))
-			>> (Decl {name, _type: Type::IntArray(len)})
 		))
 	));
 }
@@ -80,7 +101,7 @@ pub struct LValue {
 }
 
 impl LValue {
-	named!(parse<LValue>, ws!(do_parse!(
+	named!(parse<LValue>, sp!(do_parse!(
 		name: ident >>
 		indices: many0!(delimited!(
 			tag!("["),
@@ -102,7 +123,7 @@ impl Literal {
 	named!(parse<Literal>, alt_complete!(
 		map!(num, Literal::Int)
 		| map!(boolean, Literal::Bool)
-		| ws!(map!(
+		| sp!(map!(
 			delimited!(
 				tag!("{"),
 				separated_list!(tag!(","), num),
@@ -116,6 +137,8 @@ impl Literal {
 #[derive(Debug)]
 pub enum Expr {
 	Factor(Factor),
+	Size(LValue),
+	Top(LValue),
 	
 	Mul(Box<Expr>, Box<Expr>),
 	Div(Box<Expr>, Box<Expr>),
@@ -130,132 +153,147 @@ pub enum Expr {
 }
 
 impl Expr {
-	named!(parse<Expr>, alt_complete!(
-		call!(Expr::bitop)
-		| call!(Expr::sum)
-		| call!(Expr::product)
-		| call!(Expr::leaf)
-	));
+	named!(parse<Expr>, sp!(do_parse!(
+		leaf: call!(Expr::leaf) >>
+		prods: sp!(many0!(Expr::product)) >>
+		sums: sp!(many0!(Expr::sum)) >>
+		bitops: sp!(many0!(Expr::bitop))
+		
+		>> (leaf.to_product(prods).to_sum(sums).to_bitop(bitops))
+	)));
 	
 	named!(leaf<Expr>, alt_complete!(
-		map!(Factor::parse, Expr::Factor)
-		| ws!(delimited!(
+		sp!(do_parse!(
+			tag!("size") >> tag!("(") >>
+			lval: call!(LValue::parse) >>
+			tag!(")")
+			>> (Expr::Size(lval))
+		))
+		| sp!(do_parse!(
+			tag!("top") >> tag!("(") >>
+			lval: call!(LValue::parse) >>
+			tag!(")")
+			>> (Expr::Top(lval))
+		))
+		| sp!(delimited!(
 			tag!("("),
 			call!(Expr::parse),
 			tag!(")")
 		))
+		| map!(Factor::parse, Expr::Factor)
 	));
 	
-	named!(product<Expr>, alt_complete!(
-		ws!(do_parse!(
-			left: call!(Expr::leaf) >>
-			tag!("*") >>
-			right: alt_complete!(
-				call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::Mul(Box::new(left), Box::new(right)))
-		))
-		| ws!(do_parse!(
-			left: call!(Expr::leaf) >>
-			tag!("/") >>
-			right: alt_complete!(
-				call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::Div(Box::new(left), Box::new(right)))
-		))
-		| ws!(do_parse!(
-			left: call!(Expr::leaf) >>
-			tag!("%") >>
-			right: alt_complete!(
-				call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::Mod(Box::new(left), Box::new(right)))
-		))
-	));
+	named!(product<(&[u8], Expr)>, sp!(do_parse!(
+		op: alt!(tag!("*") | tag!("/") | tag!("%")) >>
+		leaf: call!(Expr::leaf)
+		>> (op, leaf)
+	)));
 	
-	named!(sum<Expr>, alt_complete!(
-		ws!(do_parse!(
-			left: alt_complete!(
-				call!(Expr::product)
-				| call!(Expr::leaf)
-			) >>
-			tag!("+") >>
-			right: alt_complete!(
-				call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::Add(Box::new(left), Box::new(right)))
-		))
-		| ws!(do_parse!(
-			left: alt_complete!(
-				call!(Expr::product)
-				| call!(Expr::leaf)
-			) >>
-			tag!("-") >>
-			right: alt_complete!(
-				call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::Sub(Box::new(left), Box::new(right)))
-		))
-	));
+	named!(sum<(&[u8], Expr)>, sp!(do_parse!(
+		op: alt!(tag!("+") | tag!("-")) >>
+		leaf: call!(Expr::leaf) >>
+		prods: sp!(many0!(Expr::product))
+		
+		>> (op, leaf.to_product(prods))
+	)));
 	
-	named!(bitop<Expr>, alt_complete!(
-		ws!(do_parse!(
-			left: alt_complete!(
-				call!(Expr::sum)
-				| call!(Expr::product)
-				| call!(Expr::leaf)
-			) >>
-			tag!("&") >>
-			right: alt_complete!(
-				call!(Expr::sum)
-				| call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::BitAnd(Box::new(left), Box::new(right)))
-		))
-		| ws!(do_parse!(
-			left: alt_complete!(
-				call!(Expr::sum)
-				| call!(Expr::product)
-				| call!(Expr::leaf)
-			) >>
-			tag!("|") >>
-			right: alt_complete!(
-				call!(Expr::sum)
-				| call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::BitOr(Box::new(left), Box::new(right)))
-		))
-		| ws!(do_parse!(
-			left: alt_complete!(
-				call!(Expr::sum)
-				| call!(Expr::product)
-				| call!(Expr::leaf)
-			) >>
-			tag!("|") >>
-			right: alt_complete!(
-				call!(Expr::sum)
-				| call!(Expr::product)
-				| call!(Expr::leaf)
-			)
-			>> (Expr::BitXor(Box::new(left), Box::new(right)))
-		))
-	));
+	named!(bitop<(&[u8], Expr)>, sp!(do_parse!(
+		op: alt!(tag!("&") | tag!("|")) >>
+		leaf: call!(Expr::leaf) >>
+		prods: sp!(many0!(Expr::product)) >>
+		sums: sp!(many0!(Expr::sum))
+		
+		>> (op, leaf.to_product(prods).to_sum(sums))
+	)));
+	
+	fn to_product(self, mut prods: Vec<(&[u8], Expr)>) -> Expr {
+		if prods.is_empty() {
+			return self;
+		}
+		
+		let (mut curr_op, last) = prods.pop().unwrap();
+		let expr = prods.into_iter()
+			.rev()
+			.fold(last, |acc, (op, e)| {
+				let res = match curr_op {
+					b"*" => Expr::Mul(Box::new(e), Box::new(acc)),
+					b"/" => Expr::Div(Box::new(e), Box::new(acc)),
+					b"%" => Expr::Mod(Box::new(e), Box::new(acc)),
+					_ => unreachable!()
+				};
+				curr_op = op;
+				res
+			});
+		
+		match curr_op {
+			b"*" => Expr::Mul(Box::new(self), Box::new(expr)),
+			b"/" => Expr::Div(Box::new(self), Box::new(expr)),
+			b"%" => Expr::Mod(Box::new(self), Box::new(expr)),
+			_ => unreachable!()
+		}
+	}
+	
+	fn to_sum(self, mut sums: Vec<(&[u8], Expr)>) -> Expr {
+		if sums.is_empty() {
+			return self;
+		}
+		
+		let (mut curr_op, last) = sums.pop().unwrap();
+		let expr = sums.into_iter()
+			.rev()
+			.fold(last, |acc, (op, e)| {
+				let res = match curr_op {
+					b"+" => Expr::Add(Box::new(e), Box::new(acc)),
+					b"-" => Expr::Sub(Box::new(e), Box::new(acc)),
+					_ => unreachable!()
+				};
+				curr_op = op;
+				res
+			});
+		
+		match curr_op {
+			b"+" => Expr::Add(Box::new(self), Box::new(expr)),
+			b"-" => Expr::Sub(Box::new(self), Box::new(expr)),
+			_ => unreachable!()
+		}
+	}
+	
+	fn to_bitop(self, mut bitops: Vec<(&[u8], Expr)>) -> Expr {
+		if bitops.is_empty() {
+			return self;
+		}
+		
+		let (mut curr_op, last) = bitops.pop().unwrap();
+		let expr = bitops.into_iter()
+			.rev()
+			.fold(last, |acc, (op, e)| {
+				let res = match curr_op {
+					b"&" => Expr::BitAnd(Box::new(e), Box::new(acc)),
+					b"|" => Expr::BitOr(Box::new(e), Box::new(acc)),
+					b"^" => Expr::BitXor(Box::new(e), Box::new(acc)),
+					_ => unreachable!()
+				};
+				curr_op = op;
+				res
+			});
+		
+		match curr_op {
+			b"&" => Expr::BitAnd(Box::new(self), Box::new(expr)),
+			b"|" => Expr::BitOr(Box::new(self), Box::new(expr)),
+			b"^" => Expr::BitXor(Box::new(self), Box::new(expr)),
+			_ => unreachable!()
+		}
+	}
 }
 
 #[derive(Debug)]
 pub enum Pred {
-	LogAnd(Box<Pred>, Box<Pred>),
-	
-	LogOr(Box<Pred>, Box<Pred>),
+	Bool(bool),
+	Empty(LValue),
 	
 	Not(Box<Pred>),
+	And(Vec<Pred>),
+	Or(Vec<Pred>),
 	
 	Eq(Expr, Expr),
 	Neq(Expr, Expr),
@@ -266,78 +304,93 @@ pub enum Pred {
 }
 
 impl Pred {
-	named!(parse<Pred>, alt_complete!(
-		call!(Pred::or)
-		| call!(Pred::and)
-		| call!(Pred::not)
-		| call!(Pred::cmp)
-	));
+	named!(parse<Pred>, sp!(do_parse!(
+		leaf: call!(Pred::leaf) >>
+		ands: sp!(many0!(Pred::and)) >>
+		ors: sp!(many0!(Pred::or))
+		>> ({
+			let leaf = if ands.is_empty() { leaf }
+			else {
+				let mut ands = ands;
+				ands.insert(0, leaf);
+				Pred::And(ands)
+			};
 	
-	named!(or<Pred>, ws!(do_parse!(
-		left: alt_complete!(call!(Pred::and) | call!(Pred::not) | call!(Pred::cmp)) >>
-		tag!("||") >>
-		right: alt_complete!(call!(Pred::and) | call!(Pred::not) | call!(Pred::cmp))
-		>> (Pred::LogOr(Box::new(left), Box::new(right)))
+			if ors.is_empty() { leaf }
+			else {
+				let mut ors = ors;
+				ors.insert(0, leaf);
+				Pred::Or(ors)
+			}
+		})
 	)));
 	
-	named!(and<Pred>, ws!(do_parse!(
-		left: alt_complete!(call!(Pred::not) | call!(Pred::cmp)) >>
-		tag!("&&") >>
-		right: alt_complete!(call!(Pred::not) | call!(Pred::cmp))
-		>> (Pred::LogAnd(Box::new(left), Box::new(right)))
-	)));
-	
-	named!(not<Pred>, alt_complete!(
-		ws!(do_parse!(
-			tag!("!") >>
-			leaf: call!(Pred::not)
-			>> (Pred::Not(Box::new(leaf)))
-		))
-		| ws!(delimited!(
+	named!(leaf<Pred>, alt_complete!(
+		map!(sp!(preceded!(tag!("!"), Pred::not)), |x| Pred::Not(Box::new(x)))
+		| map!(boolean, Pred::Bool)
+		| sp!(delimited!( // ( pred )
 			tag!("("),
 			call!(Pred::parse),
 			tag!(")")
 		))
+		| sp!(do_parse!( // empty(x)
+			tag!("empty") >> tag!("(") >>
+			lval: call!(LValue::parse) >>
+			tag!(")")
+			>> (Pred::Empty(lval))
+		))
+		| sp!(do_parse!( // cmp
+			left: call!(Expr::parse) >>
+			cmp: alt!(
+				tag!("=") | tag!("!=") | tag!(">=") | tag!("<=") | tag!(">") | tag!("<")
+			) >>
+			right: call!(Expr::parse)
+			>> (match cmp {
+				b"=" => Pred::Eq(left, right),
+				b"!=" => Pred::Neq(left, right),
+				b">=" => Pred::Gte(left, right),
+				b"<=" => Pred::Lte(left, right),
+				b">" => Pred::Gt(left, right),
+				b"<" => Pred::Lt(left, right),
+				_ => unreachable!()
+			})
+		))
 	));
 	
-	named!(cmp<Pred>, alt_complete!(
-		ws!(do_parse!(
-			left: call!(Expr::parse) >>
-			tag!("=") >>
-			right: call!(Expr::parse)
-			>> (Pred::Eq(left, right))
+	named!(not<Pred>, alt_complete!(
+		map!(sp!(preceded!(tag!("!"), Pred::not)), |x| Pred::Not(Box::new(x)))
+		| map!(boolean, Pred::Bool)
+		| sp!(delimited!( // ( pred )
+			tag!("("),
+			call!(Pred::parse),
+			tag!(")")
 		))
-		| ws!(do_parse!(
-			left: call!(Expr::parse) >>
-			tag!("!=") >>
-			right: call!(Expr::parse)
-			>> (Pred::Neq(left, right))
-		))
-		| ws!(do_parse!(
-			left: call!(Expr::parse) >>
-			tag!(">") >>
-			right: call!(Expr::parse)
-			>> (Pred::Lt(left, right))
-		))
-		| ws!(do_parse!(
-			left: call!(Expr::parse) >>
-			tag!("<") >>
-			right: call!(Expr::parse)
-			>> (Pred::Gt(left, right))
-		))
-		| ws!(do_parse!(
-			left: call!(Expr::parse) >>
-			tag!(">=") >>
-			right: call!(Expr::parse)
-			>> (Pred::Lte(left, right))
-		))
-		| ws!(do_parse!(
-			left: call!(Expr::parse) >>
-			tag!("<=") >>
-			right: call!(Expr::parse)
-			>> (Pred::Gte(left, right))
+		| sp!(do_parse!( // empty(x)
+			tag!("empty") >> tag!("(") >>
+			lval: call!(LValue::parse) >>
+			tag!(")")
+			>> (Pred::Empty(lval))
 		))
 	));
+	
+	named!(or<Pred>, sp!(do_parse!(
+		tag!("||") >>
+		leaf: call!(Pred::leaf) >>
+		ands: sp!(many0!(Pred::and))
+		>> (if ands.is_empty() {
+			leaf
+		} else {
+			let mut ands = ands;
+			ands.insert(0, leaf);
+			Pred::And(ands)
+		})
+	)));
+	
+	named!(and<Pred>, sp!(do_parse!(
+		tag!("&&") >>
+		right: call!(Pred::leaf)
+		>> (right)
+	)));
 }
 
 type Block = Vec<Statement>;
@@ -360,57 +413,60 @@ pub enum Statement {
 	Print(String),
 	Printf(String, Vec<Factor>),
 	Error(String),
+	Show(LValue),
+	Pop(LValue, LValue),
+	Push(LValue, LValue),
 }
 
 impl Statement {
 	named!(parse<Statement>, alt_complete!(
 		value!(Statement::Skip, tag!("skip"))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("local") >>
 			decl: call!(Decl::parse) >>
 			tag!("=") >>
 			val: call!(Expr::parse)
 			>> (Statement::Local(decl, val))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("delocal") >>
 			decl: call!(Decl::parse) >>
 			tag!("=") >>
 			val: call!(Expr::parse)
 			>> (Statement::Delocal(decl, val))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("<=>") >>
 			right: call!(LValue::parse)
 			>> (Statement::Swap(left, right))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("+=") >>
 			expr: call!(Expr::parse)
 			>> (Statement::Add(left, expr))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("-=") >>
 			expr: call!(Expr::parse)
 			>> (Statement::Sub(left, expr))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("^=") >>
 			expr: call!(Expr::parse)
 			>> (Statement::Xor(left, expr))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("from") >>
 			assert: call!(Pred::parse) >>
-			forward: opt!(ws!(preceded!(
+			forward: opt!(sp!(preceded!(
 				tag!("do"),
 				many1!(Statement::parse)
 			))) >>
-			backward: opt!(ws!(preceded!(
+			backward: opt!(sp!(preceded!(
 				tag!("loop"),
 				many1!(Statement::parse)
 			))) >>
@@ -419,14 +475,14 @@ impl Statement {
 			
 			>> (Statement::From(assert, forward, backward, pred))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("if") >>
 			pred: call!(Pred::parse) >>
-			pass: ws!(preceded!(
+			pass: sp!(preceded!(
 				tag!("then"),
 				many1!(Statement::parse)
 			)) >>
-			fail: opt!(ws!(preceded!(
+			fail: opt!(sp!(preceded!(
 				tag!("else"),
 				many1!(Statement::parse)
 			))) >>
@@ -435,7 +491,7 @@ impl Statement {
 			
 			>> (Statement::If(pred, pass, fail, assert))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("call") >>
 			func: ident >>
 			args: delimited!(
@@ -445,7 +501,7 @@ impl Statement {
 			)
 			>> (Statement::Call(func, args))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("uncall") >>
 			func: ident >>
 			tag!("(") >>
@@ -454,30 +510,55 @@ impl Statement {
 			>> (Statement::Uncall(func, args))
 		))
 		// built-ins
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("print") >>
 			tag!("(") >>
 			string: st >>
 			tag!(")")
 			>> (Statement::Print(string))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("printf") >>
 			tag!("(") >>
 			string: st >>
-			vargs: many0!(ws!(preceded!(
+			vargs: many0!(sp!(preceded!(
 				tag!(","),
 				Factor::parse
 			))) >>
 			tag!(")")
 			>> (Statement::Printf(string, vargs))
 		))
-		| ws!(do_parse!(
+		| sp!(do_parse!(
 			tag!("error") >>
 			tag!("(") >>
 			string: st >>
 			tag!(")")
 			>> (Statement::Error(string))
+		))
+		| sp!(do_parse!(
+			tag!("show") >>
+			tag!("(") >>
+			lval: call!(LValue::parse) >>
+			tag!(")")
+			>> (Statement::Show(lval))
+		))
+		| sp!(do_parse!(
+			tag!("pop") >>
+			tag!("(") >>
+			into: call!(LValue::parse) >>
+			tag!(",") >>
+			from: call!(LValue::parse) >>
+			tag!(")")
+			>> (Statement::Pop(into, from))
+		))
+		| sp!(do_parse!(
+			tag!("push") >>
+			tag!("(") >>
+			from: call!(LValue::parse) >>
+			tag!(",") >>
+			into: call!(LValue::parse) >>
+			tag!(")")
+			>> (Statement::Push(from, into))
 		))
 	));
 }
@@ -490,7 +571,7 @@ struct Procedure {
 }
 
 impl Procedure {
-	named!(parse<Procedure>, ws!(do_parse!(
+	named!(parse<Procedure>, sp!(do_parse!(
 		tag!("procedure") >>
 		name: ident >>
 		args: delimited!(
@@ -505,13 +586,30 @@ impl Procedure {
 }
 
 #[derive(Debug)]
+enum Item {
+	Global(Decl, Option<Expr>),
+	Proc(Procedure),
+}
+
+impl Item {
+	named!(parse<Item>, sp!(alt!(
+		map!(Procedure::parse, Item::Proc)
+		| sp!(do_parse!(
+			decl: call!(Decl::parse) >>
+			val: opt!(sp!(preceded!(tag!("="), Expr::parse)))
+			>> (Item::Global(decl, val))
+		))
+	)));
+}
+
+#[derive(Debug)]
 pub struct Program {
-	funcs: Vec<Procedure>
+	items: Vec<Item>
 }
 
 impl Program {
 	named!(pub parse<Program>, do_parse!(
-		funcs: many1!(Procedure::parse)
-		>> (Program {funcs})
+		items: many1!(Item::parse)
+		>> (Program {items})
 	));
 }
