@@ -1,4 +1,5 @@
 use std::str;
+//use std::collections::HashMap;
 
 macro_rules! reb_parse {
 	($i:expr, $e:expr) => {
@@ -10,6 +11,7 @@ macro_rules! reb_parse {
 	}
 }
 
+/// removes whitespace, inline comments, and block comments
 named!(useless, recognize!(many1!(alt_complete!(
 	preceded!(
 		tag!("//"),
@@ -23,6 +25,7 @@ named!(useless, recognize!(many1!(alt_complete!(
 	| call!(::nom::sp)
 ))));
 
+/// custom macro to remove whitespace and comments
 macro_rules! sp (
   ($i:expr, $($args:tt)*) => (
     {
@@ -31,9 +34,11 @@ macro_rules! sp (
   )
 );
 
+/// parses an identifier
 named!(ident<String>, reb_parse!("^[A-Za-z_][A-Za-z0-9_]*"));
-named!(num<i16>, reb_parse!("^[-+]?[0-9]+"));
+/// parses a boolean literal
 named!(boolean<bool>, reb_parse!("^(true|false)"));
+/// parses a string literal
 named!(st<String>, delimited!(
     tag!("\""),
     map_res!(
@@ -51,13 +56,13 @@ named!(st<String>, delimited!(
 #[derive(Debug)]
 enum Type {
 	Int, Stack,
-	IntArray(Option<Expr>)
+	IntArray(Vec<Option<Expr>>),
 }
 
 #[derive(Debug)]
 pub struct Decl {
 	name: String,
-	_type: Type
+	typ: Type,
 }
 
 impl Decl {
@@ -65,20 +70,41 @@ impl Decl {
 		sp!(do_parse!(
 			tag!("int") >>
 			name: ident >>
-			len: delimited!(tag!("["), opt!(Expr::parse), tag!("]"))
-			>> (Decl {name, _type: Type::IntArray(len)})
-		))
-		| sp!(do_parse!(
-			tag!("int") >>
-			name: ident
-			>> (Decl {name, _type: Type::Int})
+			dims: sp!(many0!(delimited!(
+				tag!("["),
+				opt!(Expr::parse),
+				tag!("]")
+			)))
+			>> (if dims.is_empty() {
+				Decl {name, typ: Type::Int}
+			} else {
+				Decl {name, typ: Type::IntArray(dims)}
+			})
 		))
 		| sp!(do_parse!(
 			tag!("stack") >>
 			name: ident
-			>> (Decl {name, _type: Type::Stack})
+			>> (Decl {name, typ: Type::Stack})
 		))
 	));
+	/*
+	named!(parse<Decl>, ws!(do_parse!(
+		typ: alt!(tag!("int") | tag!("stack")) >>
+		name: ident >>
+		lens: delimited!(tag!("["), opt!(Expr::parse), tag!("]"))
+		
+		>> 
+		sp!(do_parse!(
+			>> (Decl {name, _type: Type::IntArray(len)})
+		))
+		| sp!(do_parse!(
+			>> (Decl {name, _type: Type::Int})
+		))
+		| sp!(do_parse!(
+			>> (Decl {name, _type: Type::Stack})
+		))
+	)));
+	*/
 }
 
 #[derive(Debug)]
@@ -103,11 +129,11 @@ pub struct LValue {
 impl LValue {
 	named!(parse<LValue>, sp!(do_parse!(
 		name: ident >>
-		indices: many0!(delimited!(
+		indices: sp!(many0!(delimited!(
 			tag!("["),
 			call!(Expr::parse),
 			tag!("]")
-		))
+		)))
 		>> (LValue {name, indices})
 	)));
 }
@@ -115,23 +141,29 @@ impl LValue {
 #[derive(Debug)]
 pub enum Literal {
 	Int(i16),
-	Bool(bool),
-	IntArray(Vec<i16>)
+	IntArray(Vec<Literal>)
 }
 
 impl Literal {
 	named!(parse<Literal>, alt_complete!(
-		map!(num, Literal::Int)
-		| map!(boolean, Literal::Bool)
-		| sp!(map!(
-			delimited!(
+		map!(reb_parse!("^[-+]?[0-9]+"), Literal::Int)
+		| map!(
+			sp!(delimited!(
 				tag!("{"),
-				separated_list!(tag!(","), num),
+				separated_list!(tag!(","), Literal::parse),
 				tag!("}")
-			),
+			)),
 			Literal::IntArray
-		))
+		)
 	));
+	/*
+	fn to_value(&self) -> Value {
+		match *self {
+			Literal::Int(i) => Value::Int(i),
+			Literal::IntArray(ref vals) => Value::IntArray(vals.clone()),
+		}
+	}
+	*/
 }
 
 #[derive(Debug)]
@@ -284,6 +316,13 @@ impl Expr {
 			_ => unreachable!()
 		}
 	}
+	/*
+	fn eval(&self, globs: HashMap<String, Value>) -> Result<Value, String> {
+		match *self {
+			Expr::Size(ref lval) => 
+		}
+	}
+	*/
 }
 
 #[derive(Debug)]
@@ -602,6 +641,14 @@ impl Item {
 	)));
 }
 
+/*
+enum Value {
+	Int(i16),
+	Stack(Vec<i16>),
+	Array(Vec<Value>),
+}
+*/
+
 #[derive(Debug)]
 pub struct Program {
 	items: Vec<Item>
@@ -612,4 +659,64 @@ impl Program {
 		items: many1!(Item::parse)
 		>> (Program {items})
 	));
+	/*
+	fn run(&self) -> Result<(), String> {
+		let mut globs = HashMap::new();
+		let mut main = None;
+		
+		for item in &self.items {
+			// populate globs
+			if let Item::Global(decl, init) = *item {
+				
+				let val = match decl.typ {
+					Type::Stack => Value::Stack(vec![]),
+					Type::Int => {
+						init.map(|x| x.eval(&globs).to_value())
+						.unwrap_or(Value::Int(0))
+					}
+					Type::IntArray(ref dims) => {
+						if let Some(init) = init {
+							
+						} else {
+							if dims.iter().all(|x| x.is_some()) {
+								for dim in dims.iter().rev() {
+									let v = vec![];
+									
+								}
+							} else {
+								return Err("All array lengths must be specified.".to_string());
+							}
+						}
+					}
+				}
+				
+				match (decl.typ, val) {
+					(Type::Int, Value::Int(_)) => {}
+					
+					(Type::IntArray(ref expr), Value::IntArray(ref vals))
+					if expr.eval(&globs).to_int().unwrap() >= vals.len() => {}
+					
+					_ => return Err("Type and assigned value don't match.".to_string())
+				}
+				
+				globs.insert(decl.name.clone(), val);
+			}
+			// find main function
+			else if let Item::Proc(ref pr) = *item {
+				if pr.name == "main" {
+					if main.is_none() {
+						main = Some(pr);
+						break;
+					} else {
+						return Err("There is more than one main procedure.".to_string());
+					}
+				}
+			}
+		}
+		
+		if main.is_none() {
+			return Err("No main function found.".to_string());
+		}
+	}
+	*/
 }
