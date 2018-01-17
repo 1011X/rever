@@ -87,24 +87,6 @@ impl Decl {
 			>> (Decl {name, typ: Type::Stack})
 		))
 	));
-	/*
-	named!(parse<Decl>, ws!(do_parse!(
-		typ: alt!(tag!("int") | tag!("stack")) >>
-		name: ident >>
-		lens: delimited!(tag!("["), opt!(Expr::parse), tag!("]"))
-		
-		>> 
-		sp!(do_parse!(
-			>> (Decl {name, _type: Type::IntArray(len)})
-		))
-		| sp!(do_parse!(
-			>> (Decl {name, _type: Type::Int})
-		))
-		| sp!(do_parse!(
-			>> (Decl {name, _type: Type::Stack})
-		))
-	)));
-	*/
 }
 
 #[derive(Debug)]
@@ -185,6 +167,7 @@ pub enum Expr {
 }
 
 impl Expr {
+	// expr -> leaf {product} {sum} {bitop}
 	named!(parse<Expr>, sp!(do_parse!(
 		leaf: call!(Expr::leaf) >>
 		prods: sp!(many0!(Expr::product)) >>
@@ -194,6 +177,8 @@ impl Expr {
 		>> (leaf.to_product(prods).to_sum(sums).to_bitop(bitops))
 	)));
 	
+	// leaf -> ( expr )
+	//      -> factor
 	named!(leaf<Expr>, alt_complete!(
 		sp!(do_parse!(
 			tag!("size") >> tag!("(") >>
@@ -215,12 +200,17 @@ impl Expr {
 		| map!(Factor::parse, Expr::Factor)
 	));
 	
+	// product -> * leaf {product}
+	//         -> / leaf {product}
+	//         -> % leaf {product}
 	named!(product<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("*") | tag!("/") | tag!("%")) >>
 		leaf: call!(Expr::leaf)
 		>> (op, leaf)
 	)));
 	
+	// sum -> + leaf {product} {sum}
+	//     -> - leaf {product} {sum}
 	named!(sum<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("+") | tag!("-")) >>
 		leaf: call!(Expr::leaf) >>
@@ -229,6 +219,8 @@ impl Expr {
 		>> (op, leaf.to_product(prods))
 	)));
 	
+	// bitop -> & leaf {product} {sum} {bitop}
+	//       -> | leaf {product} {sum} {bitop}
 	named!(bitop<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("&") | tag!("|")) >>
 		leaf: call!(Expr::leaf) >>
@@ -343,6 +335,7 @@ pub enum Pred {
 }
 
 impl Pred {
+	// pred -> leaf {and} {or}
 	named!(parse<Pred>, sp!(do_parse!(
 		leaf: call!(Pred::leaf) >>
 		ands: sp!(many0!(Pred::and)) >>
@@ -364,6 +357,17 @@ impl Pred {
 		})
 	)));
 	
+	// leaf -> ! not
+	//      -> boolean
+	//      -> ( pred )
+	//      -> empty ( lvalue )
+	//      -> expr cmp expr
+	// cmp -> =
+	//     -> !=
+	//     -> >=
+	//     -> <=
+	//     -> >
+	//     -> <
 	named!(leaf<Pred>, alt_complete!(
 		map!(sp!(preceded!(tag!("!"), Pred::not)), |x| Pred::Not(Box::new(x)))
 		| map!(boolean, Pred::Bool)
@@ -396,6 +400,10 @@ impl Pred {
 		))
 	));
 	
+	// not -> ! not
+	//     -> boolean
+	//     -> ( pred )
+	//     -> empty ( lvalue )
 	named!(not<Pred>, alt_complete!(
 		map!(sp!(preceded!(tag!("!"), Pred::not)), |x| Pred::Not(Box::new(x)))
 		| map!(boolean, Pred::Bool)
@@ -412,6 +420,7 @@ impl Pred {
 		))
 	));
 	
+	// or -> || leaf {and}
 	named!(or<Pred>, sp!(do_parse!(
 		tag!("||") >>
 		leaf: call!(Pred::leaf) >>
@@ -425,11 +434,8 @@ impl Pred {
 		})
 	)));
 	
-	named!(and<Pred>, sp!(do_parse!(
-		tag!("&&") >>
-		right: call!(Pred::leaf)
-		>> (right)
-	)));
+	// and -> && leaf
+	named!(and<Pred>, sp!(preceded!(tag!("&&"), Pred::left)));
 }
 
 type Block = Vec<Statement>;
