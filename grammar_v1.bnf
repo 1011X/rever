@@ -22,12 +22,28 @@
 		'=' <type> ';'
 		| '{'
 			<type> {'|' <type>}
+			| <id> '=' <num> {'|' <id> ['=' <num>]}
 			| <id> ':' <type> {',' <id> ':' <type>}
 		'}'
 	]
 
-<bin-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!=' | '|' | '&' | '^'
-<bin-expr> ::= <factor> <bin-op> <factor>
+<rel-op> ::= '<' | '>' | '<=' | '>=' | '=' | '!='
+<rel-expr> ::= <factor> {<rel-op> <factor>}
+
+<value> ::=
+	<factor>
+	| '(' <bool-expr> ')'
+	| '!' <value>
+	| '-' <value>
+
+<and-op> ::= '&' | 'and'
+<xor-op> ::= '^' | 'xor'
+<or-op> ::= '|' | 'or'
+<and-expr> ::= <value> {<and-op> <value>}
+<xor-expr> ::= <and-expr> {<xor-op> <and-expr>}
+<or-expr> ::= <xor-expr> {<or-op> <xor-expr>}
+
+<bool-expr> ::= <or-expr> | <rel-expr>
 
 <lval> ::= <id> {'*' | '[' <factor> ']' | '.' <id> }
 
@@ -55,12 +71,12 @@
 	| <lval> '<>' <lval>
 	| <factor> '?' <lval> '<>' <lval>
 	
-	| 'if' <bin-expr> <block>
+	| 'if' <bool-expr> <block>
 	  ['else' <block>]
-	  'fi' <bin-expr>
+	  'fi' <bool-expr>
 	
-	| 'from'  <bin-expr> [<block>]
-	  'until' <bin-expr> [<block>]
+	| 'from'  <bool-expr> [<block>]
+	  'until' <bool-expr> [<block>]
 	
 	| 'do' <lval> '(' <arglist> ')'
 	| 'undo' <lval> '(' <arglist> ')'
