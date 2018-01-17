@@ -80,18 +80,11 @@ fn main() {
 
 	stack s
 	procedure main()
-		local int x = 0
-		x += 1
-		push(x, s)
-		x += 2
-		push(x, s)
-		x += 3
-		push(x, s)
-		x += 4
-		push(x, s)
-		x += 5
-		push(x, s)
-		delocal int x = 0
+		push(1, s)
+		push(2, s)
+		push(3, s)
+		push(4, s)
+		push(5, s)
 
 		show(s)
 		call reverse(s)

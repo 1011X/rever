@@ -2,28 +2,30 @@ use std::collections::HashMap;
 
 fn compile(prog: Vec<rever::Item>) -> Vec<rel::Op> {
 	use rel::{Op, Addr, Reg};
-	use rever::Item;
+	use rever::*;
 	
 	let functions = HashMap::new();
 	
-	prog.into_iter()
-		.map(|Item::Fn(f)| f)
-		.map(|func| {
-			
-		})
-	
 	for Item::Fn(f) in prog {
-		let symbol_table = f.args.iter()
-			.map(|&(m, ref n, ref t)|
-				(n.clone(), (m, Some(t.clone())))
+		// add parameters to symbol table
+		let sym_table = f.args.iter()
+			.map(|&(m, ref id, ref t)|
+				(id.clone(), (m, Some(t.clone())))
 			)
 			.collect::<HashMap<String, (bool, Option<Type>)>>();
 		
 		let bytecode = f.code.iter()
 			.flat_map(|stmt| match *stmt {
+				Let(m, ref id, ref t, _) => {
+					sym_table.insert(id.clone(), (m, t.clone()));
+					vec![]
+				}
+				
 				Not(LValue {}) => vec![
 					Op::Not()
 				],
 			});
+		
+		functions.insert(f.name.clone(), bytecode);
 	}
 }
