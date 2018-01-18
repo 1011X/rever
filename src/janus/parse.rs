@@ -3,6 +3,7 @@ use std::str;
 use super::Statement;
 use super::interpret::{SymTab, Value};
 use super::Expr;
+use super::LValue;
 
 macro_rules! reb_parse {
 	($i:expr, $e:expr) => {
@@ -57,7 +58,7 @@ named!(pub st<String>, delimited!(
 ));
 
 #[derive(Debug)]
-enum Type {
+pub enum Type {
 	Int, Stack,
 	IntArray(Vec<Option<Expr>>),
 }
@@ -65,7 +66,7 @@ enum Type {
 #[derive(Debug)]
 pub struct Decl {
 	pub name: String,
-	typ: Type,
+	pub typ: Type,
 }
 
 impl Decl {
@@ -90,24 +91,6 @@ impl Decl {
 			>> (Decl {name, typ: Type::Stack})
 		))
 	));
-	/*
-	named!(pub parse<Decl>, ws!(do_parse!(
-		typ: alt!(tag!("int") | tag!("stack")) >>
-		name: ident >>
-		lens: delimited!(tag!("["), opt!(Expr::parse), tag!("]"))
-		
-		>> 
-		sp!(do_parse!(
-			>> (Decl {name, _type: Type::IntArray(len)})
-		))
-		| sp!(do_parse!(
-			>> (Decl {name, _type: Type::Int})
-		))
-		| sp!(do_parse!(
-			>> (Decl {name, _type: Type::Stack})
-		))
-	)));
-	*/
 }
 
 #[derive(Debug)]
@@ -121,40 +104,6 @@ impl Factor {
 		map!(Literal::parse, Factor::Literal)
 		| map!(LValue::parse, Factor::LValue)
 	));
-}
-
-#[derive(Debug)]
-pub struct LValue {
-	pub name: String,
-	indices: Vec<Expr>,
-}
-
-impl LValue {
-	named!(pub parse<LValue>, sp!(do_parse!(
-		name: ident >>
-		indices: sp!(many0!(delimited!(
-			tag!("["),
-			call!(Expr::parse),
-			tag!("]")
-		)))
-		>> (LValue {name, indices})
-	)));
-	/*
-	pub fn deref<'a>(&self, globs: &'a mut SymTab) -> &'a mut Value {
-		let base = globs.get_mut(&self.name).unwrap();
-		match *base {
-			Value::Int(_) | Value::Stack(_) => base,
-			Value::Array(ref vec) => {
-				// we can unwrap bc lists are nonempty
-				//let val = vec.remove(0).to_value();
-				for idx in vec {
-					//let idx = idx.to_value();
-				}
-				base
-			}
-		}
-	}
-	*/
 }
 
 #[derive(Debug)]

@@ -2,6 +2,7 @@
 pub mod interpret;
 
 pub mod expr;
+pub mod lvalue;
 pub mod program;
 pub mod statement;
 
@@ -9,3 +10,4 @@ pub mod statement;
 pub use self::program::Program;
 pub use self::statement::Statement;
 pub use self::expr::Expr;
+pub use self::lvalue::LValue;
