@@ -1,4 +1,5 @@
 use super::parse::*;
+use super::LValue;
 
 #[derive(Debug)]
 pub enum Expr {
@@ -19,7 +20,7 @@ pub enum Expr {
 }
 
 impl Expr {
-	named!(pub parse<Expr>, sp!(do_parse!(
+	named!(pub parse<Self>, sp!(do_parse!(
 		leaf: call!(Expr::leaf) >>
 		prods: sp!(many0!(Expr::product)) >>
 		sums: sp!(many0!(Expr::sum)) >>
@@ -73,11 +74,15 @@ impl Expr {
 	)));
 	
 	fn to_product(self, mut prods: Vec<(&[u8], Expr)>) -> Expr {
+		// no extra operations are done, so just return self
 		if prods.is_empty() {
 			return self;
 		}
 		
+		// at least one operation; extract the last one.
 		let (mut curr_op, last) = prods.pop().unwrap();
+		// reverse, then fold using last element to build a
+		// right-spanning AST
 		let expr = prods.into_iter()
 			.rev()
 			.fold(last, |acc, (op, e)| {
@@ -87,6 +92,7 @@ impl Expr {
 					b"%" => Expr::Mod(Box::new(e), Box::new(acc)),
 					_ => unreachable!()
 				};
+				// change curr_op for next element
 				curr_op = op;
 				res
 			});
@@ -100,6 +106,7 @@ impl Expr {
 	}
 	
 	fn to_sum(self, mut sums: Vec<(&[u8], Expr)>) -> Expr {
+		// same as `.to_product()`
 		if sums.is_empty() {
 			return self;
 		}
@@ -125,6 +132,7 @@ impl Expr {
 	}
 	
 	fn to_bitop(self, mut bitops: Vec<(&[u8], Expr)>) -> Expr {
+		// same as `.to_product()` and `.to_sum()`
 		if bitops.is_empty() {
 			return self;
 		}
@@ -151,23 +159,39 @@ impl Expr {
 		}
 	}
 	/*
-	pub fn eval(&self, globs: &mut SymTab) -> Result<Value, String> {
+	pub fn eval(&self, symtab: &SymTab) -> Result<i16, String> {
 		match *self {
-			//Expr::Factor(ref fac) => fac.eval(),
+			Expr::Factor(ref fac) => {
+				if let fac.eval(symtab)
+			}
 			
 			Expr::Size(ref lval) => {
-				let value = globs[&lval.name];
-				
-				if let Value::Array(ref v) = value {
-					Ok(Value::Int(v.len() as i16))
+				if let Value::Array(ref v) = symtab[&lval.name] {
+					Ok(v.len() as i16)
 				} else {
-					Err("not an array".to_owned())
+					Err(format!("`{}` is not an array", lval.name))
 				}
-			} 
+			}
 			
-			_ => unimplemented!()
 			//Expr::Top(ref lval) => 
+			_ => unimplemented!()
 		}
+		
+		
+	Factor(Factor),
+	Size(LValue),
+	Top(LValue),
+	
+	Mul(Box<Expr>, Box<Expr>),
+	Div(Box<Expr>, Box<Expr>),
+	Mod(Box<Expr>, Box<Expr>),
+	
+	Add(Box<Expr>, Box<Expr>),
+	Sub(Box<Expr>, Box<Expr>),
+	
+	BitXor(Box<Expr>, Box<Expr>),
+	BitAnd(Box<Expr>, Box<Expr>),
+	BitOr(Box<Expr>, Box<Expr>),
 	}
 	*/
 }

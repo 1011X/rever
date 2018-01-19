@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use super::parse::*;
 use super::interpret::{SymTab, Value};
-use super::Expr;
+use super::{LValue, Expr};
 
 #[derive(Debug)]
 pub enum Statement {
