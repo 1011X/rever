@@ -1,5 +1,5 @@
-use super::parse::*;
-use super::LValue;
+//use super::parse::*;
+use super::*;
 
 #[derive(Debug)]
 pub enum Expr {
@@ -29,7 +29,7 @@ impl Expr {
 		>> (leaf.to_product(prods).to_sum(sums).to_bitop(bitops))
 	)));
 	
-	named!(leaf<Expr>, alt_complete!(
+	named!(leaf<Self>, alt_complete!(
 		sp!(do_parse!(
 			tag!("size") >> tag!("(") >>
 			lval: call!(LValue::parse) >>

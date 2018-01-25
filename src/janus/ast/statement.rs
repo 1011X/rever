@@ -1,7 +1,9 @@
-use std::collections::HashMap;
-use super::parse::*;
-use super::interpret::{SymTab, Value};
-use super::{LValue, Expr};
+//use std::collections::HashMap;
+//use super::parse::*;
+//use super::interpret::{SymTab, Value};
+use super::*;
+
+type Block = Vec<Statement>;
 
 #[derive(Debug)]
 pub enum Statement {
@@ -27,7 +29,7 @@ pub enum Statement {
 }
 
 impl Statement {
-	named!(pub parse<Statement>, alt_complete!(
+	named!(pub parse<Self>, alt_complete!(
 		value!(Statement::Skip, tag!("skip"))
 		| sp!(do_parse!(
 			tag!("local") >>
