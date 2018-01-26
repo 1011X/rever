@@ -1,4 +1,4 @@
-use super::parse::Item;
+use super::*;
 
 #[derive(Debug)]
 pub struct Program {
@@ -6,7 +6,7 @@ pub struct Program {
 }
 
 impl Program {
-	named!(pub parse<Program>, do_parse!(
+	named!(pub parse<Self>, do_parse!(
 		items: many1!(Item::parse)
 		>> (Program {items})
 	));

@@ -43,7 +43,7 @@ fn main() {
 	ast.compile();
 	*/
 	
-	let res = janus::Program::parse(br#"
+	let res = janus::ast::Program::parse(br#"
 	/* Various stack operations */
 
 	/* Move n stack elements from one stack to another */
