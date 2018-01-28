@@ -7,12 +7,12 @@ pub enum Item {
 }
 
 impl Item {
-	named!(pub parse<Item>, sp!(alt!(
+	named!(pub parse<Self>, sp!(alt_complete!(
 		map!(Procedure::parse, Item::Proc)
-		| sp!(do_parse!(
+		| do_parse!(
 			decl: call!(Decl::parse) >>
-			val: opt!(sp!(preceded!(tag!("="), Expr::parse)))
+			val: opt!(preceded!(tag!("="), Expr::parse))
 			>> (Item::Global(decl, val))
-		))
+		)
 	)));
 }

@@ -1,4 +1,3 @@
-//use super::parse::*;
 use super::*;
 
 #[derive(Debug)]
@@ -14,25 +13,25 @@ pub struct Decl {
 }
 
 impl Decl {
-	named!(pub parse<Self>, alt_complete!(
-		sp!(do_parse!(
+	named!(pub parse<Self>, sp!(alt_complete!(
+		do_parse!(
 			tag!("int") >>
 			name: ident >>
-			dims: sp!(many0!(delimited!(
+			dims: many0!(delimited!(
 				tag!("["),
 				opt!(Expr::parse),
 				tag!("]")
-			)))
+			))
 			>> (if dims.is_empty() {
 				Decl {name, typ: Type::Int}
 			} else {
 				Decl {name, typ: Type::IntArray(dims)}
 			})
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("stack") >>
 			name: ident
 			>> (Decl {name, typ: Type::Stack})
-		))
-	));
+		)
+	)));
 }

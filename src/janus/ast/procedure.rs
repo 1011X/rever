@@ -8,7 +8,7 @@ pub struct Procedure {
 }
 
 impl Procedure {
-	named!(pub parse<Procedure>, sp!(do_parse!(
+	named!(pub parse<Self>, sp!(do_parse!(
 		tag!("procedure") >>
 		name: ident >>
 		args: delimited!(

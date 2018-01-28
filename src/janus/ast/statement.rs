@@ -1,5 +1,4 @@
 //use std::collections::HashMap;
-//use super::parse::*;
 //use super::interpret::{SymTab, Value};
 use super::*;
 
@@ -29,79 +28,79 @@ pub enum Statement {
 }
 
 impl Statement {
-	named!(pub parse<Self>, alt_complete!(
+	named!(pub parse<Self>, sp!(alt_complete!(
 		value!(Statement::Skip, tag!("skip"))
-		| sp!(do_parse!(
+		| do_parse!(
 			tag!("local") >>
 			decl: call!(Decl::parse) >>
 			tag!("=") >>
 			val: call!(Expr::parse)
 			>> (Statement::Local(decl, val))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("delocal") >>
 			decl: call!(Decl::parse) >>
 			tag!("=") >>
 			val: call!(Expr::parse)
 			>> (Statement::Delocal(decl, val))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("<=>") >>
 			right: call!(LValue::parse)
 			>> (Statement::Swap(left, right))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("+=") >>
 			expr: call!(Expr::parse)
 			>> (Statement::Add(left, expr))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("-=") >>
 			expr: call!(Expr::parse)
 			>> (Statement::Sub(left, expr))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			left: call!(LValue::parse) >>
 			tag!("^=") >>
 			expr: call!(Expr::parse)
 			>> (Statement::Xor(left, expr))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("from") >>
 			assert: call!(Pred::parse) >>
-			forward: opt!(sp!(preceded!(
+			forward: opt!(preceded!(
 				tag!("do"),
 				many1!(Statement::parse)
-			))) >>
-			backward: opt!(sp!(preceded!(
+			)) >>
+			backward: opt!(preceded!(
 				tag!("loop"),
 				many1!(Statement::parse)
-			))) >>
+			)) >>
 			tag!("until") >>
 			pred: call!(Pred::parse)
 			
 			>> (Statement::From(assert, forward, backward, pred))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("if") >>
 			pred: call!(Pred::parse) >>
-			pass: sp!(preceded!(
+			pass: preceded!(
 				tag!("then"),
 				many1!(Statement::parse)
-			)) >>
-			fail: opt!(sp!(preceded!(
+			) >>
+			fail: opt!(preceded!(
 				tag!("else"),
 				many1!(Statement::parse)
-			))) >>
+			)) >>
 			tag!("fi") >>
 			assert: call!(Pred::parse)
 			
 			>> (Statement::If(pred, pass, fail, assert))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("call") >>
 			func: ident >>
 			args: delimited!(
@@ -110,49 +109,49 @@ impl Statement {
 				tag!(")")
 			)
 			>> (Statement::Call(func, args))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("uncall") >>
 			func: ident >>
 			tag!("(") >>
 			args: separated_list!(tag!(","), Factor::parse) >>
 			tag!(")")
 			>> (Statement::Uncall(func, args))
-		))
+		)
 		// built-ins
-		| sp!(do_parse!(
+		| do_parse!(
 			tag!("print") >>
 			tag!("(") >>
 			string: st >>
 			tag!(")")
 			>> (Statement::Print(string))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("printf") >>
 			tag!("(") >>
 			string: st >>
-			vargs: many0!(sp!(preceded!(
+			vargs: many0!(preceded!(
 				tag!(","),
 				Factor::parse
-			))) >>
+			)) >>
 			tag!(")")
 			>> (Statement::Printf(string, vargs))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("error") >>
 			tag!("(") >>
 			string: st >>
 			tag!(")")
 			>> (Statement::Error(string))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("show") >>
 			tag!("(") >>
 			lval: call!(LValue::parse) >>
 			tag!(")")
 			>> (Statement::Show(lval))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("pop") >>
 			tag!("(") >>
 			into: call!(Factor::parse) >>
@@ -160,8 +159,8 @@ impl Statement {
 			from: call!(LValue::parse) >>
 			tag!(")")
 			>> (Statement::Pop(into, from))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("push") >>
 			tag!("(") >>
 			from: call!(Factor::parse) >>
@@ -169,8 +168,8 @@ impl Statement {
 			into: call!(LValue::parse) >>
 			tag!(")")
 			>> (Statement::Push(from, into))
-		))
-	));
+		)
+	)));
 	/*
 	pub fn eval(&self, globs: &mut SymTab) {
 		use self::Statement::*;
