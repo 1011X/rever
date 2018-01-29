@@ -1,16 +1,14 @@
-#[macro_use]
-extern crate nom;
+#[macro_use] extern crate nom;
 extern crate regex;
 
 extern crate rel_isa as rel;
 
-mod janus;
-//mod rever;
+//mod janus;
+mod rever;
 
 fn main() {
-	/*
-	let (_, ast) = rever::Program::parse(br#"
-	fn f(a: u16 , b: bool , mut c : fn ( ) , d : ^ type A ) {
+	let ast = rever::ast::Program::parse(br#"
+	fn f(a: u16, b: bool, mut c: fn(), d: ^type A) {
 		let mut a =0;
 		let mut b: [i16;1] = 0;
 		let c : i16 = 0;
@@ -33,16 +31,15 @@ fn main() {
 		drop c = 0;
 	}
 	
-	fn main ( args : ^^char ) {
+	fn main(args: ^^u8) {
 		do print("finally");
-	}"#).unwrap();
+	}"#);
 	
 	println!("{:#?}", ast);
 	
-	ast.verify();
-	ast.compile();
-	*/
-	
+	//ast.verify();
+	//ast.compile();
+	/*
 	let res = janus::ast::Program::parse(br#"
 	/* Various stack operations */
 
@@ -60,7 +57,7 @@ fn main() {
 
 	/* Reverse the elements of a stack */
 	procedure reverse(stack s)
-		if !empty(s) then
+		if a < b || b < c then
 			local int x = 0
 			local int n_move = size(s) - 1
 
@@ -78,7 +75,7 @@ fn main() {
 			delocal int x = 0
 		fi !empty(s)
 
-	stack s
+	stack s = nil
 	procedure main()
 		push(1, s)
 		push(2, s)
@@ -91,4 +88,5 @@ fn main() {
 	"#);
 	
 	println!("{:#?}", res);
+	*/
 }

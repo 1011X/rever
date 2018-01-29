@@ -22,33 +22,33 @@ pub enum Expr {
 impl Expr {
 	named!(pub parse<Self>, sp!(do_parse!(
 		leaf: call!(Expr::leaf) >>
-		prods: sp!(many0!(Expr::product)) >>
-		sums: sp!(many0!(Expr::sum)) >>
-		bitops: sp!(many0!(Expr::bitop))
+		prods: many0!(Expr::product) >>
+		sums: many0!(Expr::sum) >>
+		bitops: many0!(Expr::bitop)
 		
 		>> (leaf.to_product(prods).to_sum(sums).to_bitop(bitops))
 	)));
 	
-	named!(leaf<Self>, alt_complete!(
-		sp!(do_parse!(
+	named!(leaf<Self>, sp!(alt_complete!(
+		do_parse!(
 			tag!("size") >> tag!("(") >>
 			lval: call!(LValue::parse) >>
 			tag!(")")
 			>> (Expr::Size(lval))
-		))
-		| sp!(do_parse!(
+		)
+		| do_parse!(
 			tag!("top") >> tag!("(") >>
 			lval: call!(LValue::parse) >>
 			tag!(")")
 			>> (Expr::Top(lval))
-		))
-		| sp!(delimited!(
+		)
+		| delimited!(
 			tag!("("),
 			call!(Expr::parse),
 			tag!(")")
-		))
+		)
 		| map!(Factor::parse, Expr::Factor)
-	));
+	)));
 	
 	named!(product<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("*") | tag!("/") | tag!("%")) >>
@@ -59,7 +59,7 @@ impl Expr {
 	named!(sum<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("+") | tag!("-")) >>
 		leaf: call!(Expr::leaf) >>
-		prods: sp!(many0!(Expr::product))
+		prods: many0!(Expr::product)
 		
 		>> (op, leaf.to_product(prods))
 	)));
@@ -67,8 +67,8 @@ impl Expr {
 	named!(bitop<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("&") | tag!("|")) >>
 		leaf: call!(Expr::leaf) >>
-		prods: sp!(many0!(Expr::product)) >>
-		sums: sp!(many0!(Expr::sum))
+		prods: many0!(Expr::product) >>
+		sums: many0!(Expr::sum)
 		
 		>> (op, leaf.to_product(prods).to_sum(sums))
 	)));

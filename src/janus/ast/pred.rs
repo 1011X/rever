@@ -21,8 +21,8 @@ pub enum Pred {
 impl Pred {
 	named!(pub parse<Self>, sp!(do_parse!(
 		leaf: call!(Pred::leaf) >>
-		ands: sp!(many0!(Pred::and)) >>
-		ors: sp!(many0!(Pred::or))
+		ands: many0!(Pred::and) >>
+		ors: many0!(Pred::or)
 		>> ({
 			let leaf = if ands.is_empty() {
 				leaf
@@ -41,21 +41,21 @@ impl Pred {
 		})
 	)));
 	
-	named!(leaf<Self>, alt_complete!(
-		map!(sp!(preceded!(tag!("!"), Pred::not)), |x| Pred::Not(Box::new(x)))
+	named!(leaf<Self>, sp!(alt_complete!(
+		map!(preceded!(tag!("!"), Pred::not), |x| Pred::Not(Box::new(x)))
 		| map!(boolean, Pred::Bool)
-		| sp!(delimited!( // ( pred )
+		| delimited!( // ( pred )
 			tag!("("),
 			call!(Pred::parse),
 			tag!(")")
-		))
-		| sp!(do_parse!( // empty(x)
+		)
+		| do_parse!( // empty(x)
 			tag!("empty") >> tag!("(") >>
 			lval: call!(LValue::parse) >>
 			tag!(")")
 			>> (Pred::Empty(lval))
-		))
-		| sp!(do_parse!( // cmp
+		)
+		| do_parse!( // cmp
 			left: call!(Expr::parse) >>
 			cmp: alt!(
 				tag!("=")
@@ -75,29 +75,29 @@ impl Pred {
 				b"<" => Pred::Lt(left, right),
 				_ => unreachable!()
 			})
-		))
-	));
+		)
+	)));
 	
-	named!(not<Self>, alt_complete!(
-		map!(sp!(preceded!(tag!("!"), Pred::not)), |x| Pred::Not(Box::new(x)))
+	named!(not<Self>, sp!(alt_complete!(
+		map!(preceded!(tag!("!"), Pred::not), |x| Pred::Not(Box::new(x)))
 		| map!(boolean, Pred::Bool)
-		| sp!(delimited!( // ( pred )
+		| delimited!( // ( pred )
 			tag!("("),
 			call!(Pred::parse),
 			tag!(")")
-		))
-		| sp!(do_parse!( // empty(x)
+		)
+		| do_parse!( // empty(x)
 			tag!("empty") >> tag!("(") >>
 			lval: call!(LValue::parse) >>
 			tag!(")")
 			>> (Pred::Empty(lval))
-		))
-	));
+		)
+	)));
 	
 	named!(or<Self>, sp!(do_parse!(
 		tag!("||") >>
 		leaf: call!(Pred::leaf) >>
-		ands: sp!(many0!(Pred::and))
+		ands: many0!(Pred::and)
 		>> (if ands.is_empty() {
 			leaf
 		} else {

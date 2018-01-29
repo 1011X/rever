@@ -8,7 +8,7 @@ pub enum Literal {
 }
 
 impl Literal {
-	named!(pub parse<Literal>, alt_complete!(
+	named!(pub parse<Self>, alt_complete!(
 		value!(Literal::Nil, tag!("nil"))
 		| map!(reb_parse!("^[-+]?[0-9]+"), Literal::Int)
 		| map!(
