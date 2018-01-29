@@ -1,5 +1,12 @@
 use std::collections::HashMap;
 
+trait Compile {
+	type Target;
+	type State;
+	
+	fn compile(&self, state: Self::State) -> Vec<Self::Target>;
+}
+/*
 fn compile(prog: Vec<rever::Item>) -> Vec<rel::Op> {
 	use rel::{Op, Addr, Reg};
 	use rever::*;
@@ -29,3 +36,4 @@ fn compile(prog: Vec<rever::Item>) -> Vec<rel::Op> {
 		functions.insert(f.name.clone(), bytecode);
 	}
 }
+*/

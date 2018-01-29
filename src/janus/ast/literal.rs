@@ -1,4 +1,5 @@
 use super::*;
+use rel;
 
 #[derive(Debug)]
 pub enum Literal {
@@ -20,6 +21,28 @@ impl Literal {
 			Literal::IntArray
 		)
 	));
+	
+	// needs way to choose register
+	fn compile(&self) -> Vec<rel::Op> {
+		match *self {
+			Literal::Nil => vec![],
+			Literal::Int(i) => vec![
+				Op::Immediate(_, i >> 8),
+				Op::LRotateImm(_, 8),
+				Op::Immediate(_, i & 0xFF)
+			],
+			Literal::IntArray(ref mut v) => {
+				let mut acc = vec![];
+				
+				for lit in v {
+					acc.append(&mut lit.compile());
+					// TODO
+				}
+				
+				acc
+			}
+		}
+	}
 	/*
 	fn to_value(&self) -> Value {
 		match *self {
