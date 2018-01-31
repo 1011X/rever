@@ -31,16 +31,15 @@ impl Expr {
 	
 	named!(leaf<Self>, sp!(alt_complete!(
 		do_parse!(
-			tag!("size") >> tag!("(") >>
+			op: alt!(tag!("size") | tag!("top")) >>
+			tag!("(") >>
 			lval: call!(LValue::parse) >>
 			tag!(")")
-			>> (Expr::Size(lval))
-		)
-		| do_parse!(
-			tag!("top") >> tag!("(") >>
-			lval: call!(LValue::parse) >>
-			tag!(")")
-			>> (Expr::Top(lval))
+			>> (match op {
+				b"size" => Expr::Size(lval),
+				b"top"  => Expr::Top(lval),
+				_ => unreachable!()
+			})
 		)
 		| delimited!(
 			tag!("("),

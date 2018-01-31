@@ -3,7 +3,7 @@ extern crate regex;
 
 extern crate rel_isa as rel;
 
-//mod janus;
+mod janus;
 mod rever;
 
 fn main() {
@@ -39,7 +39,7 @@ fn main() {
 	
 	//ast.verify();
 	//ast.compile();
-	/*
+	
 	let res = janus::ast::Program::parse(br#"
 	/* Various stack operations */
 
@@ -88,5 +88,4 @@ fn main() {
 	"#);
 	
 	println!("{:#?}", res);
-	*/
 }

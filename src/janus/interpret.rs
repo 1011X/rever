@@ -1,7 +1,7 @@
-use std::collections::HashMap;
+//use std::collections::HashMap;
 //use super::Program;
 
-pub type SymTab = HashMap<String, Value>;
+//pub type SymTab = HashMap<String, Value>;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Value {
@@ -14,7 +14,7 @@ impl Value {
 	
 }
 /*
-fn run(prog: Program) -> Result<(), String> {
+pub fn run(prog: Program) -> Result<(), String> {
 	let mut globs = HashMap::new();
 	let mut main = None;
 	
@@ -69,6 +69,15 @@ fn run(prog: Program) -> Result<(), String> {
 	
 	if main.is_none() {
 		return Err("No main function found.".to_string());
+	}
+	
+	main.execute();
+	Ok(())
+}
+
+fn reduce(mut p: Procedure) -> Procedure {
+	for stmt in &mut p.body {
+		
 	}
 }
 */

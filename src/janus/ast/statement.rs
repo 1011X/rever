@@ -20,8 +20,8 @@ pub enum Statement {
 	
 	// built-ins
 	Print(String),
-	Printf(String, Vec<Factor>),
 	Error(String),
+	Printf(String, Vec<Factor>),
 	Show(LValue),
 	Pop(Factor, LValue),
 	Push(Factor, LValue),
@@ -31,18 +31,15 @@ impl Statement {
 	named!(pub parse<Self>, sp!(alt_complete!(
 		value!(Statement::Skip, tag!("skip"))
 		| do_parse!(
-			tag!("local") >>
+			op: alt!(tag!("local") | tag!("delocal")) >>
 			decl: call!(Decl::parse) >>
 			tag!("=") >>
 			val: call!(Expr::parse)
-			>> (Statement::Local(decl, val))
-		)
-		| do_parse!(
-			tag!("delocal") >>
-			decl: call!(Decl::parse) >>
-			tag!("=") >>
-			val: call!(Expr::parse)
-			>> (Statement::Delocal(decl, val))
+			>> (match op {
+				b"local" => Statement::Local(decl, val),
+				b"delocal" => Statement::Delocal(decl, val),
+				_ => unreachable!()
+			})
 		)
 		| do_parse!(
 			left: call!(LValue::parse) >>
@@ -52,21 +49,14 @@ impl Statement {
 		)
 		| do_parse!(
 			left: call!(LValue::parse) >>
-			tag!("+=") >>
+			modop: alt!(tag!("+=") | tag!("-=") | tag!("^=")) >>
 			expr: call!(Expr::parse)
-			>> (Statement::Add(left, expr))
-		)
-		| do_parse!(
-			left: call!(LValue::parse) >>
-			tag!("-=") >>
-			expr: call!(Expr::parse)
-			>> (Statement::Sub(left, expr))
-		)
-		| do_parse!(
-			left: call!(LValue::parse) >>
-			tag!("^=") >>
-			expr: call!(Expr::parse)
-			>> (Statement::Xor(left, expr))
+			>> (match modop {
+				b"+=" => Statement::Add(left, expr),
+				b"-=" => Statement::Sub(left, expr),
+				b"^=" => Statement::Xor(left, expr),
+				_ => unreachable!()
+			})
 		)
 		| do_parse!(
 			tag!("from") >>
@@ -87,10 +77,8 @@ impl Statement {
 		| do_parse!(
 			tag!("if") >>
 			pred: call!(Pred::parse) >>
-			pass: preceded!(
-				tag!("then"),
-				many1!(Statement::parse)
-			) >>
+			tag!("then") >>
+			pass: many1!(Statement::parse) >>
 			fail: opt!(preceded!(
 				tag!("else"),
 				many1!(Statement::parse)
@@ -101,30 +89,28 @@ impl Statement {
 			>> (Statement::If(pred, pass, fail, assert))
 		)
 		| do_parse!(
-			tag!("call") >>
-			func: ident >>
-			args: delimited!(
-				tag!("("),
-				separated_list!(tag!(","), Factor::parse),
-				tag!(")")
-			)
-			>> (Statement::Call(func, args))
-		)
-		| do_parse!(
-			tag!("uncall") >>
+			op: alt!(tag!("call") | tag!("uncall")) >>
 			func: ident >>
 			tag!("(") >>
 			args: separated_list!(tag!(","), Factor::parse) >>
 			tag!(")")
-			>> (Statement::Uncall(func, args))
+			>> (match op {
+				b"call"   => Statement::Call(func, args),
+				b"uncall" => Statement::Uncall(func, args),
+				_ => unreachable!()
+			})
 		)
 		// built-ins
 		| do_parse!(
-			tag!("print") >>
+			func: alt!(tag!("print") | tag!("error")) >>
 			tag!("(") >>
 			string: st >>
 			tag!(")")
-			>> (Statement::Print(string))
+			>> (match func {
+				b"print" => Statement::Print(string),
+				b"error" => Statement::Error(string),
+				_ => unreachable!()
+			})
 		)
 		| do_parse!(
 			tag!("printf") >>
@@ -138,13 +124,6 @@ impl Statement {
 			>> (Statement::Printf(string, vargs))
 		)
 		| do_parse!(
-			tag!("error") >>
-			tag!("(") >>
-			string: st >>
-			tag!(")")
-			>> (Statement::Error(string))
-		)
-		| do_parse!(
 			tag!("show") >>
 			tag!("(") >>
 			lval: call!(LValue::parse) >>
@@ -152,22 +131,17 @@ impl Statement {
 			>> (Statement::Show(lval))
 		)
 		| do_parse!(
-			tag!("pop") >>
+			op: alt!(tag!("pop") | tag!("push")) >>
 			tag!("(") >>
-			into: call!(Factor::parse) >>
+			val: call!(Factor::parse) >>
 			tag!(",") >>
-			from: call!(LValue::parse) >>
+			stack: call!(LValue::parse) >>
 			tag!(")")
-			>> (Statement::Pop(into, from))
-		)
-		| do_parse!(
-			tag!("push") >>
-			tag!("(") >>
-			from: call!(Factor::parse) >>
-			tag!(",") >>
-			into: call!(LValue::parse) >>
-			tag!(")")
-			>> (Statement::Push(from, into))
+			>> (match op {
+				b"pop"  => Statement::Pop(val, stack),
+				b"push" => Statement::Push(val, stack),
+				_ => unreachable!()
+			})  
 		)
 	)));
 	/*
