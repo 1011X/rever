@@ -1,6 +1,6 @@
 //use std::ops::Deref;
-//use super::parse::*;
 use super::*;
+use super::super::interpret::{self, SymTab, Value};
 
 #[derive(Debug)]
 pub struct LValue {
@@ -11,13 +11,17 @@ pub struct LValue {
 impl LValue {
 	named!(pub parse<Self>, sp!(do_parse!(
 		name: ident >>
-		indices: sp!(many0!(delimited!(
+		indices: many0!(delimited!(
 			tag!("["),
 			call!(Expr::parse),
 			tag!("]")
-		)))
+		))
 		>> (LValue {name, indices})
 	)));
+	
+	pub fn eval(&self, symtab: &SymTab) -> interpret::Result {
+		Ok(symtab[&self.name].clone())
+	}
 	/*
 	pub fn get_mut<'a>(&self, symtab: &'a mut SymTab) -> Option<&'a mut Value> {
 		self._get_mut(self.indices[0], symtab)

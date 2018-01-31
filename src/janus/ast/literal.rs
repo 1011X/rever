@@ -1,11 +1,12 @@
 use super::*;
+use super::super::interpret::{self, SymTab, Value};
 use rel;
 
 #[derive(Debug)]
 pub enum Literal {
 	Nil,
 	Int(i16),
-	IntArray(Vec<Literal>)
+	Array(Vec<Literal>)
 }
 
 impl Literal {
@@ -18,11 +19,12 @@ impl Literal {
 				separated_nonempty_list!(tag!(","), Literal::parse),
 				tag!("}")
 			)),
-			Literal::IntArray
+			Literal::Array
 		)
 	));
 	
-	// needs way to choose register
+	/*
+	// TODO needs way to choose register
 	fn compile(&self) -> Vec<rel::Op> {
 		match *self {
 			Literal::Nil => vec![],
@@ -43,12 +45,18 @@ impl Literal {
 			}
 		}
 	}
-	/*
-	fn to_value(&self) -> Value {
+	*/
+	
+	pub fn to_value(&self) -> Value {
 		match *self {
+			Literal::Nil => Value::Stack(vec![]),
 			Literal::Int(i) => Value::Int(i),
-			Literal::IntArray(ref vals) => Value::IntArray(vals.clone()),
+			Literal::Array(ref lits) => {
+				let vals = lits.iter()
+					.map(|l| l.to_value())
+					.collect();
+				Value::Array(vals)
+			}
 		}
 	}
-	*/
 }
