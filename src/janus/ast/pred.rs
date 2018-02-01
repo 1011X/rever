@@ -114,21 +114,28 @@ impl Pred {
 	
 	pub fn eval(&self, symtab: &SymTab) -> Result<bool, String> {
 		Ok(match *self {
-			Pred::Bool(b)      => b,
-			Pred::Empty(ref v) => v.is_empty(),
+			Pred::Bool(b) => b,
+			Pred::Empty(ref stack)
+				=> stack.is_empty(),
+			Pred::Not(ref pred)
+				=> !pred.eval(symtab)?,
 			
-			Pred::Not(ref p)
-				=> !p.eval(symtab)?,
-			Pred::And(ref v) => v.iter()
-				.map(|p| p.eval(symtab))
-				.collect::<Result<Vec<_>, _>>()?
-				.into_iter()
-				.all(|b| b),
-			Pred::Or(ref v) => v.iter()
-				.map(|p| p.eval(symtab))
-				.collect::<Result<Vec<_>, _>>()?
-				.into_iter()
-				.any(|b| b),
+			Pred::And(ref preds) => {
+				for pred in preds {
+					if !pred.eval(symtab)? {
+						return false;
+					}
+				}
+				true
+			}
+			Pred::Or(ref preds) => {
+				for pred in preds {
+					if pred.eval(symtab)? {
+						return true;
+					}
+				}
+				false
+			}
 			
 			Pred::Eq(ref e0, ref e1)
 				=> e0.eval(symtab)? == e1.eval(symtab)?,
