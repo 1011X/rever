@@ -30,14 +30,13 @@ impl Type {
 			tag!("]")
 			>> (Type::Array(Box::new(t), n as usize))
 		))
-		| map!(ws!(preceded!(
-			tag!("fn"),
-			delimited!(
-				tag!("("),
-				separated_list!(tag!(","), Type::parse),
-				tag!(")")
-			)
-		)), Type::Fn)
+		| do_parse!(
+			tag!("fn") >>
+			tag!("(") >>
+			types: separated_list!(tag!(","), Type::parse) >>
+			tag!(")")
+			>> (Type::Fn(types))
+		)
 		| map!(ws!(preceded!(tag!("type"), ident)), Type::Composite)
 	)));
 }

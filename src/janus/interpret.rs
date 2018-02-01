@@ -1,5 +1,6 @@
 use std::result;
 use std::collections::HashMap;
+use std::cmp::{Ordering, PartialOrd};
 //use super::Program;
 
 pub type SymTab = HashMap<String, Value>;
@@ -12,8 +13,14 @@ pub enum Value {
 	Array(Vec<Value>),
 }
 
-impl Value {
-	
+impl PartialOrd for Value {
+	fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+		match (self, other) {
+			(&Value::Int(i0), &Value::Int(i1))
+				=> Some(i0.cmp(&i1)),
+			_ => None
+		}
+	}
 }
 /*
 pub fn run(prog: Program) -> Result<(), String> {

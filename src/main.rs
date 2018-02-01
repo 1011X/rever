@@ -33,8 +33,8 @@ fn main() {
 		drop c = 0;
 	}
 	
-	fn main(args: ^^u8) {
-		do print("finally");
+	fn main() {
+		do show("finally");
 	}"#);
 	
 	println!("{:#?}", ast);

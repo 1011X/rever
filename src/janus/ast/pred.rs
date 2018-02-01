@@ -1,9 +1,10 @@
 use super::*;
+use super::super::interpret::SymTab;
 
 #[derive(Debug)]
 pub enum Pred {
 	Bool(bool),
-	Empty(LValue),
+	Empty(String),
 	
 	Not(Box<Pred>),
 	And(Vec<Pred>),
@@ -50,9 +51,9 @@ impl Pred {
 		)
 		| do_parse!( // empty(x)
 			tag!("empty") >> tag!("(") >>
-			lval: call!(LValue::parse) >>
+			id: ident >>
 			tag!(")")
-			>> (Pred::Empty(lval))
+			>> (Pred::Empty(id))
 		)
 		| do_parse!( // cmp
 			left: call!(Expr::parse) >>
@@ -87,9 +88,9 @@ impl Pred {
 		)
 		| do_parse!( // empty(x)
 			tag!("empty") >> tag!("(") >>
-			lval: call!(LValue::parse) >>
+			id: ident >>
 			tag!(")")
-			>> (Pred::Empty(lval))
+			>> (Pred::Empty(id))
 		)
 	)));
 	
@@ -110,4 +111,37 @@ impl Pred {
 		tag!("&&"),
 		call!(Pred::leaf)
 	)));
+	
+	pub fn eval(&self, symtab: &SymTab) -> Result<bool, String> {
+		Ok(match *self {
+			Pred::Bool(b)      => b,
+			Pred::Empty(ref v) => v.is_empty(),
+			
+			Pred::Not(ref p)
+				=> !p.eval(symtab)?,
+			Pred::And(ref v) => v.iter()
+				.map(|p| p.eval(symtab))
+				.collect::<Result<Vec<_>, _>>()?
+				.into_iter()
+				.all(|b| b),
+			Pred::Or(ref v) => v.iter()
+				.map(|p| p.eval(symtab))
+				.collect::<Result<Vec<_>, _>>()?
+				.into_iter()
+				.any(|b| b),
+			
+			Pred::Eq(ref e0, ref e1)
+				=> e0.eval(symtab)? == e1.eval(symtab)?,
+			Pred::Neq(ref e0, ref e1)
+				=> e0.eval(symtab)? != e1.eval(symtab)?,
+			Pred::Gt(ref e0, ref e1)
+				=> e0.eval(symtab)? > e1.eval(symtab)?,
+			Pred::Lt(ref e0, ref e1)
+				=> e0.eval(symtab)? < e1.eval(symtab)?,
+			Pred::Gte(ref e0, ref e1)
+				=> e0.eval(symtab)? >= e1.eval(symtab)?,
+			Pred::Lte(ref e0, ref e1)
+				=> e0.eval(symtab)? <= e1.eval(symtab)?,
+		})
+	}
 }
