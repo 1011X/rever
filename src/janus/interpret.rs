@@ -1,9 +1,11 @@
-//use std::collections::HashMap;
+use std::result;
+use std::collections::HashMap;
 //use super::Program;
 
-//pub type SymTab = HashMap<String, Value>;
+pub type SymTab = HashMap<String, Value>;
+pub type Result = result::Result<Value, String>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
 	Int(i16),
 	Stack(Vec<i16>),
