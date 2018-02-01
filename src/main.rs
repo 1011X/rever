@@ -3,10 +3,13 @@ extern crate regex;
 
 extern crate rel_isa as rel;
 
+use std::collections::HashMap;
+
 mod janus;
 mod rever;
 
 fn main() {
+	/*
 	let ast = rever::ast::Program::parse(br#"
 	fn f(a: u16, b: bool, mut c: fn(), d: ^type A) {
 		let mut a =0;
@@ -88,4 +91,11 @@ fn main() {
 	"#);
 	
 	println!("{:#?}", res);
+	*/
+	
+	//let (_, expr) = janus::ast::Expr::parse(b" ((1 / 3 + 3 * 2 - 8 ^ 4) & 2) | 1 ")
+	//let (_, expr) = janus::ast::Expr::parse(b"12 & 4 | 3 & 1")
+	let (_, expr) = janus::ast::Expr::parse(include_bytes!("test.janus"))
+		.unwrap();
+	println!("{:#?}", expr.eval(&HashMap::new()));
 }

@@ -1,5 +1,5 @@
 use super::*;
-use super::super::interpret::{self, SymTab, Value};
+use super::super::interpret::{self, SymTab};
 
 #[derive(Debug)]
 pub enum Factor {
@@ -13,7 +13,7 @@ impl Factor {
 		| map!(LValue::parse, Factor::LValue)
 	));
 	
-	fn eval(&self, symtab: &SymTab) -> interpret::Result {
+	pub fn eval(&self, symtab: &SymTab) -> interpret::Result {
 		match *self {
 			Factor::Literal(ref lit) => Ok(lit.to_value()),
 			Factor::LValue(ref lval) => lval.eval(symtab),
