@@ -3,8 +3,6 @@ extern crate regex;
 
 extern crate rel_isa as rel;
 
-use std::collections::HashMap;
-
 mod janus;
 mod rever;
 

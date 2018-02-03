@@ -2,7 +2,7 @@ use super::*;
 use super::super::interpret::{self, SymTab, Value};
 use rel;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Literal {
 	Nil,
 	Int(i16),
@@ -13,14 +13,12 @@ impl Literal {
 	named!(pub parse<Self>, alt_complete!(
 		value!(Literal::Nil, tag!("nil"))
 		| map!(reb_parse!("^[-+]?[0-9]+"), Literal::Int)
-		| map!(
-			sp!(delimited!(
-				tag!("{"),
-				separated_nonempty_list!(tag!(","), Literal::parse),
-				tag!("}")
-			)),
-			Literal::Array
-		)
+		| sp!(do_parse!(
+			tag!("{") >>
+			lits: separated_nonempty_list!(tag!(","), Literal::parse) >>
+			tag!("}")
+			>> (Literal::Array(lits))
+		))
 	));
 	
 	/*
@@ -58,5 +56,34 @@ impl Literal {
 				Value::Array(vals)
 			}
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	
+	#[test]
+	fn parse() {
+		assert_eq!(
+			Literal::parse(b"1").unwrap().1,
+			Literal::Int(1),
+			"single digit int"
+		);
+		assert_eq!(
+			Literal::parse(b"12383").unwrap().1,
+			Literal::Int(12383),
+			"multi-digit int"
+		);
+		assert_eq!(
+			Literal::parse(b"+123").unwrap().1,
+			Literal::Int(123),
+			"int with positive prefix"
+		);
+		assert_eq!(
+			Literal::parse(b"-383").unwrap().1,
+			Literal::Int(-383),
+			"int with negative prefix"
+		);
 	}
 }
