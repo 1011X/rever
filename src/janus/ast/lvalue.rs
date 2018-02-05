@@ -1,8 +1,7 @@
-//use std::ops::Deref;
 use super::*;
 use super::super::interpret::{Value, SymTab};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct LValue {
 	pub name: String,
 	pub indices: Vec<Expr>,
@@ -23,22 +22,66 @@ impl LValue {
 	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
 		Ok(symtab[&self.name].clone())
 	}
-	/*
-	pub fn get_mut<'a>(&self, symtab: &'a mut SymTab) -> Option<&'a mut Value> {
-		self._get_mut(self.indices[0], symtab)
+}
+
+#[cfg(test)]
+mod tests {
+	use std::collections::HashMap;
+	use super::super::super::interpret::Value;
+	use super::*;
+	
+	#[test]
+	fn parse() {
+		assert_eq!(
+			LValue::parse(b"a").unwrap().1,
+			LValue {
+				name: String::from("a"),
+				indices: vec![],
+			},
+			"simple variable"
+		);
+		assert_eq!(
+			LValue::parse(b"homu[0]").unwrap().1,
+			LValue {
+				name: String::from("homu"),
+				indices: vec![Expr::Factor(Factor::Literal(Literal::Int(0)))],
+			},
+			"array variable with simple index"
+		);
+		assert_eq!(
+			LValue::parse(b"mado[1 + 2]").unwrap().1,
+			LValue {
+				name: String::from("mado"),
+				indices: vec![Expr::Add(
+					Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+					Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				)],
+			},
+			"array variable with expressive index"
+		);
 	}
 	
-	fn _get_mut<'a>(&self, dim: Expr, symtab: &'a mut SymTab) -> Option<&'a mut Value> {
-		globs.get_mut(&self.name)
-		.map(|base| match *base {
-			Value::Int(_)
-			| Value::Stack(_) => base,
-			
-			Value::Array(ref mut vec) => {
-				let idx = self.indices[dim.eval(symtab) as usize];
-				vec.get_mut
-			}
-		})
+	#[test]
+	fn eval() {
+		let mut symtab = HashMap::new();
+		symtab.insert(String::from("a"), Value::Int(1));
+		symtab.insert(String::from("yuno"), Value::Stack(vec![69]));
+		symtab.insert(String::from("yuki"), Value::Array(vec![Value::Int(420)]));
+		
+		assert_eq!(
+			LValue::parse(b"a").unwrap().1.eval(&symtab).unwrap(),
+			Value::Int(1),
+			"int variable"
+		);
+		assert_eq!(
+			LValue::parse(b"yuno[0]").unwrap().1.eval(&symtab).unwrap(),
+			Value::Stack(vec![69]),
+			"stack variable"
+		);
+		assert_eq!(
+			LValue::parse(b"yuki[0]").unwrap().1.eval(&symtab).unwrap(),
+			Value::Array(vec![Value::Int(420)]),
+			"stack variable"
+		);
 	}
-	*/
 }

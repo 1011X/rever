@@ -1,7 +1,7 @@
 use super::*;
 use super::super::interpret::{Value, SymTab};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Expr {
 	Factor(Factor),
 	Size(String),
@@ -20,15 +20,20 @@ pub enum Expr {
 }
 
 impl Expr {
+	// expr -> leaf {product} {sum} {bitop}
 	named!(pub parse<Self>, sp!(do_parse!(
 		leaf: call!(Expr::leaf) >>
-		bitops: many0!(Expr::bitop) >>
 		prods: many0!(Expr::product) >>
-		sums: many0!(Expr::sum)
+		sums: many0!(Expr::sum) >>
+		bitops: many0!(Expr::bitop)
 		
-		>> (leaf.to_bitop(bitops).to_product(prods).to_sum(sums))
+		>> (leaf.to_product(prods).to_sum(sums).to_bitop(bitops))
 	)));
 	
+	// leaf -> "size" ( ident )
+	//      -> "top" ( ident )
+	//      -> ( expr )
+	//      -> factor
 	named!(leaf<Self>, sp!(alt_complete!(
 		do_parse!(
 			op: alt!(tag!("size") | tag!("top")) >>
@@ -49,12 +54,17 @@ impl Expr {
 		| map!(Factor::parse, Expr::Factor)
 	)));
 	
+	// product -> * leaf
+	//         -> / leaf
+	//         -> % leaf
 	named!(product<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("*") | tag!("/") | tag!("%")) >>
 		leaf: call!(Expr::leaf)
 		>> (op, leaf)
 	)));
 	
+	// sum -> + leaf {product}
+	//     -> - leaf {product}
 	named!(sum<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("+") | tag!("-")) >>
 		leaf: call!(Expr::leaf) >>
@@ -63,6 +73,9 @@ impl Expr {
 		>> (op, leaf.to_product(prods))
 	)));
 	
+	// bitop -> & leaf {product} {sum}
+	//       -> | leaf {product} {sum}
+	//       -> ^ leaf {product} {sum}
 	named!(bitop<(&[u8], Expr)>, sp!(do_parse!(
 		op: alt!(tag!("&") | tag!("|") | tag!("^")) >>
 		leaf: call!(Expr::leaf) >>
@@ -72,90 +85,35 @@ impl Expr {
 		>> (op, leaf.to_product(prods).to_sum(sums))
 	)));
 	
-	fn to_product(self, mut prods: Vec<(&[u8], Expr)>) -> Expr {
-		// no extra operations are done, so just return self
-		if prods.is_empty() {
-			return self;
-		}
-		
-		// at least one operation; extract the last one.
-		let (mut curr_op, last) = prods.pop().unwrap();
-		// reverse, then fold using last element to build a
-		// right-spanning AST
-		let expr = prods.into_iter()
-			.rev()
-			.fold(last, |acc, (op, e)| {
-				let res = match curr_op {
-					b"*" => Expr::Mul(Box::new(acc), Box::new(e)),
-					b"/" => Expr::Div(Box::new(acc), Box::new(e)),
-					b"%" => Expr::Mod(Box::new(acc), Box::new(e)),
-					_ => unreachable!()
-				};
-				// change curr_op for next element
-				curr_op = op;
-				res
-			});
-		
-		match curr_op {
-			b"*" => Expr::Mul(Box::new(expr), Box::new(self)),
-			b"/" => Expr::Div(Box::new(expr), Box::new(self)),
-			b"%" => Expr::Mod(Box::new(expr), Box::new(self)),
+	
+	fn to_product(self, prods: Vec<(&[u8], Expr)>) -> Expr {
+		// use self as accumulator and build a left-to-right Expr tree
+		prods.into_iter()
+		.fold(self, |acc, (op, e)| match op {
+			b"*" => Expr::Mul(Box::new(acc), Box::new(e)),
+			b"/" => Expr::Div(Box::new(acc), Box::new(e)),
+			b"%" => Expr::Mod(Box::new(acc), Box::new(e)),
 			_ => unreachable!()
-		}
+		})
 	}
 	
-	fn to_sum(self, mut sums: Vec<(&[u8], Expr)>) -> Expr {
-		// same as `.to_product()`
-		if sums.is_empty() {
-			return self;
-		}
-		
-		let (mut curr_op, last) = sums.pop().unwrap();
-		let expr = sums.into_iter()
-			.rev()
-			.fold(last, |acc, (op, e)| {
-				let res = match curr_op {
-					b"+" => Expr::Add(Box::new(acc), Box::new(e)),
-					b"-" => Expr::Sub(Box::new(acc), Box::new(e)),
-					_ => unreachable!()
-				};
-				curr_op = op;
-				res
-			});
-		
-		match curr_op {
-			b"+" => Expr::Add(Box::new(expr), Box::new(self)),
-			b"-" => Expr::Sub(Box::new(expr), Box::new(self)),
+	fn to_sum(self, sums: Vec<(&[u8], Expr)>) -> Expr {
+		sums.into_iter()
+		.fold(self, |acc, (op, e)| match op {
+			b"+" => Expr::Add(Box::new(acc), Box::new(e)),
+			b"-" => Expr::Sub(Box::new(acc), Box::new(e)),
 			_ => unreachable!()
-		}
+		})
 	}
 	
-	fn to_bitop(self, mut bitops: Vec<(&[u8], Expr)>) -> Expr {
-		// same as `.to_product()` and `.to_sum()`
-		if bitops.is_empty() {
-			return self;
-		}
-		
-		let (mut curr_op, last) = bitops.pop().unwrap();
-		let expr = bitops.into_iter()
-			.rev()
-			.fold(last, |acc, (op, e)| {
-				let res = match curr_op {
-					b"&" => Expr::BitAnd(Box::new(acc), Box::new(e)),
-					b"|" => Expr::BitOr(Box::new(acc), Box::new(e)),
-					b"^" => Expr::BitXor(Box::new(acc), Box::new(e)),
-					_ => unreachable!()
-				};
-				curr_op = op;
-				res
-			});
-		
-		match curr_op {
-			b"&" => Expr::BitAnd(Box::new(expr), Box::new(self)),
-			b"|" => Expr::BitOr(Box::new(expr), Box::new(self)),
-			b"^" => Expr::BitXor(Box::new(expr), Box::new(self)),
+	fn to_bitop(self, bitops: Vec<(&[u8], Expr)>) -> Expr {
+		bitops.into_iter()
+		.fold(self, |acc, (op, e)| match op {
+			b"&" => Expr::BitAnd(Box::new(acc), Box::new(e)),
+			b"|" => Expr::BitOr(Box::new(acc), Box::new(e)),
+			b"^" => Expr::BitXor(Box::new(acc), Box::new(e)),
 			_ => unreachable!()
-		}
+		})
 	}
 	
 	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
@@ -279,3 +237,128 @@ impl Expr {
 	}
 }
 
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+	
+	#[test]
+	fn parse_builtins() {
+		assert_eq!(
+			Expr::parse(b"size(a)").unwrap().1,
+			Expr::Size(String::from("a")),
+			"size() not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"top(a)").unwrap().1,
+			Expr::Top(String::from("a")),
+			"top() not parsed"
+		);
+	}
+	
+	#[test]
+	fn parse_simple() {
+		assert_eq!(
+			Expr::parse(b"(a)").unwrap().1,
+			Expr::Factor(Factor::LValue(LValue {
+				name: String::from("a"),
+				indices: vec![],
+			})),
+			"addition not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"1 + 2").unwrap().1,
+			Expr::Add(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+			),
+			"addition not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"2 - 1").unwrap().1,
+			Expr::Sub(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+			),
+			"subtraction not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"2 * 1").unwrap().1,
+			Expr::Mul(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+			),
+			"multiplication not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"2 / 1").unwrap().1,
+			Expr::Div(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+			),
+			"division not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"2 % 1").unwrap().1,
+			Expr::Mod(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+			),
+			"modulus not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"2 & 1").unwrap().1,
+			Expr::BitAnd(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+			),
+			"bitwise AND not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"2 | 1").unwrap().1,
+			Expr::BitOr(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+			),
+			"bitwise OR not parsed"
+		);
+		assert_eq!(
+			Expr::parse(b"2 ^ 1").unwrap().1,
+			Expr::BitXor(
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(2)))),
+				Box::new(Expr::Factor(Factor::Literal(Literal::Int(1)))),
+			),
+			"bitwise XOR not parsed"
+		);
+	}
+	
+	#[test]
+	fn parse_complex() {
+		assert_eq!(
+			Expr::parse(b"2 & 3 * 10"),
+			Expr::parse(b"2 & (3 * 10)"),
+			"bitops grouped before products"
+		);
+		assert_eq!(
+			Expr::parse(b"2 | 3 + 10"),
+			Expr::parse(b"2 | (3 + 10)"),
+			"bitops grouped before sums"
+		);
+		assert_eq!(
+			Expr::parse(b"2 + 3 * 10"),
+			Expr::parse(b"2 + (3 * 10)"),
+			"sums grouped before products"
+		);
+		assert_eq!(
+			Expr::parse(b"1 & 2 | 4 ^ 8"),
+			Expr::parse(b"((1 & 2) | 4) ^ 8"),
+			"ops grouped rtl instead of ltr"
+		);
+		// wildcard
+		assert_eq!(
+			Expr::parse(b"2 * 4 + 1 & 128 - 64 / 32 | 16 % 8 ^ 256"),
+			Expr::parse(b"((((2 * 4) + 1) & (128 - (64 / 32))) | (16 % 8)) ^ 256"),
+			"this heinous expression can't be parsed"
+		);
+	}
+}

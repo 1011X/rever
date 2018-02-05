@@ -1,14 +1,14 @@
 use super::*;
 use super::super::interpret::{Value, SymTab};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Factor {
 	Literal(Literal),
 	LValue(LValue),
 }
 
 impl Factor {
-	named!(pub parse<Factor>, alt_complete!(
+	named!(pub parse<Self>, alt_complete!(
 		map!(Literal::parse, Factor::Literal)
 		| map!(LValue::parse, Factor::LValue)
 	));
