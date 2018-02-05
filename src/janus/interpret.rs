@@ -1,10 +1,10 @@
-use std::result;
 use std::collections::HashMap;
 use std::cmp::{Ordering, PartialOrd};
 //use super::Program;
+use super::ast::{Item, Type, Program};
 
 pub type SymTab = HashMap<String, Value>;
-pub type Result = result::Result<Value, String>;
+//pub type ProcTab = HashMap<String, Procedure>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
@@ -22,68 +22,76 @@ impl PartialOrd for Value {
 		}
 	}
 }
-/*
+
 pub fn run(prog: Program) -> Result<(), String> {
 	let mut globs = HashMap::new();
-	let mut main = None;
+	let mut procs = HashMap::new();
 	
-	for item in &self.items {
+	for item in prog.items {
 		// populate globs
-		if let Item::Global(decl, init) = *item {
+		if let Item::Global(decl, init) = item {
 			let val = match decl.typ {
 				Type::Stack => Value::Stack(vec![]),
 				Type::Int => {
-					init.map(|x| x.eval(&globs).to_value())
-					.unwrap_or(Value::Int(0))
-				}
-				Type::IntArray(ref dims) => {
 					if let Some(init) = init {
-						
+						init.eval(&globs)?
 					} else {
+						Value::Int(0)
+					}
+				}
+				
+				Type::IntArray(dims) => {
+					if let Some(init) = init {
+						// TODO: handle init code
+						unimplemented!();
+					} else {
+						// default value will be used, but all
+						// dimensions must be known
 						if dims.iter().all(|x| x.is_some()) {
+							let dims = dims.into_iter()
+								.collect::<Option<Vec<_>>>()
+								.unwrap();
+							
 							for dim in dims.iter().rev() {
-								let v = vec![];
+								//let v = vec![];
 								
 							}
+							
+							unimplemented!();
 						} else {
-							return Err("All array lengths must be specified.".to_string());
+							return Err(format!("All array lengths must be specified."));
 						}
 					}
 				}
 			};
 			
-			match (decl.typ, val) {
-				(Type::Int, Value::Int(_)) => {}
+			match (decl.typ, &val) {
+				(Type::Int, &Value::Int(_)) => {}
 				
-				(Type::IntArray(ref expr), Value::IntArray(ref vals))
-				if expr.eval(&globs).to_int().unwrap() >= vals.len() => {}
+				(Type::IntArray(ref expr), &Value::Array(ref vals))
+				//if expr.eval(&globs).to_int().unwrap() >= vals.len()
+					=> unimplemented!(),
 				
 				_ => return Err("Type and assigned value don't match.".to_string())
 			}
 			
 			globs.insert(decl.name.clone(), val);
 		}
-		// find main function
-		else if let Item::Proc(ref pr) = *item {
-			if pr.name == "main" {
-				if main.is_none() {
-					main = Some(pr);
-					break;
-				} else {
-					return Err("There is more than one main procedure.".to_string());
-				}
+		
+		// store procedure
+		else if let Item::Proc(pr) = item {
+			if procs.contains_key(&pr.name) {
+				return Err(format!("Procedure {} is already defined.", pr.name));
 			}
+			
+			procs.insert(pr.name.clone(), pr);
 		}
 	}
 	
-	if main.is_none() {
-		return Err("No main function found.".to_string());
-	}
-	
-	main.execute();
+	//procs["main"].execute();
 	Ok(())
 }
-
+/*
 fn reduce(mut p: Procedure) -> Procedure {
 	for stmt in &mut p.body {
 		

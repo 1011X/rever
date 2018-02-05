@@ -1,6 +1,7 @@
 //use std::collections::HashMap;
 //use super::interpret::{SymTab, Value};
 use super::*;
+use rel;
 
 type Block = Vec<Statement>;
 
@@ -144,6 +145,38 @@ impl Statement {
 			})  
 		)
 	)));
+	
+	pub fn compile(&self, state: &_) -> Vec<rel::Op> {
+		use rel::Op;
+		use self::Statement::*;
+		match *self {
+			Skip | Print(..) | Printf(..) | Show(..) | Error(..)
+				=> vec![],
+			
+			Add(ref lval, ref expr) => {
+				let mut add = vec![];
+				let (lval, reg_lval) = lval.compile(state);
+				let (expr, reg_expr) = expr.compile(state);
+				
+				add.extend_from_slice(&lval);
+				add.extend_from_slice(&expr);
+				
+				add.push(Op::Add(reg_lval, reg_expr));
+				
+				let lval = lval.into_iter()
+					.map(|i| i.reverse())
+					.collect();
+				let expr = lval.into_iter()
+					.map(|i| i.reverse())
+					.collect();
+				
+				add.extend_from_slice(&lval);
+				add.extend_from_slice(&expr);
+				add
+			}
+			_ => unimplemented!()
+		}
+	}
 	/*
 	pub fn eval(&self, globs: &mut SymTab) {
 		use self::Statement::*;

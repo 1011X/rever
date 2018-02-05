@@ -1,8 +1,9 @@
 use super::*;
+use rel;
 
 #[derive(Debug)]
 pub struct Procedure {
-	name: String,
+	pub name: String,
 	args: Vec<Decl>,
 	body: Vec<Statement>
 }
@@ -18,4 +19,8 @@ impl Procedure {
 		
 		>> (Procedure {name, args, body})
 	)));
+	
+	pub fn compile(&self) -> Vec<rel::Op> {
+		unimplemented!();
+	}
 }

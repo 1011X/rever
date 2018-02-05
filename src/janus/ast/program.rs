@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Debug)]
 pub struct Program {
-	items: Vec<Item>
+	pub items: Vec<Item>
 }
 
 impl Program {

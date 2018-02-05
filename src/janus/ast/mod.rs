@@ -32,6 +32,7 @@ pub mod program;
 pub mod statement;
 
 pub use self::decl::Decl;
+pub use self::decl::Type;
 pub use self::expr::Expr;
 pub use self::factor::Factor;
 pub use self::item::Item;

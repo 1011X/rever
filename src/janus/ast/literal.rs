@@ -1,6 +1,6 @@
 use super::*;
-use super::super::interpret::{self, SymTab, Value};
-use rel;
+use super::super::interpret::Value;
+//use rel;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Literal {

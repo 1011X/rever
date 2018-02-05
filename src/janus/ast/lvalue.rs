@@ -1,5 +1,6 @@
 use super::*;
 use super::super::interpret::{Value, SymTab};
+use rel;
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct LValue {
@@ -17,6 +18,23 @@ impl LValue {
 		))
 		>> (LValue {name, indices})
 	)));
+	
+	pub fn compile(&self, state: &mut State) -> (rel::Reg, Vec<rel::Op>) {
+		use rel::Op;
+		
+		if self.indices.is_empty() {
+			let loc = state.get(self.name);
+			match loc {
+				Loc::Reg(r) => (r, vec![]),
+				Loc::Mem(addr) => {
+					let r = state.get_available_reg();
+					(r, vec![
+						Op::Exchange()
+					])
+				}
+			}
+		}
+	}
 	
 	// TODO deal with indices
 	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
