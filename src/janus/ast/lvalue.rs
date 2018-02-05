@@ -1,6 +1,6 @@
 //use std::ops::Deref;
 use super::*;
-use super::super::interpret::{self, SymTab};
+use super::super::interpret::{Value, SymTab};
 
 #[derive(Debug)]
 pub struct LValue {
@@ -20,7 +20,7 @@ impl LValue {
 	)));
 	
 	// TODO deal with indices
-	pub fn eval(&self, symtab: &SymTab) -> interpret::Result {
+	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
 		Ok(symtab[&self.name].clone())
 	}
 	/*

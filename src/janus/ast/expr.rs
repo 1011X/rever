@@ -1,5 +1,5 @@
 use super::*;
-use super::super::interpret::{self, Value, SymTab};
+use super::super::interpret::{Value, SymTab};
 
 #[derive(Debug)]
 pub enum Expr {
@@ -158,7 +158,7 @@ impl Expr {
 		}
 	}
 	
-	pub fn eval(&self, symtab: &SymTab) -> interpret::Result {
+	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
 		match *self {
 			Expr::Factor(ref fac) => {
 				fac.eval(symtab)

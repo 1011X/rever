@@ -3,8 +3,6 @@ extern crate regex;
 
 extern crate rel_isa as rel;
 
-use std::collections::HashMap;
-
 mod janus;
 mod rever;
 
@@ -38,7 +36,6 @@ fn main() {
 	}"#);
 	
 	println!("{:#?}", ast);
-	
 	//ast.verify();
 	//ast.compile();
 	

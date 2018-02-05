@@ -123,7 +123,7 @@ impl Pred {
 			Pred::And(ref preds) => {
 				for pred in preds {
 					if !pred.eval(symtab)? {
-						return false;
+						return Ok(false);
 					}
 				}
 				true
@@ -131,7 +131,7 @@ impl Pred {
 			Pred::Or(ref preds) => {
 				for pred in preds {
 					if pred.eval(symtab)? {
-						return true;
+						return Ok(true);
 					}
 				}
 				false
