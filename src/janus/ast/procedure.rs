@@ -23,4 +23,8 @@ impl Procedure {
 	pub fn compile(&self) -> Vec<rel::Op> {
 		unimplemented!();
 	}
+	
+	pub fn verify(&self) {
+		unimplemented!();
+	}
 }
