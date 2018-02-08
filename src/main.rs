@@ -4,10 +4,9 @@ extern crate regex;
 extern crate rel_isa as rel;
 
 mod janus;
-//mod rever;
+mod rever;
 
 fn main() {
-	/*
 	let ast = rever::ast::Program::parse(br#"
 	fn f(a: u16, b: bool, mut c: fn(), d: ^type A) {
 		let mut a =0;
@@ -39,13 +38,18 @@ fn main() {
 	println!("{:#?}", ast);
 	//ast.verify();
 	//ast.compile();
-	*/
-	let res = janus::ast::Procedure::parse(br#"
-	procedure main(int a, int b)
-		a += b;
-	"#);
 	
-	let res = janus::ast::Procedure::compile(&res.unwrap().1);
+	let (rem, res) = janus::ast::Procedure::parse(br#"
+	procedure main(int a, int b)
+		a += b
+		b -= a
+		a ^= b
+		b <=> a
+	"#).unwrap();
+	
+	assert!(rem.is_empty());
+	
+	let res = janus::ast::Procedure::compile(&res);
 	
 	println!("{:#?}", res);
 }

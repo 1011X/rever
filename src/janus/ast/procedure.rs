@@ -26,7 +26,10 @@ impl Procedure {
 		let mut code = Vec::new();
 		
 		for (i, param) in self.args.iter().enumerate() {
-			state.insert(&param.name, Loc::Mem(i + 1 as isize));
+			state.hashmap.insert(
+				param.name.clone(),
+				Loc::Mem(-((i + 1) as isize))
+			);
 		}
 		
 		for stmt in &self.body {

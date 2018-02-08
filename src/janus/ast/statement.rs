@@ -160,6 +160,28 @@ impl Statement {
 				
 				code.push(Op::Add(reg_lval, reg_expr));
 			}
+			
+			Sub(ref lval, ref expr) => {
+				println!("AT SUB");
+				let reg_lval = lval.compile(state, code);
+				let reg_expr = expr.compile(state, code);
+				
+				code.push(Op::Sub(reg_lval, reg_expr));
+			}
+			
+			Xor(ref lval, ref expr) => {
+				let reg_lval = lval.compile(state, code);
+				let reg_expr = expr.compile(state, code);
+				
+				code.push(Op::CNot(reg_lval, reg_expr));
+			}
+			
+			Swap(ref left, ref right) => {
+				let reg_left = left.compile(state, code);
+				let reg_right = right.compile(state, code);
+				
+				code.push(Op::Swap(reg_left, reg_right));
+			}
 			_ => unimplemented!()
 		}
 	}
