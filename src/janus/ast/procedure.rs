@@ -35,4 +35,8 @@ impl Procedure {
 		
 		code
 	}
+	
+	pub fn verify(&self) {
+		unimplemented!();
+	}
 }
