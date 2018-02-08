@@ -55,13 +55,13 @@ impl LValue {
 					0 => {}
 					1...255 => code.extend(vec![
 						Op::Immediate(Reg::R1, offset as u8),
-						Op::CAdd(Reg::R0, Reg::R1)
+						Op::Add(Reg::R0, Reg::R1)
 					]),
 					_ => code.extend(vec![
 						Op::Immediate(Reg::R1, (offset >> 8) as u8),
-						Op::RotLeftImm(Reg::R1, 8),
+						Op::LRotateImm(Reg::R1, 8),
 						Op::Immediate(Reg::R1, offset as u8),
-						Op::CAdd(Reg::R0, Reg::R1)
+						Op::Add(Reg::R0, Reg::R1)
 					])
 				}
 				
@@ -74,13 +74,13 @@ impl LValue {
 				match offset {
 					0 => {}
 					1...255 => code.extend(vec![
-						Op::CSub(Reg::R0, Reg::R1),
+						Op::Sub(Reg::R0, Reg::R1),
 						Op::Immediate(Reg::R1, offset as u8)
 					]),
 					_ => code.extend(vec![
-						Op::CSub(Reg::R0, Reg::R1),
+						Op::Sub(Reg::R0, Reg::R1),
 						Op::Immediate(Reg::R1, offset as u8),
-						Op::RotRightImm(Reg::R1, 8),
+						Op::RRotateImm(Reg::R1, 8),
 						Op::Immediate(Reg::R1, (offset >> 8) as u8)
 					])
 				}

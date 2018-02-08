@@ -1,5 +1,6 @@
 use super::*;
 use super::super::interpret::{Value, SymTab};
+use super::super::compile::{State, Loc};
 use rel;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -19,21 +20,18 @@ impl LValue {
 		>> (LValue {name, indices})
 	)));
 	
-	pub fn compile(&self, state: &mut State) -> (rel::Reg, Vec<rel::Op>) {
-		use rel::Op;
+	pub fn compile(&self, state: &mut State, code: &mut Vec<rel::Op>) -> rel::Reg {
+		use rel::{Op, Reg};
 		
 		if self.indices.is_empty() {
-			let loc = state.get(self.name);
-			match loc {
-				Loc::Reg(r) => (r, vec![]),
-				Loc::Mem(addr) => {
-					let r = state.get_available_reg();
-					(r, vec![
-						Op::Exchange()
-					])
-				}
-			}
+			state.get(&self.name, code)
+		} else {
+			unimplemented!();
 		}
+	}
+	
+	pub fn uncompile(&self, state: &mut State, code: &mut Vec<rel::Op>) {
+		
 	}
 	
 	// TODO deal with indices

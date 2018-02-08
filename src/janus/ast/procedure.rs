@@ -1,4 +1,5 @@
 use super::*;
+use super::super::compile::{State, Loc};
 use rel;
 
 #[derive(Debug)]
@@ -21,6 +22,17 @@ impl Procedure {
 	)));
 	
 	pub fn compile(&self) -> Vec<rel::Op> {
-		unimplemented!();
+		let mut state = State::new();
+		let mut code = Vec::new();
+		
+		for (i, param) in self.args.iter().enumerate() {
+			state.insert(&param.name, Loc::Mem(i + 1 as isize));
+		}
+		
+		for stmt in &self.body {
+			stmt.compile(&mut state, &mut code);
+		}
+		
+		code
 	}
 }

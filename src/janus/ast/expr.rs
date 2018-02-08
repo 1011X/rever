@@ -1,5 +1,7 @@
 use super::*;
 use super::super::interpret::{Value, SymTab};
+use super::super::compile::State;
+use rel;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Expr {
@@ -114,6 +116,14 @@ impl Expr {
 			b"^" => Expr::BitXor(Box::new(acc), Box::new(e)),
 			_ => unreachable!()
 		})
+	}
+	
+	pub fn compile(&self, state: &mut State, code: &mut Vec<rel::Op>) -> rel::Reg {
+		use self::Expr::*;
+		match *self {
+			Factor(ref f) => f.compile(state, code),
+			_ => unimplemented!()
+		}
 	}
 	
 	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
