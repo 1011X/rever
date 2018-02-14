@@ -1,7 +1,7 @@
 #[macro_use] extern crate nom;
 extern crate regex;
 
-extern crate rel_isa as rel;
+extern crate rel;
 
 mod janus;
 mod rever;

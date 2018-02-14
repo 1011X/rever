@@ -30,23 +30,15 @@ impl State {
 				let read = self.get_reg(code);
 				let res = self.get_reg(code);
 				
-				code.push(Op::CNot(read, Reg::SP));
+				code.push(Op::Xor(read, Reg::SP));
 				
 				match offset {
 					0 => {}
 					1...0xFF => {
-						let tmp = self.get_reg(code);
-						code.push(Op::Immediate(tmp, offset as u8));
-						code.push(Op::Add(read, tmp));
-						code.push(Op::Immediate(tmp, offset as u8));
-						self.ret_reg(code, tmp);
+						code.push(Op::AddImm(read, offset as u8));
 					}
 					-0x100...-1 => {
-						let tmp = self.get_reg(code);
-						code.push(Op::Immediate(tmp, -offset as u8));
-						code.push(Op::Sub(read, tmp));
-						code.push(Op::Immediate(tmp, -offset as u8));
-						self.ret_reg(code, tmp);
+						code.push(Op::SubImm(read, -offset as u8));
 					}
 					_ => unimplemented!()
 				}
@@ -56,23 +48,15 @@ impl State {
 				match offset {
 					0 => {}
 					1...0xFF => {
-						let tmp = self.get_reg(code);
-						code.push(Op::Immediate(tmp, offset as u8));
-						code.push(Op::Sub(read, tmp));
-						code.push(Op::Immediate(tmp, offset as u8));
-						self.ret_reg(code, tmp);
+						code.push(Op::SubImm(read, offset as u8));
 					}
 					-0x100...-1 => {
-						let tmp = self.get_reg(code);
-						code.push(Op::Immediate(tmp, -offset as u8));
-						code.push(Op::Add(read, tmp));
-						code.push(Op::Immediate(tmp, -offset as u8));
-						self.ret_reg(code, tmp);
+						code.push(Op::AddImm(read, -offset as u8));
 					}
 					_ => unimplemented!()
 				}
 				
-				code.push(Op::CNot(read, Reg::SP));
+				code.push(Op::Xor(read, Reg::SP));
 				
 				// don't need address (for now); it's in a register
 				self.ret_reg(code, read);

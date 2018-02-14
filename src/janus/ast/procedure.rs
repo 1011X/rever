@@ -35,7 +35,16 @@ impl Procedure {
 		for stmt in &self.body {
 			stmt.compile(&mut state, &mut code);
 		}
-		
+		/*
+		for (i, arg) in self.args.iter().enumerate() {
+			if let Loc::Reg(r) = state.hashmap.get(&arg.name).unwrap() {
+				let tmp = state.get_reg(code);
+				code.push(Op::CNot(
+				code.push(Op::Immediate(tmp, -(i + 1)));
+				code.push(Op::
+			}
+		}
+		*/
 		code
 	}
 	

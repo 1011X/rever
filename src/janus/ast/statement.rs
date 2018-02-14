@@ -162,7 +162,6 @@ impl Statement {
 			}
 			
 			Sub(ref lval, ref expr) => {
-				println!("AT SUB");
 				let reg_lval = lval.compile(state, code);
 				let reg_expr = expr.compile(state, code);
 				
@@ -173,7 +172,7 @@ impl Statement {
 				let reg_lval = lval.compile(state, code);
 				let reg_expr = expr.compile(state, code);
 				
-				code.push(Op::CNot(reg_lval, reg_expr));
+				code.push(Op::Xor(reg_lval, reg_expr));
 			}
 			
 			Swap(ref left, ref right) => {

@@ -45,7 +45,7 @@ impl LValue {
 				
 				// copy sp to r0
 				*loc = Location::Reg(Reg::R0);
-				code.push(Op::CNot(Reg::R0, Reg::SP));
+				code.push(Op::Xor(Reg::R0, Reg::SP));
 				
 				// store offset in immediate instruction(s)
 				// if it's small enough, we only have to use 1 instruction.
@@ -54,13 +54,12 @@ impl LValue {
 				match offset {
 					0 => {}
 					1...255 => code.extend(vec![
-						Op::Immediate(Reg::R1, offset as u8),
-						Op::Add(Reg::R0, Reg::R1)
+						Op::AddImm(Reg::R0, offset as u8),
 					]),
 					_ => code.extend(vec![
-						Op::Immediate(Reg::R1, (offset >> 8) as u8),
+						Op::XorImm(Reg::R1, (offset >> 8) as u8),
 						Op::LRotateImm(Reg::R1, 8),
-						Op::Immediate(Reg::R1, offset as u8),
+						Op::XorImm(Reg::R1, offset as u8),
 						Op::Add(Reg::R0, Reg::R1)
 					])
 				}
@@ -74,18 +73,17 @@ impl LValue {
 				match offset {
 					0 => {}
 					1...255 => code.extend(vec![
-						Op::Sub(Reg::R0, Reg::R1),
-						Op::Immediate(Reg::R1, offset as u8)
+						Op::SubImm(Reg::R0, offset as u8)
 					]),
 					_ => code.extend(vec![
 						Op::Sub(Reg::R0, Reg::R1),
-						Op::Immediate(Reg::R1, offset as u8),
+						Op::XorImm(Reg::R1, offset as u8),
 						Op::RRotateImm(Reg::R1, 8),
-						Op::Immediate(Reg::R1, (offset >> 8) as u8)
+						Op::XorImm(Reg::R1, (offset >> 8) as u8)
 					])
 				}
 				
-				code.push(Op::CNot(Reg::R0, Reg::SP));
+				code.push(Op::Xor(Reg::R0, Reg::SP));
 				*loc = Location::Memory(offset);
 				
 				code

@@ -265,7 +265,7 @@ impl Statement {
 				lval.compile(st, |r| vec![Op::Not(r)])
 			}
 			Statement::Neg(ref lval) => {
-				lval.compile(st, |r| vec![Op::Not(r), Op::Increment(r)])
+				lval.compile(st, |r| vec![Op::Not(r), Op::AddImm(r, 1)])
 			}
 			/*
 			Statement::Call(..) => {
