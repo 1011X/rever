@@ -52,4 +52,5 @@ fn main() {
 	let res = janus::ast::Procedure::compile(&res);
 	
 	println!("{:#?}", res);
+	println!("{:#?}", janus::compile::optimize(res));
 }

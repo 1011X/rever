@@ -87,3 +87,43 @@ impl State {
 		self.regfile[reg as usize] = false;
 	}
 }
+
+pub fn optimize(mut v: Vec<rel::Op>) -> Vec<rel::Op> {
+	use rel::Op;
+	let mut prev_len = v.len() + 1;
+	
+	// stop when optimizations no longer change anything
+	while prev_len != v.len() {
+		let mut vc = v.clone();
+		prev_len = v.len();
+		for (i, window) in v.windows(2).enumerate() {
+			if window.len() < 2 { continue; }
+			
+			// TODO: use drain() somehow?
+			// same instruction immediately undone by itself
+			/*
+			if window[0] == window[1] && window[0].is_involutary() {
+				
+			}
+			*/
+			match (&window[0], &window[1]) {
+				(&Op::Xor(lra, lrb), &Op::Xor(rra, rrb))
+				if lra == rra && lrb == rrb
+				=> {
+					vc.drain(i..i + 2);
+				}
+				
+				(&Op::AddImm(lr, a), &Op::SubImm(rr, b))
+				if lr == rr
+				=> {
+					vc.drain(i..i + 2);
+					// use `splice()`?
+				}
+				
+				_ => {}
+			}
+		}
+		v = vc;
+	}
+	v
+}
