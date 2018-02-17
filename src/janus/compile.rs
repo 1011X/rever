@@ -92,34 +92,64 @@ pub fn optimize(mut v: Vec<rel::Op>) -> Vec<rel::Op> {
 	use rel::Op;
 	let mut prev_len = v.len() + 1;
 	
-	// stop when optimizations no longer change anything
-	while prev_len != v.len() {
+	// stop when optimizations no longer do anything
+	while prev_len > v.len() {
 		let mut vc = v.clone();
 		prev_len = v.len();
 		for (i, window) in v.windows(2).enumerate() {
+			// we're at the end of code
 			if window.len() < 2 { continue; }
 			
-			// TODO: use drain() somehow?
-			// same instruction immediately undone by itself
-			/*
-			if window[0] == window[1] && window[0].is_involutary() {
-				
-			}
-			*/
+			// have to break on every optimization because using drain() more
+			// than once in the same vector means the index used for the range
+			// may not be within the vector anymore
 			match (&window[0], &window[1]) {
+				// xor r, v;  xor r, v;
 				(&Op::Xor(lra, lrb), &Op::Xor(rra, rrb))
+				| (&Op::Add(lra, lrb), &Op::Sub(rra, rrb))
+				| (&Op::Sub(lra, lrb), &Op::Add(rra, rrb))
 				if lra == rra && lrb == rrb
 				=> {
 					vc.drain(i..i + 2);
+					break;
 				}
 				
+				// addi r, a;  subi r, b;
 				(&Op::AddImm(lr, a), &Op::SubImm(rr, b))
+				| (&Op::SubImm(lr, b), &Op::AddImm(rr, a))
 				if lr == rr
 				=> {
-					vc.drain(i..i + 2);
-					// use `splice()`?
+					use std::cmp::Ordering;
+					vc.splice(i..i + 2, match a.cmp(&b) {
+						Ordering::Equal
+							=> None,
+						Ordering::Greater
+							=> Some(Op::AddImm(lr, a - b)),
+						Ordering::Less
+							=> Some(Op::SubImm(lr, b - a)),
+					});
+					break;
+				}
+				// enable only when actually encountered in generated code
+				/*
+				(&Op::XorImm(lr, a), &Op::XorImm(rr, b))
+				if lr == rr
+				=> {
+					vc.splice(i..i + 2, if a == b {
+						None
+					} else {
+						Some(Op::XorImm(lr, a ^ b))
+					});
+					break;
 				}
 				
+				(&Op::Swap(lra, lrb), &Op::Swap(rra, rrb))
+				if lra == rra && lrb == rrb || lra == rrb && lrb == rra
+				=> {
+					vc.drain(i..i + 2);
+					break;
+				}
+				*/
 				_ => {}
 			}
 		}

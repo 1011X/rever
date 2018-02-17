@@ -52,7 +52,7 @@ version = "0.0.1"
 dependencies = [
  "nom 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "rel 0.3.1 (git+https://github.com/1011X/REL-16.git)",
+ "rel 0.4.0 (git+https://github.com/1011X/REL-16.git?branch=dev)",
 ]
 
 [[package]]
@@ -74,8 +74,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "rel"
-version = "0.3.1"
-source = "git+https://github.com/1011X/REL-16.git#9167fb585d4a0dff6b7281319f2907d65effbd1c"
+version = "0.4.0"
+source = "git+https://github.com/1011X/REL-16.git?branch=dev#f4313b4034a6b2fcec1db40c17080193ead0752b"
 dependencies = [
  "getopts 0.2.17 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
@@ -117,7 +117,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum nom 3.2.1 (registry+https://github.com/rust-lang/crates.io-index)" = "05aec50c70fd288702bcd93284a8444607f3292dbdf2a30de5ea5dcdbe72287b"
 "checksum regex 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "5be5347bde0c48cfd8c3fdc0766cdfe9d8a755ef84d620d6794c778c91de8b2b"
 "checksum regex-syntax 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "8e931c58b93d86f080c734bfd2bce7dd0079ae2331235818133c8be7f422e20e"
-"checksum rel 0.3.1 (git+https://github.com/1011X/REL-16.git)" = "<none>"
+"checksum rel 0.4.0 (git+https://github.com/1011X/REL-16.git?branch=dev)" = "<none>"
 "checksum thread_local 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "279ef31c19ededf577bfd12dfae728040a21f635b06a24cd670ff510edd38963"
 "checksum unreachable 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "382810877fe448991dfc7f0dd6e3ae5d58088fd0ea5e35189655f84e6814fa56"
 "checksum utf8-ranges 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "662fab6525a98beff2921d7f61a39e7d59e0b425ebc7d0d9e66d316e55124122"

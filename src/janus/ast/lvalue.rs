@@ -1,6 +1,6 @@
 use super::*;
 use super::super::interpret::{Value, SymTab};
-use super::super::compile::{State, Loc};
+use super::super::compile::State;
 use rel;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -21,17 +21,11 @@ impl LValue {
 	)));
 	
 	pub fn compile(&self, state: &mut State, code: &mut Vec<rel::Op>) -> rel::Reg {
-		use rel::{Op, Reg};
-		
 		if self.indices.is_empty() {
 			state.get(&self.name, code)
 		} else {
 			unimplemented!();
 		}
-	}
-	
-	pub fn uncompile(&self, state: &mut State, code: &mut Vec<rel::Op>) {
-		
 	}
 	
 	// TODO deal with indices

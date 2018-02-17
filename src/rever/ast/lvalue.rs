@@ -58,7 +58,7 @@ impl LValue {
 					]),
 					_ => code.extend(vec![
 						Op::XorImm(Reg::R1, (offset >> 8) as u8),
-						Op::LRotateImm(Reg::R1, 8),
+						Op::LRotImm(Reg::R1, 8),
 						Op::XorImm(Reg::R1, offset as u8),
 						Op::Add(Reg::R0, Reg::R1)
 					])
@@ -78,7 +78,7 @@ impl LValue {
 					_ => code.extend(vec![
 						Op::Sub(Reg::R0, Reg::R1),
 						Op::XorImm(Reg::R1, offset as u8),
-						Op::RRotateImm(Reg::R1, 8),
+						Op::RRotImm(Reg::R1, 8),
 						Op::XorImm(Reg::R1, (offset >> 8) as u8)
 					])
 				}

@@ -21,15 +21,15 @@ impl Type {
 		| value!(Type::Usize, tag!("usize"))
 		| value!(Type::Isize, tag!("isize"))
 		| value!(Type::Char, tag!("char"))
-		| map!(preceded!(tag!("^"), Type::parse), |t| Type::Pointer(Box::new(t)))
-		| ws!(do_parse!(
+		| map!(ws!(preceded!(tag!("^"), Type::parse)), |t| Type::Pointer(Box::new(t)))
+		| do_parse!(
 			tag!("[") >>
 			t: call!(Type::parse) >>
 			tag!(";") >>
 			n: num >>
 			tag!("]")
 			>> (Type::Array(Box::new(t), n as usize))
-		))
+		)
 		| do_parse!(
 			tag!("fn") >>
 			tag!("(") >>

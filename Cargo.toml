@@ -5,7 +5,10 @@ authors = ["1011X <1011XXXXX@gmail.com>"]
 
 [dependencies]
 regex = "0.2.2"
-rel = { git = "https://github.com/1011X/REL-16.git" }
+
+[dependencies.rel]
+git = "https://github.com/1011X/REL-16.git"
+branch = "dev"
 
 [dependencies.nom]
 version = "3.2.1"
