@@ -150,6 +150,8 @@ impl Statement {
 	pub fn compile(&self, state: &mut State, code: &mut Vec<rel::Op>) {
 		use rel::Op;
 		use self::Statement::*;
+		use super::super::compile::Loc;
+		
 		match *self {
 			Skip | Print(..) | Printf(..) | Show(..) | Error(..)
 				=> {},
@@ -180,6 +182,35 @@ impl Statement {
 				let reg_right = right.compile(state, code);
 				
 				code.push(Op::Swap(reg_left, reg_right));
+			}
+			
+			Local(ref decl, ref expr) => {
+				let reg_expr = expr.compile(state, code);
+				
+				match decl.typ {
+					Type::Int => {
+						state.hashmap.insert(decl.name.clone(), Loc::Reg(reg_expr));
+					}
+					_ => unimplemented!()
+				}
+				
+				// undo expr calc
+				//state.ret_reg(reg_expr);
+			}
+			
+			Delocal(ref decl, ref expr) => {
+				let reg_expr = expr.compile(state, code);
+				let reg_var = state.get(&decl.name, code);
+				
+				match decl.typ {
+					Type::Int => {
+						code.push(Op::Xor(reg_var, reg_expr));
+					}
+					_ => unimplemented!()
+				}
+				
+				// undo expr calc
+				//state.ret_reg(reg_expr);
 			}
 			_ => unimplemented!()
 		}

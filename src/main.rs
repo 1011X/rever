@@ -23,10 +23,12 @@ fn main() {
 	
 	let (rem, res) = janus::ast::Procedure::parse(br#"
 	procedure main(int a, int b)
+		local int x = 1
 		a += b
-		b -= a
+		b -= x
 		a ^= b
 		b <=> a
+		delocal int x = 1
 	"#).unwrap();
 	
 	assert!(rem.is_empty());

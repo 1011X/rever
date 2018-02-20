@@ -72,7 +72,7 @@ impl State {
 	}
 	
 	/// Gets an available register
-	fn get_reg(&mut self, _: &mut Vec<rel::Op>) -> rel::Reg {
+	pub fn get_reg(&mut self, _: &mut Vec<rel::Op>) -> rel::Reg {
 		let pos = self.regfile.iter()
 			.position(|avail| !avail)
 			.expect(&format!(
