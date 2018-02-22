@@ -1,5 +1,5 @@
 use super::*;
-use super::super::interpret::SymTab;
+//use super::super::interpret::SymTab;
 
 #[derive(Debug)]
 pub enum Pred {
@@ -112,6 +112,7 @@ impl Pred {
 		call!(Pred::leaf)
 	)));
 	
+	/*
 	pub fn eval(&self, symtab: &SymTab) -> Result<bool, String> {
 		Ok(match *self {
 			Pred::Bool(b) => b,
@@ -151,4 +152,5 @@ impl Pred {
 				=> e0.eval(symtab)? <= e1.eval(symtab)?,
 		})
 	}
+	*/
 }

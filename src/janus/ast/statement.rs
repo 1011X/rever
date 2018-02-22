@@ -9,8 +9,7 @@ type Block = Vec<Statement>;
 #[derive(Debug)]
 pub enum Statement {
 	Skip,
-	Local(Decl, Expr),
-	Delocal(Decl, Expr),
+	Decl(Decl, Expr, Expr, Vec<Statement>),
 	Add(LValue, Expr),
 	Sub(LValue, Expr),
 	Xor(LValue, Expr),
@@ -33,14 +32,20 @@ impl Statement {
 	named!(pub parse<Self>, sp!(alt_complete!(
 		value!(Statement::Skip, tag!("skip"))
 		| do_parse!(
-			op: alt!(tag!("local") | tag!("delocal")) >>
-			decl: call!(Decl::parse) >>
+			tag!("local") >>
+			decl_i: call!(Decl::parse) >>
 			tag!("=") >>
-			val: call!(Expr::parse)
-			>> (match op {
-				b"local" => Statement::Local(decl, val),
-				b"delocal" => Statement::Delocal(decl, val),
-				_ => unreachable!()
+			init: call!(Expr::parse) >>
+			code: many1!(Statement::parse) >>
+			tag!("delocal") >>
+			decl_d: call!(Decl::parse) >>
+			tag!("=") >>
+			deinit: call!(Expr::parse)
+			
+			>> (if decl_i == decl_d {
+				Statement::Decl(decl_i, init, deinit, code)
+			} else {
+				panic!("declarations are different");
 			})
 		)
 		| do_parse!(
@@ -183,35 +188,38 @@ impl Statement {
 				
 				code.push(Op::Swap(reg_left, reg_right));
 			}
-			
+			/*
 			Local(ref decl, ref expr) => {
-				let reg_expr = expr.compile(state, code);
+				let reg = expr.compile(state, code);
 				
 				match decl.typ {
 					Type::Int => {
-						state.hashmap.insert(decl.name.clone(), Loc::Reg(reg_expr));
+						state.hashmap.insert(decl.name.clone(), Loc::Reg(reg));
 					}
 					_ => unimplemented!()
 				}
-				
-				// undo expr calc
-				//state.ret_reg(reg_expr);
 			}
 			
 			Delocal(ref decl, ref expr) => {
-				let reg_expr = expr.compile(state, code);
-				let reg_var = state.get(&decl.name, code);
+				let mut tcode = vec![];
+				let e = expr.compile(state, &mut tcode);
+				tcode.reverse();
+				
+				for op in &mut tcode {
+					*op = op.clone().invert();
+				}
+				
+				code.append(&mut tcode);
 				
 				match decl.typ {
 					Type::Int => {
-						code.push(Op::Xor(reg_var, reg_expr));
+						state.hashmap.remove(&decl.name);
 					}
 					_ => unimplemented!()
 				}
-				
-				// undo expr calc
-				//state.ret_reg(reg_expr);
 			}
+			*/
+			
 			_ => unimplemented!()
 		}
 	}

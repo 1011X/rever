@@ -1,12 +1,12 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Type {
 	Int, Stack,
 	IntArray(Vec<Option<Expr>>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Decl {
 	pub name: String,
 	pub typ: Type,

@@ -22,7 +22,7 @@ impl PartialOrd for Value {
 		}
 	}
 }
-
+/*
 pub fn run(prog: Program) -> Result<(), String> {
 	let mut globs = HashMap::new();
 	let mut procs = HashMap::new();
@@ -91,7 +91,7 @@ pub fn run(prog: Program) -> Result<(), String> {
 	//procs["main"].execute();
 	Ok(())
 }
-/*
+
 fn reduce(mut p: Procedure) -> Procedure {
 	for stmt in &mut p.body {
 		

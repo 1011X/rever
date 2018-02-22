@@ -37,7 +37,7 @@ impl State {
 					1...0xFF => {
 						code.push(Op::AddImm(read, offset as u8));
 					}
-					-0x100...-1 => {
+					-0xFF...-1 => {
 						code.push(Op::SubImm(read, -offset as u8));
 					}
 					_ => unimplemented!()
@@ -50,7 +50,7 @@ impl State {
 					1...0xFF => {
 						code.push(Op::SubImm(read, offset as u8));
 					}
-					-0x100...-1 => {
+					-0xFF...-1 => {
 						code.push(Op::AddImm(read, -offset as u8));
 					}
 					_ => unimplemented!()
@@ -157,3 +157,16 @@ pub fn optimize(mut v: Vec<rel::Op>) -> Vec<rel::Op> {
 	}
 	v
 }
+
+/*
+trait Compile {
+	type Isa;
+	type Reg;
+	
+	fn compile(&self, &mut State, &mut Vec<Self::Isa>) -> Option<Self::Reg>;
+	
+	fn uncompile(&self, reg: Self::Reg, state: &mut State, code: &mut Vec<Self::Isa>) {
+		
+	}
+}
+*/

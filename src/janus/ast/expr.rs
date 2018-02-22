@@ -1,6 +1,6 @@
 use super::*;
-use super::super::interpret::{Value, SymTab};
-use super::super::compile::State;
+//use super::super::interpret::{Value, SymTab};
+use super::super::compile::{Loc, State};
 use rel;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -125,7 +125,7 @@ impl Expr {
 			_ => unimplemented!()
 		}
 	}
-	
+	/*
 	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
 		match *self {
 			Expr::Factor(ref fac) => {
@@ -245,6 +245,7 @@ impl Expr {
 			}
 		}
 	}
+	*/
 }
 
 

@@ -1,6 +1,7 @@
 use super::*;
-use super::super::interpret::Value;
-//use rel;
+//use super::super::interpret::Value;
+use super::super::compile::State;
+use rel;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Literal {
@@ -21,16 +22,23 @@ impl Literal {
 		))
 	));
 	
-	/*
-	// TODO needs way to choose register
-	fn compile(&self) -> Vec<rel::Op> {
+	pub fn compile(&self, state: &mut State, code: &mut Vec<rel::Op>) -> rel::Reg {
+		use rel::Op;
+		let r = state.get_reg(code);
 		match *self {
-			Literal::Nil => vec![],
-			Literal::Int(i) => vec![
-				Op::Immediate(_, i >> 8),
-				Op::LRotateImm(_, 8),
-				Op::Immediate(_, i & 0xFF)
-			],
+			Literal::Nil => {}
+			Literal::Int(i) => match i {
+				0       => {}
+				1...255 => code.push(Op::XorImm(r, i as u8)),
+				i       => code.extend(vec![
+					Op::XorImm(r, (i >> 8) as u8),
+					Op::LRotImm(r, 8),
+					Op::XorImm(r, i as u8)
+				])
+			},
+			
+			_ => unimplemented!()
+			/*
 			Literal::IntArray(ref mut v) => {
 				let mut acc = vec![];
 				
@@ -41,10 +49,11 @@ impl Literal {
 				
 				acc
 			}
+			*/
 		}
+		r
 	}
-	*/
-	
+	/*
 	pub fn to_value(&self) -> Value {
 		match *self {
 			Literal::Nil => Value::Stack(vec![]),
@@ -57,6 +66,7 @@ impl Literal {
 			}
 		}
 	}
+	*/
 }
 
 #[cfg(test)]

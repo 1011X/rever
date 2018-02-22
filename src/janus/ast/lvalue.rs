@@ -1,5 +1,5 @@
 use super::*;
-use super::super::interpret::{Value, SymTab};
+//use super::super::interpret::{Value, SymTab};
 use super::super::compile::State;
 use rel;
 
@@ -27,17 +27,18 @@ impl LValue {
 			unimplemented!();
 		}
 	}
-	
+	/*
 	// TODO deal with indices
 	pub fn eval(&self, symtab: &SymTab) -> Result<Value, String> {
 		Ok(symtab[&self.name].clone())
 	}
+	*/
 }
 
 #[cfg(test)]
 mod tests {
-	use std::collections::HashMap;
-	use super::super::super::interpret::Value;
+	//use std::collections::HashMap;
+	//use super::super::super::interpret::Value;
 	use super::*;
 	
 	#[test]
@@ -71,6 +72,7 @@ mod tests {
 		);
 	}
 	
+	/*
 	#[test]
 	fn eval() {
 		let mut symtab = HashMap::new();
@@ -94,4 +96,5 @@ mod tests {
 			"stack variable"
 		);
 	}
+	*/
 }
