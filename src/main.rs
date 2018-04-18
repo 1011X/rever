@@ -5,22 +5,23 @@ extern crate regex;
 
 extern crate rel;
 
-mod janus;
+//mod janus;
 mod rever;
 
 fn main() {
 	let ast = rever::ast::Program::parse(br#"
-	fn f(a: u16, b: bool, d: ^type A) {
+	fn f(a: u16, b: bool, d: ^typeA) {
+		a += 1;
 	}
 	
 	fn main() {
 		do show("finally");
 	}"#);
 	
-	//println!("{:#?}", ast);
+	println!("{:#?}", ast);
 	//ast.verify();
 	//ast.compile();
-	
+	/*
 	let (rem, res) = janus::ast::Procedure::parse(br#"
 	procedure main(int a, int b)
 		local int x = 1
@@ -37,4 +38,5 @@ fn main() {
 	
 	println!("{:#?}", res);
 	println!("{:#?}", janus::compile::optimize(res));
+	*/
 }

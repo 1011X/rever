@@ -29,8 +29,8 @@ pub enum Statement {
 	Swap(LValue, LValue),
 	CSwap(Factor, LValue, LValue),
 	
-	Call(LValue, Vec<Factor>),
-	Uncall(LValue, Vec<Factor>),
+	Do(LValue, Vec<Factor>),
+	Undo(LValue, Vec<Factor>),
 	
 	If(BinExpr, Vec<Statement>, Option<Vec<Statement>>, BinExpr),
 	
@@ -44,25 +44,19 @@ impl Statement {
 	named!(pub parse<Self>, ws!(alt_complete!(
 		map!(preceded!(tag!("!"), LValue::parse), Statement::Not)
 		| map!(preceded!(tag!("-"), LValue::parse), Statement::Neg)
-		| do_parse!( // do
-			tag!("do") >>
+		| do_parse!( // procedure call; do/undo
+			kw: alt!(tag!("do") | tag!("undo")) >>
 			name: call!(LValue::parse) >>
 			args: delimited!(
 				tag!("("),
 				separated_list!(tag!(","), Factor::parse),
 				tag!(")")
 			)
-			>> (Statement::Call(name, args))
-		)
-		| do_parse!( // undo
-			tag!("undo") >>
-			name: call!(LValue::parse) >>
-			args: delimited!(
-				tag!("("),
-				separated_list!(tag!(","), Factor::parse),
-				tag!(")")
-			)
-			>> (Statement::Uncall(name, args))
+			>> (match kw {
+				b"do" => Statement::Do(name, args),
+				b"undo" => Statement::Undo(name, args),
+				_ => unreachable!()
+			})
 		)
 		| do_parse!( // let var
 			tag!("let") >>
@@ -116,17 +110,15 @@ impl Statement {
 			right: call!(LValue::parse)
 			>> (Statement::CSwap(ctrl, left, right))
 		)
-		| do_parse!( // left rotate
+		| do_parse!( // rotation
 			l: call!(LValue::parse) >>
-			m: tag!("<<=") >>
+			op: alt!(tag!("<<=") | tag!(">>=")) >>
 			r: call!(Factor::parse)
-			>> (Statement::RotLeft(l, r))
-		)
-		| do_parse!( // right rotate
-			l: call!(LValue::parse) >>
-			m: tag!(">>=") >>
-			r: call!(Factor::parse)
-			>> (Statement::RotRight(l, r))
+			>> (match op {
+				b"<<=" => Statement::RotLeft(l, r),
+				b">>=" => Statement::RotRight(l, r),
+				_ => unreachable!()
+			})
 		)
 		| do_parse!( // xor
 			l: call!(LValue::parse) >>
@@ -137,47 +129,25 @@ impl Statement {
 			)
 			>> (Statement::Xor(l, r))
 		)
-		| do_parse!( // increment, add
+		| do_parse!( // increment/add, decrement/subtract
 			l: call!(LValue::parse) >>
-			tag!("+=") >>
+			op: alt!(tag!("+=") | tag!("-=")) >>
 			r: call!(Factor::parse) >>
 			m: many0!(alt_complete!(
 				map!(preceded!(tag!("+"), Factor::parse), FlatOp::Add)
 				| map!(preceded!(tag!("-"), Factor::parse), FlatOp::Sub)
 			))
 			
-			>> (Statement::Add(l, {
+			>> ({
 				let mut m = m;
 				m.insert(0, FlatOp::Add(r));
-				m
-			}))
+				match op {
+					b"+=" => Statement::Add(l, m),
+					b"-=" => Statement::Sub(l, m),
+					_ => unreachable!()
+				}
+			})
 		)
-		| do_parse!( // decrement, subtract
-			l: call!(LValue::parse) >>
-			tag!("-=") >>
-			r: call!(Factor::parse) >>
-			m: many0!(alt_complete!(
-				map!(preceded!(tag!("+"), Factor::parse), FlatOp::Add)
-				| map!(preceded!(tag!("-"), Factor::parse), FlatOp::Sub)
-			))
-			
-			>> (Statement::Sub(l, {
-				let mut m = m;
-				m.insert(0, FlatOp::Add(r));
-				m
-			}))
-		)
-		/*
-		| do_parse!(
-			tag!("unsafe") >>
-			b: block >>
-			
-			(Statement::Unsafe(b.into_iter()
-				.filter_map(|s| s)
-				.collect()
-			))
-		)
-		*/
 	)));
 	
 	pub fn verify(&mut self) {
