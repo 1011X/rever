@@ -1,5 +1,6 @@
 use super::*;
 use super::super::compile::*;
+use super::super::super::reverse::Reverse;
 use rel;
 
 #[derive(Debug)]
@@ -51,37 +52,28 @@ impl LValue {
 				// if it's small enough, we only have to use 1 instruction.
 				// perhaps some of this isn't necessary? maybe leave it for the
 				// optimizer later on
-				match offset {
-					0 => {}
-					1...255 => code.extend(vec![
+				let offset_code = match offset {
+					0 => Vec::new(),
+					1...255 => vec![
 						Op::AddImm(Reg::R0, offset as u8),
-					]),
-					_ => code.extend(vec![
+					],
+					_ => vec![
 						Op::XorImm(Reg::R1, (offset >> 8) as u8),
 						Op::LRotImm(Reg::R1, 8),
 						Op::XorImm(Reg::R1, offset as u8),
 						Op::Add(Reg::R0, Reg::R1)
-					])
-				}
+					]
+				};
+				
+				code.extend(offset_code.clone());
 				
 				code.push(Op::Exchange(Reg::R2, Reg::R0));
 				code.extend(f(Reg::R2));
 				// Assuming value is still at the same register...
 				code.push(Op::Exchange(Reg::R2, Reg::R0));
 				
-				// store offset in immediate instruction(s)
-				match offset {
-					0 => {}
-					1...255 => code.extend(vec![
-						Op::SubImm(Reg::R0, offset as u8)
-					]),
-					_ => code.extend(vec![
-						Op::Sub(Reg::R0, Reg::R1),
-						Op::XorImm(Reg::R1, offset as u8),
-						Op::RRotImm(Reg::R1, 8),
-						Op::XorImm(Reg::R1, (offset >> 8) as u8)
-					])
-				}
+				// undo offset calculation
+				code.extend(Reverse::reverse(offset_code));
 				
 				code.push(Op::Xor(Reg::R0, Reg::SP));
 				*loc = Location::Memory(offset);

@@ -2,9 +2,9 @@
 
 #[macro_use] extern crate nom;
 extern crate regex;
-
 extern crate rel;
 
+mod reverse;
 //mod janus;
 mod rever;
 
