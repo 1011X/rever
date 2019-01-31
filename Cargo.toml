@@ -4,11 +4,3 @@ version = "0.0.1"
 authors = ["1011X <1011XXXXX@gmail.com>"]
 
 [dependencies]
-regex = "0.2.2"
-
-[dependencies.rel]
-path = "../REL-16"
-
-[dependencies.nom]
-version = "3.2.1"
-features = ["regexp"]
