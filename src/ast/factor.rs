@@ -13,9 +13,4 @@ impl Factor {
 		map!(Literal::parse, Factor::Lit)
 		| map!(LValue::parse, Factor::LVal)
 	)));
-	
-	pub fn compile(&self, st: &mut SymbolTable) -> Vec<rel::Op> {
-		use rel::Op;
-		vec![Op::Nop]
-	}
 }

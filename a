@@ -1,0 +1,76 @@
+use std::mem;
+
+/*
+// lol, ffi with irreversible languages probably won't go over well..
+#[link(name = "libc")]
+extern "C" {
+	fn realloc(^[T], usize) -> ^[T];
+}
+
+// ..so I guess I'll need some glue to hold it together
+#[glue]
+proc realloc(mut ptr: ^[T], len: usize) {}
+*/
+
+^[u16]
+
+struct Vec<T> {
+	cap: usize,
+	len: usize,
+	ptr: ^T,
+}
+
+impl<T> Vec<T> {
+	proc check_size(mut self) {
+		if self.cap = self.len {
+			// in case cap is 0
+			self.cap += 1;
+			realloc(self.ptr, self.cap * sizeof T);
+		} assert self.cap = 2 * self.len + 1;
+	}
+	
+	pub proc push(mut self, mut value: T) {
+		// check if we need to reallocate
+		self.check_size()
+		// ensure value is clean
+		assert!(value = mem::zeroed(T))
+		
+		unsafe {
+			value <> self[self.len]
+			self.len += 1
+		}
+	}
+	
+	pub proc insert(mut self, idx: usize, mut place: T) {
+		/*
+		{
+			let mut i = idx;
+		
+			from i = idx {
+				place <> self[i];
+				i += 1;
+			}
+			until i = self.len;
+		
+			test mut i = self.len;
+		}
+		*/
+		
+		/*
+		for i in idx..self.len {
+			place <> self[i]
+		}
+		*/
+		
+		for t in self[idx..] {
+			place <> t;
+		}
+		
+		self.push(place);
+	}
+	
+	pub proc swap_remove(mut self, idx: usize, mut place: T) {
+		self[idx] <> self[self.len - 1]
+		rev self.push(place)
+	}
+}

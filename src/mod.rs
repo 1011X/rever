@@ -17,6 +17,7 @@ impl<T: Reverse + Clone> Reverse for Vec<T> {
 		for value in &mut self {
 			*value = value.clone().reverse();
 		}
+		(&mut *self).reverse();
 		self
 	}
 }

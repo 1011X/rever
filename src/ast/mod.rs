@@ -27,14 +27,14 @@ macro_rules! reb_parse {
 	($i:expr, $e:expr) => {
 		map_res!(
 			$i,
-			map_res!(re_bytes_find!($e), str::from_utf8),
+			map_res!(re_bytes_find!(concat!("^", $e)), str::from_utf8),
 			str::parse
 		);
 	}
 }
 
-named!(ident<String>, reb_parse!("^[A-Za-z_][A-Za-z0-9_]*"));
-named!(num<u16>, reb_parse!("^[-+]?[0-9]+"));
+named!(ident<String>, reb_parse!("[A-Za-z_][A-Za-z0-9_]*"));
+named!(num<u16>, reb_parse!("[-+]?[0-9]+"));
 
 named!(ch<char>, delimited!(
     tag!("'"),

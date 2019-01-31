@@ -12,11 +12,13 @@ impl Program {
 		>> (Program { items })
 	)));
 	
+	/*
 	pub fn verify(&mut self) {
 		for &mut Item::Fn(ref mut f) in &mut self.items {
 			f.verify();
 		}
 	}
+	*/
 	
 	pub fn compile(&self) -> Vec<rel::Op> {
 		self.items.iter()

@@ -1,0 +1,63 @@
+/* RIR: Reversible intermediate representation */
+
+/*
+TODO:
+* Union types
+* Unsafe blocks?
+* Generic types?
+* Macros?
+* Importing
+* Specifying type from union (use `as` syntax?)
+  
+* Keep syntax for type parameters?
+* Keep syntax for arrays?
+
+Ponder:
+* Should I worry about race conditions?
+* What about memory safety? If so, how much?
+* How would I represent a procedure that sets an uninitialized variable
+  (to use as a "return" variable)?
+
+Answers:
+* Figure out reference(?)/pointer syntax
+  * No references (use a struct)
+  * Use hat ('^') as pointer type
+* Type conversions
+  * Use Rust's "transmute" conversions, but with `as` keyword instead.
+*/
+
+use "stdlib.rir"
+
+enum Ord { Less, Equal, Greater }
+
+struct Slice<T> {
+	len: usize,
+	ptr: ^T,
+}
+
+proc f(mut sum: usize) {
+	let mut i: usize = 0;
+	let mut v: [usize; 10] = [0; 10];
+	
+	from i == 0 {
+		sum += i;
+		v[i] ^= i;
+		
+		// could do this,
+		if i == 3 {
+			println!("three!");
+		} else {
+			println!("not three!");
+		} test i == 3;
+		
+		// or this.
+		switch i {
+			3 -> println!("three!"),
+			_ -> println!("not three!")
+		}
+		
+		i += 1;
+	} until i == 10;
+	
+	i ^= 10;
+}

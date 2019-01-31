@@ -7,8 +7,7 @@ authors = ["1011X <1011XXXXX@gmail.com>"]
 regex = "0.2.2"
 
 [dependencies.rel]
-git = "https://github.com/1011X/REL-16.git"
-branch = "dev"
+path = "../REL-16"
 
 [dependencies.nom]
 version = "3.2.1"

@@ -1,0 +1,31 @@
+Restrictions:
+
+eval test < code
+	can't run the code without first knowing if the test passes!
+
+code < eval assert
+	the assertion makes sure certain conditions hold after the code was run.
+
+eval test < uneval test
+	the test must be evaluated before it can be unevaluated!
+
+eval assert < uneval assert
+	same for the assertion! (as above)
+
+uneval test < code
+	don't know if the code will change the value of any variables in the test
+	expression (that's why we have the assertion in the first place, so that if the
+	code changes any, the assertion ensures reversibility is still possible), so it
+	must be unevaluated before the code runs.
+
+
+Result:
+
+1. eval test
+2. uneval test
+3. code
+4. eval assert
+5. uneval assert
+
+
+surprising, i know.

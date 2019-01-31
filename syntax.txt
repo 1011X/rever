@@ -1,0 +1,66 @@
+<id> ::= /[A-Za-z_][A-Za-z0-9_]*/
+<num-type> ::= 'u16'
+	| 'i16'
+	| 'usize'
+	| 'isize'
+
+<num-lit> ::=
+	/[-+]?[1-9][0-9_]*/   ; base   10
+	| /0x[A-Fa-f0-9_]+/   ; base 0x10
+	| /0b[01_]+/          ; base 0b10
+
+<literal> ::= <num>
+	| '[' <value> ']'
+
+<typelist> ::= <type> | <type> ',' <typelist>
+<type> ::= <id> ['<' <typelist> '>']
+	| 'bool'
+	| 'u16'
+	| 'i16'
+	| 'usize'
+	| 'isize'
+	| '[' <type> [';' <num>] ']'
+	| '^' <type>
+	| <proc-type>
+
+<proc-type> ::= 'proc' '(' <proc-param-type-list> ')'
+<proc-param-type-list> ::= [<proc-param-type-list'>]
+<proc-param-type-list'> ::= ['mut'] <type> | ['mut'] <type> ',' <proc-param-type-list'>
+
+<param> ::= ['mut'] <id> ':' <type>
+
+<paramlist> ::= [<paramlist'>]
+<paramlist'> ::= <param>
+	| <param> ',' <paramlist'>
+
+<value> ::= <num> | <id>
+
+<arglist> ::= [<arglist'>]
+<arglist'> ::= <value>
+	| <value> ',' <arglist'>
+
+<const-bin-op> ::= '*' | '/' | '%' | <bin-op>
+<bin-op> ::= '+' | '-' | '^' | '&' | '|' | '<' | '>' | '<=' | '>=' | '=' | '!=' | '<<' | '>>'
+<mod-op> ::= '+=' | '-=' | '^=' | '<<=' | '>>='
+
+<stmt> ::= 'let' ['mut'] <id> [':' <type>] '=' <expr>
+	| 'const' <id> ':' <type> '=' <const-expr>
+	| <id> ['[' <expr> ']'] <mod-op> <expr>
+	| <id> '<>' <id>
+	| <if-stmt>
+	| <from-stmt>
+	| 'call' <id> '(' <arglist> ')'
+	| 'uncall' <id> '(' <arglist> ')'
+
+<stmtlist> ::= [<stmt> ';' <stmtlist>]
+
+<if-stmt> ::=
+	'if' <expr> '{' <stmtlist> '}'
+	['else' '{' <stmtlist> '}']
+	'assert' <expr>
+
+<from-stmt> ::=
+	'from' <expr> ['{' <stmtlist> '}']
+	'until' <expr> ['{' <stmtlist> '}']
+
+<proc> ::= 'proc' <id> '(' <paramlist> ')' '{' <stmtlist> '}'

@@ -1,0 +1,85 @@
+use std::io
+
+struct Point {
+	ptr: u16,
+	len: u16,
+}
+
+struct Option<T> {
+	variant: enum { None, Some },
+	data: union { T },
+}
+
+static mut S: usize = 0
+static GLOBAL: [usize; 0] = []
+
+pub proc hi(a: u32) {
+	let runtime_const = 4
+	
+	let mut runtime_var
+	set runtime_var = a
+	
+	//let mut runtime_var = a
+	
+	reset runtime_var = a
+}
+
+proc main() {
+	; comment
+	// comment
+	/* block comment */
+	
+	let mut counter = 0
+	
+	if /* test */ {
+		// test passes
+	}
+	// optional
+	else {
+		// test fails
+	}
+	// mandatory
+	assert /* assertion */
+	
+	from /* initial assertion */ {
+		// forward loop
+	}
+	until /* breaking test */ {
+		// backward loop
+	}
+	
+	union StringOrNum {
+		String,
+		i32
+	}
+	
+	let mut s: String = String::new()
+	let mut n: i32 = 0
+	
+	unsafe {
+		S += 1
+	}
+	
+	proc f() {}
+	
+	f()
+	rev f()
+	
+	proc g(x: usize) {}
+	
+	g(0)
+	// same as
+	{
+		let _temp: usize = 0
+		g(_temp)
+		reset _temp = 0
+	}
+	
+	proc h(f: proc()) { f() }
+	
+	h(f)
+	
+	yield
+	
+	reset counter = 0
+}

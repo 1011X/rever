@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use super::*;
-use super::super::compile::Location;
+use super::super::compile::{SymbolTable, Location};
 use rel;
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ impl Function {
 		code: block
 		>> (Function { name, args, code })
 	)));
-	
+	/*
 	pub fn verify(&mut self) {
 		for statement in &mut self.code {
 			statement.verify();
@@ -49,22 +49,28 @@ impl Function {
 		for decl in decls.chunks(2)
 		*/
 	}
+	*/
 	
 	pub fn compile(&self) -> Vec<rel::Op> {
-		let mut body = vec![];
+		let mut body = Vec::new();
 		// every symbol is associated with a location, and therefore a value
-		let mut symbol_table = HashMap::new();
+		let mut symbol_table = SymbolTable::new();
 		
-		// Add arguments to symbol table. Pascal convention is used.
-		for (i, arg) in self.args.iter().rev().enumerate() {
-			symbol_table.insert(arg.name.clone(), Location::Memory(-(i as isize)));
+		// Add arguments to symbol table. C convention is used.
+		for (i, arg) in self.args.iter().enumerate() {
+			symbol_table.hashmap.insert(
+				arg.name.clone(),
+				Location::Memory(-(i as isize))
+			);
 		}
 		
-		println!("Symbols: {:?}", symbol_table);
+		println!("Symbols: {:?}", symbol_table.hashmap);
 		
 		// Compile body.
 		for statement in &self.code {
-			body.extend(statement.compile(&mut symbol_table));
+			let s = statement.compile(&mut symbol_table);
+			println!("{:?}", s);
+			body.extend(s);
 		}
 		
 		println!("Code for {}: {:#?}", self.name, body);
