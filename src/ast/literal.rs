@@ -1,6 +1,6 @@
 use crate::ast::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Literal {
 	Num(i32),
 	Bool(bool),

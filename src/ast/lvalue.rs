@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 
 use crate::ast::*;
-use crate::ast::Value;
 
 #[derive(Debug)]
 pub enum Deref {
@@ -13,10 +12,11 @@ pub enum Deref {
 #[derive(Debug)]
 pub struct LValue {
 	pub id: String,
-	pub ops: Vec<Deref>,
+	//pub ops: Vec<Deref>,
 }
 
 impl LValue {
+    /*
 	named!(pub parse<Self>, ws!(do_parse!(
 		id: ident >>
 		ops: many0!(alt_complete!(
@@ -30,9 +30,10 @@ impl LValue {
 		))
 		>> (LValue { id, ops })
 	)));
+	*/
 	
 	pub fn eval(&self, t: &VarTable) -> Value {
-	    
+	    t[self.id].clone()
 	}
 	
 	/*

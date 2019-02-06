@@ -1,7 +1,4 @@
-use std::collections::HashMap;
-use super::*;
-use super::super::compile::{SymbolTable, Location};
-use rel;
+use crate::ast::*;
 
 #[derive(Debug)]
 pub struct Function {

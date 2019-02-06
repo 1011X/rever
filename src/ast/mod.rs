@@ -20,9 +20,8 @@ pub use self::program::Program;
 pub use self::statement::Statement;
 pub use self::types::Type;
 
-
 use std::str;
-
+use std::collections::HashMap;
 
 type ParseResult<'a, T> = Result<(&'a str, T), String>;
 
@@ -185,13 +184,20 @@ named!(block<Vec<Statement>>, ws!(delimited!(
 )));
 
 
-pub type VarTable = 
+pub type VarTable = HashMap<String, Value>;
 
+#[derive(Debug, Clone)]
 pub enum Value {
-    None,
     Bool(bool),
-    Number(i32),
+    Int(i32),
 }
 
-
+impl From<Literal> for Value {
+    fn from(l: Literal) -> Self {
+        match l {
+            Literal::Bool(b) => Value::Bool(b),
+            Literal::Num(n) => Value::Int(n),
+        }
+    }
+}
 

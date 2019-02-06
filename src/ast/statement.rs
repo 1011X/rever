@@ -1,6 +1,4 @@
-use super::*;
-use super::super::compile::SymbolTable;
-use rel;
+use crate::ast::*;
 
 /*
 #[derive(Debug)]
@@ -16,12 +14,12 @@ pub enum Statement {
 	Drop(bool, String, Option<Type>, Literal),
 	
 	Not(LValue),
-	Neg(LValue),
+	//Neg(LValue),
 	
 	RotLeft(LValue, Factor),
 	RotRight(LValue, Factor),
 	
-	CCNot(LValue, Factor, Factor),
+	//CCNot(LValue, Factor, Factor),
 	//Xor(LValue, Vec<Factor>),
 	Xor(LValue, Factor),
 	
@@ -31,7 +29,7 @@ pub enum Statement {
 	Sub(LValue, Factor),
 	
 	Swap(LValue, LValue),
-	CSwap(Factor, LValue, LValue),
+	//CSwap(Factor, LValue, LValue),
 	
 	Do(LValue, Vec<Factor>),
 	Undo(LValue, Vec<Factor>),
@@ -270,6 +268,63 @@ impl Statement {
 		}
 	}
 	*/
+	
+	pub fn eval(&self, t: &mut VarTable) {
+	    match self {
+	        Statement::Let(_, id, _, lit) => {
+	            t[id] = Value::from(lit);
+	        }
+	        Statement::Drop(_, id, _, lit) => {
+	            assert_eq!(t[id], Value::from(lit.clone()));
+	            t.remove(id);
+	        }
+	        Statement::Not(lval) => {
+	            t[lval.id] = match lval.eval() {
+                    Value::Bool(b) => Value::Bool(!b),
+                    Value::Int(i) => Value::Int(!i),
+                };
+            }
+	        Statement::RotLeft(lval, fact) => {
+	            t[lval.id] = match (lval.eval(), fact.eval()) {
+	                (Value::Int(l), Value::Int(r)) => Value::Int(l.rotate_left(r)),
+	                _ => panic!("tried to do something illegal"),
+	            };
+            }
+            Statement::RotRight(lval, fact) => {
+	            t[lval.id] = match (lval.eval(), fact.eval()) {
+	                (Value::Int(l), Value::Int(r)) => Value::Int(l.rotate_right(r)),
+	                _ => panic!("tried to do something illegal"),
+	            };
+            }
+            Statement::Xor(lval, fact) => {
+                t[lval.id] = match (lval.eval(), fact.eval()) {
+	                (Value::Int(l), Value::Int(r)) => Value::Int(l ^ r),
+	                _ => panic!("tried to do something illegal"),
+                };
+            }
+            Statement::Add(lval, fact) => {
+                t[lval.id] = match (lval.eval(), fact.eval()) {
+	                (Value::Int(l), Value::Int(r)) => Value::Int(l + r),
+	                _ => panic!("tried to do something illegal"),
+                };
+            }
+            Statement::Sub(lval, fact) => {
+                t[lval.id] = match (lval.eval(), fact.eval()) {
+	                (Value::Int(l), Value::Int(r)) => Value::Int(l - r),
+	                _ => panic!("tried to do something illegal"),
+                };
+            }
+            Statement::Swap(left, right) => {
+                // shouldn't work if types are different
+                let temp = left.eval();
+                t[left.id] = right.eval();
+                t[right.id] = temp;
+            }
+            Statement::Do(name, args) => {
+                t[name.id].eval(args, t)
+            }
+	    }
+	}
 	
 	pub fn compile(&self, st: &mut SymbolTable) -> Vec<rel::Op> {
 		use rel::Op;

@@ -1,4 +1,4 @@
-use super::*;
+use crate::ast::*;
 
 #[derive(Debug, Clone)]
 pub enum Type {
