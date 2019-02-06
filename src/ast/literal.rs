@@ -1,8 +1,8 @@
-use super::*;
+use crate::ast::*;
 
 #[derive(Debug)]
 pub enum Literal {
-	Num(u16),
+	Num(i32),
 	Bool(bool),
 	//Char(char),
     //Str(String),
@@ -16,6 +16,15 @@ impl Literal {
 		//| map!(ch, Literal::Char)
 		//| map!(st, Literal::Str)
 	));
+	
+	pub fn eval(&self, _: &VarTable) -> Value {
+	    match self {
+	        Literal::Num(n) => Value::Num(n),
+	        Literal::Bool(b) => Value::Bool(b),
+	    }
+	}
+	
+	//pub parse(i: &[u8]) -> Result<(&[u8], Self), String>
 }
 
 impl FromStr for Literal {

@@ -1,9 +1,7 @@
 use std::collections::BTreeSet;
 
-use super::*;
-use super::super::compile::*;
-use super::super::super::reverse::Reverse;
-use rel;
+use crate::ast::*;
+use crate::ast::Value;
 
 #[derive(Debug)]
 pub enum Deref {
@@ -33,8 +31,14 @@ impl LValue {
 		>> (LValue { id, ops })
 	)));
 	
+	pub fn eval(&self, t: &VarTable) -> Value {
+	    
+	}
+	
+	/*
 	pub fn compile(&self, st: &mut SymbolTable) -> (rel::Reg, Vec<rel::Op>) {
 		// TODO maybe move some of the stuff SymbolTable::get does over here?
 		st.get(&self.id)
 	}
+	*/
 }
