@@ -1,7 +1,8 @@
 pub mod arg;
-pub mod binexpr;
+pub mod expr;
 pub mod factor;
-pub mod function;
+//pub mod function;
+pub mod procedure;
 pub mod item;
 pub mod literal;
 pub mod lvalue;
@@ -10,9 +11,10 @@ pub mod statement;
 pub mod types;
 
 pub use self::arg::Arg;
-pub use self::binexpr::BinExpr;
+pub use self::expr::Expr;
 pub use self::factor::Factor;
-pub use self::function::Function;
+//pub use self::function::Function;
+pub use self::procedure::Procedure;
 pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::LValue;
@@ -23,7 +25,7 @@ pub use self::types::Type;
 use std::str;
 use std::collections::HashMap;
 
-type ParseResult<'a, T> = Result<(&'a str, T), String>;
+pub type ParseResult<'a, T> = Result<(T, &'a str), String>;
 
 macro_rules! reb_parse {
 	($i:expr, $e:expr) => {
@@ -64,43 +66,9 @@ pub fn ident(i: &str) -> ParseResult<&str> {
 		idx += 1;
 	}
 	
-	Ok((&i[idx..], &i[..idx]))
+	Ok((&i[..idx], &i[idx..]))
 }
 
-//named!(num<u16>, reb_parse!("^[-+]?[0-9]+"));
-
-// num ::= [-+]?[0-9]+
-//     ::= [-+]?[0-9][0-9]*
-pub fn num(i: &str) -> ParseResult<u16> {
-	let mut idx = 0;
-	
-	// [-+]?
-	if i.starts_with(|c| c == '-' || c == '+') {
-		idx += 1;
-	}
-	
-	let ascii_numeric = char::is_ascii_numeric;
-	
-	// [0-9]
-	if !i.starts_with(ascii_numeric) {
-		return Err("not a number".to_string())
-	}
-	idx += 1;
-	
-	// [0-9]*
-	loop {
-		if !i.starts_with(ascii_numeric) {
-			break;
-		}
-		
-		idx += 1;
-	}
-	
-	Ok((
-		u16::from_str_radix(&i[..idx], 10),
-		&i[idx..]
-	))
-}
 /*
 named!(ch<char>, delimited!(
     tag!("'"),
@@ -146,7 +114,7 @@ pub fn ch(mut i: &str) -> ParseResult<char> {
 	
 	Ok((i, c))
 }
-
+/*
 named!(st<String>, delimited!(
     tag!("\""),
     map_res!(
@@ -160,7 +128,7 @@ named!(st<String>, delimited!(
     ),
     tag!("\"")
 ));
-/*
+
 pub fn st(mut i: &str) -> ParseResult<String> {
 	let mut s = String::new();
 	
@@ -172,7 +140,6 @@ pub fn st(mut i: &str) -> ParseResult<String> {
 	// "
 	has!(i, "\"");
 }
-*/
 
 named!(block<Vec<Statement>>, ws!(delimited!(
 	tag!("{"),
@@ -182,11 +149,18 @@ named!(block<Vec<Statement>>, ws!(delimited!(
 	),
 	tag!("}")
 )));
+*/
 
 
 pub type VarTable = HashMap<String, Value>;
 
-#[derive(Debug, Clone)]
+pub struct EnvTable {
+    procedures: HashMap<String, Procedure>,
+    //functions: HashMap<String, Function>,
+    locals: HashMap<String, Value>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
     Bool(bool),
     Int(i32),

@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use rel;
 use super::Reverse;
 
 /// Tracks location of a symbol or value.

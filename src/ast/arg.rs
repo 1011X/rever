@@ -1,15 +1,15 @@
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Arg {
 	pub name: String,
-	mutable: bool,
-	typ: Type,
+	pub mutable: bool,
+	pub typ: Type,
 }
 
 impl Arg {
 	named!(pub parse<Self>, ws!(do_parse!(
-		m: opt!(tag!("mut")) >>
+		m: opt!(tag!("var")) >>
 		name: ident >>
 		tag!(":") >>
 		typ: call!(Type::parse)

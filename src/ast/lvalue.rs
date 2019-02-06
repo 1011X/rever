@@ -32,8 +32,8 @@ impl LValue {
 	)));
 	*/
 	
-	pub fn eval(&self, t: &VarTable) -> Value {
-	    t[self.id].clone()
+	pub fn eval(&self, t: &EnvTable) -> Value {
+	    t.locals[self.id].clone()
 	}
 	
 	/*

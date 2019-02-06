@@ -1,19 +1,28 @@
-use super::*;
+use crate::ast::*;
 
 #[derive(Debug)]
-pub enum BinExpr {
+pub enum Expr {
+    Not(Box<Expr>),
+    Group(Box<Expr>),
+    
 	Eq(Factor, Factor),
 	Neq(Factor, Factor),
 	Lte(Factor, Factor),
 	Gte(Factor, Factor),
 	Lt(Factor, Factor),
 	Gt(Factor, Factor),
+	
 	And(Factor, Factor),
 	Or(Factor, Factor),
 	Xor(Factor, Factor),
 }
 
-impl BinExpr {
+impl Expr {
+	pub fn eval(&self, t: &EnvTable) -> Value {
+	    
+	}
+	
+    /*
 	named!(pub parse<Self>, ws!(do_parse!(
 		l: call!(Factor::parse) >>
 		op: alt!(
@@ -44,4 +53,5 @@ impl BinExpr {
 			_ => unreachable!()
 		})
 	)));
+	*/
 }

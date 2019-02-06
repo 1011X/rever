@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 pub mod ast;
-pub mod compile;
+pub mod tokenize;
+//pub mod compile;
 
+/*
 use rel::Op;
 use super::reverse::Reverse;
 
@@ -21,3 +23,4 @@ impl<T: Reverse + Clone> Reverse for Vec<T> {
 		self
 	}
 }
+*/

@@ -10,7 +10,7 @@ pub enum FlatOp {
 
 #[derive(Debug)]
 pub enum Statement {
-	Let(bool, String, Option<Type>, Literal),
+	Var(bool, String, Option<Type>, Literal),
 	Drop(bool, String, Option<Type>, Literal),
 	
 	Not(LValue),
@@ -34,15 +34,127 @@ pub enum Statement {
 	Do(LValue, Vec<Factor>),
 	Undo(LValue, Vec<Factor>),
 	
-	If(BinExpr, Vec<Statement>, Option<Vec<Statement>>, BinExpr),
+	If(Expr, Vec<Statement>, Option<Vec<Statement>>, Expr),
 	
-	From(BinExpr, Option<Vec<Statement>>, Option<Vec<Statement>>, BinExpr),
+	From(Expr, Option<Vec<Statement>>, Option<Vec<Statement>>, Expr),
 	
 	//Switch(String, Vec<String, Vec<Statement>>),
 	//Unsafe(Vec<Statement>),
 }
 
+use self::Statement::*;
 impl Statement {
+    pub fn reverse(self) -> Self {
+        match self {
+            Var(n, t, v) => Drop(n, t, v),
+            Drop(n, t, v) => Var(n, t, v),
+            
+            RotLeft(l, v) => RotRight(l, v),
+            RotRight(l, v) => RotLeft(l, v),
+            Add(l, v) => Sub(l, v),
+            Sub(l, v) => Add(l, v),
+            
+            Do(p, args) => Undo(p, args),
+            Undo(p, args) => Do(p, args),
+            
+            If(test, block, else_block, assert) =>
+                If(assert, block, else_block, test),
+            From(assert, do_block, loop_block, test) =>
+                From(test, do_block, loop_block, assert),
+            
+            involution => self
+        }
+    }
+	
+	pub fn eval(&self, t: &mut VarTable) {
+	    match self {
+	        Var(id, _, lit) => {
+	            t.locals[id] = Value::from(lit);
+	        }
+	        Drop(id, _, lit) => {
+	            assert_eq!(t.locals[id], Value::from(lit.clone()));
+	            t.locals.remove(id);
+	        }
+	        Not(lval) => {
+	            t.locals[lval.id] = match lval.eval(t) {
+                    Value::Bool(b) => Value::Bool(!b),
+                    Value::Int(i) => Value::Int(!i),
+                };
+            }
+	        RotLeft(lval, fact) => match (lval.eval(t), fact.eval(t)) {
+                (Value::Int(l), Value::Int(r)) =>
+                    t.locals[lval.id] = Value::Int(l.rotate_left(r)),
+                _ => panic!("tried to do something illegal"),
+            }
+            RotRight(lval, fact) => match (lval.eval(t), fact.eval(t)) {
+                (Value::Int(l), Value::Int(r)) =>
+                    t.locals[lval.id] = Value::Int(l.rotate_right(r)),
+                _ => panic!("tried to do something illegal"),
+            }
+            Xor(lval, fact) => match (lval.eval(t), fact.eval(t)) {
+                (Value::Int(l), Value::Int(r)) =>
+                    t.locals[lval.id] = Value::Int(l ^ r),
+                _ => panic!("tried to do something illegal"),
+            }
+            Add(lval, fact) => match (lval.eval(t), fact.eval(t)) {
+                (Value::Int(l), Value::Int(r)) =>
+                    t.locals[lval.id] = Value::Int(l.wrapping_add(r)),
+                _ => panic!("tried to do something illegal"),
+            }
+            Sub(lval, fact) => match (lval.eval(t), fact.eval(t)) {
+                (Value::Int(l), Value::Int(r)) =>
+                    t.locals[lval.id] = Value::Int(l.wrapping_sub(r)),
+                _ => panic!("tried to do something illegal"),
+            }
+            Swap(left, right) => {
+                // TODO check types match
+                let temp = left.eval(t);
+                t.locals[left.id] = right.eval(t);
+                t.locals[right.id] = temp;
+            }
+            Do(name, args) => {
+                t.procedures[name.id].eval(args, t)
+            }
+            Undo(name, args) => {
+                t.procedures[name.id].uneval(args, t)
+            }
+            If(test, block, else_block, assert) => {
+                let result = test.eval(t);
+                match test.eval(t) {
+                    Value::Bool(true) => 
+                        for stmt in block {
+                            stmt.eval(t);
+                        }
+                    Value::Bool(false) =>
+                        for stmt in else_block {
+                            stmt.eval(t);
+                        }
+                    _ => panic!("tried to do something illegal")
+                }
+                assert_eq!(assert.eval(t), Value::Bool(true));
+            }
+            From(assert, do_block, loop_block, test) => {
+                assert_eq!(assert.eval(t), Value::Bool(true));
+                loop {
+                    for stmt in do_block {
+                        stmt.eval(t);
+                    }
+                    
+                    match test.eval(t) {
+                        Value::Bool(true) => break,
+                        Value::Bool(false) =>
+                            for stmt in loop_block {
+                                stmt.eval(t);
+                            }
+                        _ => panic!("tried to do something illegal")
+                    }
+                    
+                    assert_eq!(assert.eval(t), Value::Bool(false));
+                }
+            }
+	    }
+	}
+    /*
 	named!(pub parse<Self>, ws!(alt_complete!(
 		// not/inversion
 		// "!" lval
@@ -146,7 +258,6 @@ impl Statement {
 				_      => unreachable!()
 			})
 		)
-		/*
 		// left/right rotation
 		// lval ("<<=" | ">>=") factor
 		| do_parse!(
@@ -190,9 +301,8 @@ impl Statement {
 				}
 			})
 		)
-		*/
 	)));
-	/*
+	
 	pub fn verify(&mut self) {
 		match *self {
 			Statement::Let(_, _, ref typ, ref lit) => {
@@ -267,69 +377,8 @@ impl Statement {
 			_ => {}
 		}
 	}
-	*/
-	
-	pub fn eval(&self, t: &mut VarTable) {
-	    match self {
-	        Statement::Let(_, id, _, lit) => {
-	            t[id] = Value::from(lit);
-	        }
-	        Statement::Drop(_, id, _, lit) => {
-	            assert_eq!(t[id], Value::from(lit.clone()));
-	            t.remove(id);
-	        }
-	        Statement::Not(lval) => {
-	            t[lval.id] = match lval.eval() {
-                    Value::Bool(b) => Value::Bool(!b),
-                    Value::Int(i) => Value::Int(!i),
-                };
-            }
-	        Statement::RotLeft(lval, fact) => {
-	            t[lval.id] = match (lval.eval(), fact.eval()) {
-	                (Value::Int(l), Value::Int(r)) => Value::Int(l.rotate_left(r)),
-	                _ => panic!("tried to do something illegal"),
-	            };
-            }
-            Statement::RotRight(lval, fact) => {
-	            t[lval.id] = match (lval.eval(), fact.eval()) {
-	                (Value::Int(l), Value::Int(r)) => Value::Int(l.rotate_right(r)),
-	                _ => panic!("tried to do something illegal"),
-	            };
-            }
-            Statement::Xor(lval, fact) => {
-                t[lval.id] = match (lval.eval(), fact.eval()) {
-	                (Value::Int(l), Value::Int(r)) => Value::Int(l ^ r),
-	                _ => panic!("tried to do something illegal"),
-                };
-            }
-            Statement::Add(lval, fact) => {
-                t[lval.id] = match (lval.eval(), fact.eval()) {
-	                (Value::Int(l), Value::Int(r)) => Value::Int(l + r),
-	                _ => panic!("tried to do something illegal"),
-                };
-            }
-            Statement::Sub(lval, fact) => {
-                t[lval.id] = match (lval.eval(), fact.eval()) {
-	                (Value::Int(l), Value::Int(r)) => Value::Int(l - r),
-	                _ => panic!("tried to do something illegal"),
-                };
-            }
-            Statement::Swap(left, right) => {
-                // shouldn't work if types are different
-                let temp = left.eval();
-                t[left.id] = right.eval();
-                t[right.id] = temp;
-            }
-            Statement::Do(name, args) => {
-                t[name.id].eval(args, t)
-            }
-	    }
-	}
 	
 	pub fn compile(&self, st: &mut SymbolTable) -> Vec<rel::Op> {
-		use rel::Op;
-		use super::super::super::reverse::Reverse;
-		
 		match *self {
 			Statement::Not(ref lval) => {
 				let (r, mut code) = lval.compile(st);
@@ -342,7 +391,6 @@ impl Statement {
 				code.push(Op::AddImm(r, 1));
 				code
 			}
-			/*
 			Statement::Call(..) => {
 				let code = vec![];
 				
@@ -360,7 +408,6 @@ impl Statement {
 				code
 				vec![Op::Nop]
 			}
-			*/
 			Statement::Add(ref lval, ref fact) => {
 				let mut code: Vec<rel::Op> = Vec::new();
 				let (l, fetch_l) = lval.compile(st);
@@ -524,4 +571,5 @@ impl Statement {
 			_ => vec![Op::Nop]
 		}
 	}
+	*/
 }
