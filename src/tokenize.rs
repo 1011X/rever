@@ -5,32 +5,26 @@ pub enum Token {
     // keywords
     Proc, Do, Undo, From, Until, Loop, If, Then, Else, Fi, Let, Var, Drop,
     // unused
-    Fn, Return, Match, As, Goto, ComeFrom,
+    Fn, Return, Match, As, //Goto, ComeFrom,
     
     // brackets
     LParen, RParen, LBracket, RBracket, LBrace, RBrace,
     
-    // unary
-    Not,
-    
-    // binary
-    And, Add, Sub, Or, Xor, Swap,
-    
-    // rotate
-    Rol, Ror,
-    
+    // single purpose
+    Not, And, Or, Swap,
     // relational
-    Eq, Neq, Lt, Gt, Lte, Gte,
+    Neq, Lt, Gt,
     
-    // assign
-    AddAssign, SubAssign, XorAssign, RolAssign, RorAssign,
+    // multi-purpose
+    Eq, Comma, Colon, Caret, Add, Sub, Rol, Ror,
     
-    // misc
-    Comma, Colon,
+    Space(usize),
+    Comment(String),
     
     // ident and number
     Ident(String),
     Number(String),
+    //String(String),
 }
 
 
@@ -99,33 +93,34 @@ pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
     else if s.starts_with(char::is_ascii_whitespace) {
         s = &s[1..];
     }
-    match_str! s {
-        "(" => Token::LParen,
-        ")" => Token::RParen,
-        "[" => Token::LBracket,
-        "]" => Token::RBracket,
-        "{" => Token::LBrace,
-        "}" => Token::RBrace,
-        "," => Token::Comma,
-        ":" => Token::Colon,
-        "=" => Token::Eq,
-        "^="   => Token::XorAssign,
-        "!=" => Token::Neq,
-        
-        "+" => Token::Add,
-        "+="   => Token::AddAssign,
-        "-" => Token::Sub,
-        "-="   => Token::SubAssign,
-        
-        "<" => Token::Lt,
-        "<>"  => Token::Swap,
-        "<="  => Token::Lte,
-        "<<"  => Token::Rol,
-        "<<="  => Token::RolAssign,
-        
-        ">" => Token::Gt,
-        ">>"  => Token::Ror,
-        ">="  => Token::Gte,
-        ">>="  => Token::RorAssign,
+    else if s.starts_with(char::is_ascii_punctuation) {
+        tokens.push(match &s[..1] {
+            "(" => Token::LParen,
+            ")" => Token::RParen,
+            "[" => Token::LBracket,
+            "]" => Token::RBracket,
+            "{" => Token::LBrace,
+            "}" => Token::RBrace,
+            "," => Token::Comma,
+            ":" => Token::Colon,
+            "=" => Token::Eq,
+            "!" => match &s[1..2] {
+                "=" => Token::Neq,
+                _ => Err("")
+            
+            "+" => Token::Add,
+            "-" => Token::Sub,
+            
+            "<" => Token::Lt,
+            "<>" => Token::Swap,
+            "<=" => Token::Lte,
+            "<<" => Token::Rol,
+            
+            ">" => Token::Gt,
+            ">>" => Token::Ror,
+            ">=" => Token::Gte,
+        });
     }
+    
+    Ok(tokens)
 }
