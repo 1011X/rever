@@ -64,52 +64,6 @@ In conditionals, they should reflect what changes the first code block made to t
 
 In loops, the assertion can be the end value of the iterating variable, or a predicate that depends on any variable whose value depends on the loop.
 
-### `for`s, `when`s, and `match`s
-
-It can become a bit tedious (and error-prone!) to repeat expressions multiple times in different places. That's why some alternate control structures are being considered for some special-case code. These consist of `for`, `when`, and `match`.
-
-Instead of writing
-```
-if a = b or b = c and c = d then
-    // ...
-else
-    // ...
-fi a = b or b = c and c = d
-```
-
-…and risk getting the assertion wrong, you could instead use
-```
-when a = b or b = c and c = d then
-    // ...
-end
-```
-
-A similar structure, `match`, would also be useful when there's more than 1 value being tested.
-
-Instead of
-```
-when a = b then
-    // ...
-else when a = c
-    // ...
-else when a = d
-    // ...
-end
-end
-end
-```
-
-you can write something like this (syntax subject to change):
-```
-match a with
-    | b then // ... end
-    | c then // ... end
-    | d then // ... end
-    // ...
-    | _ then // ... end
-end
-```
-
 
 Procedures
 ----------
@@ -185,3 +139,77 @@ if mul(a, b) = 30 then
 fi mul(a, b) = 30
 ```
 
+
+Features under consideration
+----------------------------
+
+It can become a bit tedious (and error-prone!) to repeat expressions multiple times in different places. That's why some alternate control structures are being considered for some special-case code. These consist of `for`, `when`, and `match`.
+
+### `when` blocks
+
+Instead of writing
+```
+if a = b or b = c and c = d then
+    // ...
+else
+    // ...
+fi a = b or b = c and c = d
+```
+
+…and risk getting the assertion wrong, you could instead write
+```
+when a = b or b = c and c = d then
+    // ...
+end
+```
+
+and not have to worry about the test and assertion mismatching. Some analysis could also be done so that variables in the test aren't being modified in the code block.
+
+### `match` blocks
+
+A similar structure, `match`, would also be useful when there's more than 1 value being tested.
+
+Instead of
+```
+when a = b then
+    // ...
+else when a = c
+    // ...
+else when a = d
+    // ...
+end
+end
+end
+```
+
+you can write something like this (syntax subject to change):
+```
+match a with
+    | b then // ... end
+    | c then // ... end
+    | d then // ... end
+    // ...
+    | _ then // ... end
+end
+```
+
+### `for` loops
+
+A common case for loops is to iterate through a range of numbers, a list of items, etc. So a `for` loop is being considered:
+
+```
+// for numbers
+for i in 0..100 do
+    // ...
+loop
+    // ...
+done
+
+// for a list?
+
+for i in list do
+    // ...
+loop
+    // ...
+done
+```
