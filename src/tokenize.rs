@@ -27,6 +27,17 @@ pub enum Token {
     //String(String),
 }
 
+/*
+order of ops:
+1. parens
+2. function call
+3. - ~ @ $ not
+4. ** << >> shl shr
+5. * / & div mod and
+6. + - | ^ or
+7. = != < > <= >=
+*/
+
 
 pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
     let mut tokens = Vec::new();
