@@ -31,7 +31,7 @@ pub enum Token {
 order of ops:
 1. parens
 2. function call
-3. - ~ @ $ not
+3. - ~ @ ! not
 4. ** << >> shl shr
 5. * / & div mod and
 6. + - | ^ or
@@ -44,10 +44,10 @@ pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
     
     // handle identifiers and keywords
     // [_A-Za-z]
-    if s.starts_with(|c| c == '_' || c.is_ascii_alphabetic()) {
+    if s.starts_with(|c: char| c == '_' || c.is_ascii_alphabetic()) {
         let mut i = 1;
         
-        while s[i..].starts_with(|c| c == '_' || c.is_ascii_alphanumeric()) {
+        while s[i..].starts_with(|c: char| c == '_' || c.is_ascii_alphanumeric()) {
             i += 1;
         }
         
@@ -77,7 +77,7 @@ pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
             
             "and" => Token::And,
             "or"  => Token::Or,
-            "xor" => Token::Xor,
+            //"xor" => Token::Xor,
             
             id => Token::Ident(id.to_string())
         });
@@ -86,25 +86,25 @@ pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
     }
     // handle numbers
     // [0-9]
-    else if s.starts_with(char::is_ascii_digit) {
+    else if s.starts_with(|c: char| c.is_ascii_digit()) {
         let mut i = 1;
         
-        while s[i..].starts_with(char::is_ascii_digit) {
+        while s[i..].starts_with(|c: char| c.is_ascii_digit()) {
             i += 1;
         }
         
         tokens.push(Token::Number(s[..i].to_string()));
         s = &s[i..];
     }
-    else if s.starts_with(char::is_ascii_punctuation) {
+    else if s.starts_with(|c: char| c.is_ascii_punctuation()) {
         
     }
     // whitespace
     // [ \t\n\f\c]
-    else if s.starts_with(char::is_ascii_whitespace) {
+    else if s.starts_with(|c: char| c.is_ascii_whitespace()) {
         s = &s[1..];
     }
-    else if s.starts_with(char::is_ascii_punctuation) {
+    else if s.starts_with(|c: char| c.is_ascii_punctuation()) {
         tokens.push(match &s[..1] {
             "(" => Token::LParen,
             ")" => Token::RParen,
@@ -117,19 +117,24 @@ pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
             "=" => Token::Eq,
             "!" => match &s[1..2] {
                 "=" => Token::Neq,
-                _ => Err("")
-            
+                _ => return Err("!=")
+            }
             "+" => Token::Add,
             "-" => Token::Sub,
             
             "<" => Token::Lt,
-            "<>" => Token::Swap,
-            "<=" => Token::Lte,
-            "<<" => Token::Rol,
+            /*
+            "<" => match &s[1..2] {
+                ">" => Token::Swap,
+                "=" => Token::Lte,
+                _ => Err("")
+            }
+            */
+            //"<<" => Token::Rol,
             
             ">" => Token::Gt,
-            ">>" => Token::Ror,
-            ">=" => Token::Gte,
+            //">>" => Token::Ror,
+            //">=" => Token::Gte,
         });
     }
     

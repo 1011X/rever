@@ -11,18 +11,90 @@ pub struct Procedure {
 }
 
 impl Procedure {
-	pub fn eval(&self, args: &[Value], env: &mut EnvTable) {
-	    for (i, arg) in self.args.enumerate() {
-	        env.insert(arg.name, args[i]);
+	pub fn eval(&self, args: &[Value], env: &mut ScopeTable) {
+	    for (i, arg) in self.args.iter().enumerate() {
+	        env.locals.insert(arg.name, args[i]);
 	    }
 	    
-	    for stmt in self.code {
+	    for stmt in &self.code {
 	        stmt.eval(env);
 	    }
 	}
+	
+	pub fn uneval(&self, args: &[Value], env: &mut ScopeTable) {
+	    for (i, arg) in self.args.iter().enumerate() {
+	        env.locals.insert(arg.name, args[i]);
+	    }
+	    
+	    for stmt in &self.code {
+	        stmt.clone().invert().eval(env);
+	    }
+	}
+	
+	pub fn parse(mut s: &str) -> ParseResult<Self> {
+	    // starting keyword `proc`
+	    if !(s.starts_with("proc")
+	    && s[4..].starts_with(|c: char| !c.is_ascii_alphanumeric())) {
+	        return Err("expected `proc` at start of procedure".to_string());
+	    }
+	    s = s[4..].trim_start();
+	    
+	    // name
+	    let (name, sx) = ident(s)?;
+	    s = sx.trim_start();
+	    
+	    // arguments
+	    let mut args = Vec::new();
+	    
+	    if !s.starts_with('(') {
+	        return Err("expected start of argument list".to_string());
+        }
+        s = &s[1..];
+        
+        loop {
+            s = s.trim_start();
+            
+            if s.starts_with(')') {
+                s = &s[1..];
+                break;
+            }
+            
+            let (arg, sx) = Arg::parse(s)?;
+            args.push(arg);
+            s = sx.trim_start();
+            
+            if s.starts_with(',') {
+                s = &s[1..];
+            }
+        }
+        s = s.trim_start();
+        
+        // code block
+        let mut code = Vec::new();
+        
+        if !s.starts_with('{') {
+            return Err("expected start of procedure definition".to_string());
+        }
+        s = &s[1..];
+        
+        loop {
+            s = s.trim_start();
+            
+            if s.starts_with('}') {
+                s = &s[1..];
+                break;
+            }
+            
+            let (stmt, sx) = Statement::parse(s)?;
+            code.push(stmt);
+            s = sx.trim_start();
+        }
+	    
+	    Ok((Procedure { name: name.to_string(), args, code }, s))
+	}
     /*
 	named!(pub parse<Self>, ws!(do_parse!(
-		tag!("fn") >>
+		tag!("proc") >>
 		name: ident >>
 		args: delimited!(
 			tag!("("),

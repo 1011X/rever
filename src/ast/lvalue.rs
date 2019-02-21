@@ -1,39 +1,60 @@
-use std::collections::BTreeSet;
-
 use crate::ast::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Deref {
 	Direct,
 	Indexed(Factor),
 	Field(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct LValue {
 	pub id: String,
-	//pub ops: Vec<Deref>,
+	pub ops: Vec<Deref>,
 }
 
 impl LValue {
-    /*
-	named!(pub parse<Self>, ws!(do_parse!(
-		id: ident >>
-		ops: many0!(alt_complete!(
-			value!(Deref::Direct, tag!("*"))
-			| delimited!(
-				tag!("["),
-				map!(Factor::parse, Deref::Indexed),
-				tag!("]")
-			)
-			| preceded!(tag!("."), map!(ident, Deref::Field))
-		))
-		>> (LValue { id, ops })
-	)));
-	*/
+	pub fn parse(s: &str) -> ParseResult<Self> {
+	    let mut ops = Vec::new();
+	    let (id, mut s) = ident(s)?;
+	    
+	    loop {
+	        s = s.trim_start();
+	        
+	        if s.starts_with('!') {
+	            s = &s[1..];
+	            ops.push(Deref::Direct);
+	            continue;
+            }
+            
+            if s.starts_with('[') {
+                s = s[1..].trim_left();
+                let (fact, sx) = Factor::parse(s)?;
+                s = sx.trim_left();
+                if !s.starts_with(']') {
+                    return Err("no closing bracket at indexed deref".to_string());
+                }
+                s = &s[1..];
+                ops.push(Deref::Indexed(fact));
+                continue;
+            }
+            
+            if s.starts_with('.') {
+                s = s[1..].trim_left();
+                let (name, sx) = ident(s)?;
+                s = sx;
+                ops.push(Deref::Field(name.to_string()));
+                continue;
+            }
+            
+            break;
+        }
+        
+        Ok((LValue { id: id.to_string(), ops }, s))
+	}
 	
-	pub fn eval(&self, t: &EnvTable) -> Value {
-	    t.locals[self.id].clone()
+	pub fn eval(&self, t: &ScopeTable) -> Value {
+	    t.locals[&self.id].clone()
 	}
 	
 	/*

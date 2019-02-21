@@ -1,14 +1,33 @@
-pub mod arg;
-pub mod expr;
-pub mod factor;
-//pub mod function;
-pub mod procedure;
-pub mod item;
-pub mod literal;
-pub mod lvalue;
-pub mod program;
-pub mod statement;
-pub mod types;
+/*!
+AST representation of Rever.
+*/
+
+/*
+TODO: what does a complete program even look like?
+
+List of state given to program:
+* return code
+* cli args
+* env vars
+* heap/memory store
+
+"Devices" to handle:
+* filesystem
+* stdio
+
+*/
+
+mod arg;
+mod expr;
+mod factor;
+//mod function;
+mod procedure;
+mod item;
+mod literal;
+mod lvalue;
+mod program;
+mod statement;
+mod types;
 
 pub use self::arg::Arg;
 pub use self::expr::Expr;
@@ -27,27 +46,17 @@ use std::collections::HashMap;
 
 pub type ParseResult<'a, T> = Result<(T, &'a str), String>;
 
-macro_rules! reb_parse {
-	($i:expr, $e:expr) => {
-		map_res!(
-			$i,
-			map_res!(re_bytes_find!(concat!("^", $e)), str::from_utf8),
-			str::parse
-		);
-	}
-}
-
 macro_rules! has {
 	($i:ident, $t:expr) => {
 		if $i.starts_with($t) {
-			return Err("invalid character")
+			return Err("invalid character".to_string());
 		}
 		
 		$i = &$i[$t.len()..];
 	}
 }
 
-//named!(ident<String>, reb_parse!("^[A-Za-z_][A-Za-z0-9_]*"));
+// ident ::= [_A-Za-z][_A-Za-z0-9]*
 pub fn ident(i: &str) -> ParseResult<&str> {
 	let mut idx = 0;
 	
@@ -57,7 +66,7 @@ pub fn ident(i: &str) -> ParseResult<&str> {
 	
 	// [A-Za-z_]
 	if !i.starts_with(|c: char| c.is_ascii_alphabetic() || c == '_') {
-		return Err("doesn't start with valid character");
+		return Err("doesn't start with valid character".to_string());
 	}
 	idx += 1;
 	
@@ -101,18 +110,18 @@ pub fn ch(mut i: &str) -> ParseResult<char> {
 		}
 		// anything else
 		else if i.starts_with('\'') {
-			return Err("single quote needs to be escaped");
+			return Err("single quote needs to be escaped".to_string());
 		}
 		else {
 			i.chars().nth(0)
-			.ok_or(Err("invalid character"))?
+			.ok_or(Err("invalid character".to_string()))?
 		}
 	;
 	
 	// '
 	has!(i, "'");
 	
-	Ok((i, c))
+	Ok((c, i))
 }
 /*
 named!(st<String>, delimited!(
@@ -152,9 +161,7 @@ named!(block<Vec<Statement>>, ws!(delimited!(
 */
 
 
-pub type VarTable = HashMap<String, Value>;
-
-pub struct EnvTable {
+pub struct ScopeTable {
     procedures: HashMap<String, Procedure>,
     //functions: HashMap<String, Function>,
     locals: HashMap<String, Value>,
@@ -172,6 +179,13 @@ impl From<Literal> for Value {
             Literal::Bool(b) => Value::Bool(b),
             Literal::Num(n) => Value::Int(n),
         }
+    }
+}
+
+impl From<bool> for Value {
+    fn from(b: bool) -> Self {
+        if b { Value::Bool(true) }
+        else { Value::Bool(false) }
     }
 }
 

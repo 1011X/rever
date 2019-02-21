@@ -8,10 +8,10 @@ pub enum FlatOp {
 }
 */
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Statement {
-	Var(bool, String, Option<Type>, Literal),
-	Drop(bool, String, Option<Type>, Literal),
+	Var(String, Option<Type>, Literal),
+	Drop(String, Option<Type>, Literal),
 	
 	Not(LValue),
 	//Neg(LValue),
@@ -34,9 +34,9 @@ pub enum Statement {
 	Do(LValue, Vec<Factor>),
 	Undo(LValue, Vec<Factor>),
 	
-	If(Expr, Vec<Statement>, Option<Vec<Statement>>, Expr),
+	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	
-	From(Expr, Option<Vec<Statement>>, Option<Vec<Statement>>, Expr),
+	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	
 	//Switch(String, Vec<String, Vec<Statement>>),
 	//Unsafe(Vec<Statement>),
@@ -44,7 +44,7 @@ pub enum Statement {
 
 use self::Statement::*;
 impl Statement {
-    pub fn reverse(self) -> Self {
+    pub fn invert(self) -> Self {
         match self {
             Var(n, t, v) => Drop(n, t, v),
             Drop(n, t, v) => Var(n, t, v),
@@ -62,76 +62,78 @@ impl Statement {
             From(assert, do_block, loop_block, test) =>
                 From(test, do_block, loop_block, assert),
             
-            involution => self
+            _involution => self
         }
     }
 	
-	pub fn eval(&self, t: &mut VarTable) {
+	pub fn eval(&self, t: &mut ScopeTable) {
 	    match self {
 	        Var(id, _, lit) => {
-	            t.locals[id] = Value::from(lit);
+	            t.locals.insert(id.clone(), Value::from(*lit));
 	        }
 	        Drop(id, _, lit) => {
 	            assert_eq!(t.locals[id], Value::from(lit.clone()));
 	            t.locals.remove(id);
 	        }
 	        Not(lval) => {
-	            t.locals[lval.id] = match lval.eval(t) {
+	            t.locals[&lval.id] = match lval.eval(t) {
                     Value::Bool(b) => Value::Bool(!b),
                     Value::Int(i) => Value::Int(!i),
                 };
             }
 	        RotLeft(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[lval.id] = Value::Int(l.rotate_left(r)),
+                    t.locals[&lval.id] = Value::Int(l.rotate_left(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             RotRight(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[lval.id] = Value::Int(l.rotate_right(r)),
+                    t.locals[&lval.id] = Value::Int(l.rotate_right(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             Xor(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[lval.id] = Value::Int(l ^ r),
+                    t.locals[&lval.id] = Value::Int(l ^ r),
                 _ => panic!("tried to do something illegal"),
             }
             Add(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[lval.id] = Value::Int(l.wrapping_add(r)),
+                    t.locals[&lval.id] = Value::Int(l.wrapping_add(r)),
                 _ => panic!("tried to do something illegal"),
             }
             Sub(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[lval.id] = Value::Int(l.wrapping_sub(r)),
+                    t.locals[&lval.id] = Value::Int(l.wrapping_sub(r)),
                 _ => panic!("tried to do something illegal"),
             }
             Swap(left, right) => {
                 // TODO check types match
                 let temp = left.eval(t);
-                t.locals[left.id] = right.eval(t);
-                t.locals[right.id] = temp;
+                t.locals[&left.id] = right.eval(t);
+                t.locals[&right.id] = temp;
             }
             Do(name, args) => {
-                t.procedures[name.id].eval(args, t)
+                t.procedures[&name.id].eval(args, t);
             }
             Undo(name, args) => {
-                t.procedures[name.id].uneval(args, t)
+                t.procedures[&name.id].uneval(args, t);
             }
             If(test, block, else_block, assert) => {
-                let result = test.eval(t);
                 match test.eval(t) {
-                    Value::Bool(true) => 
+                    Value::Bool(true) => {
                         for stmt in block {
                             stmt.eval(t);
                         }
-                    Value::Bool(false) =>
+                        assert_eq!(assert.eval(t), Value::Bool(true));
+                    }
+                    Value::Bool(false) => {
                         for stmt in else_block {
                             stmt.eval(t);
                         }
+                        assert_eq!(assert.eval(t), Value::Bool(false));
+                    }
                     _ => panic!("tried to do something illegal")
                 }
-                assert_eq!(assert.eval(t), Value::Bool(true));
             }
             From(assert, do_block, loop_block, test) => {
                 assert_eq!(assert.eval(t), Value::Bool(true));
@@ -153,6 +155,10 @@ impl Statement {
                 }
             }
 	    }
+	}
+	
+	pub fn parse(s: &str) -> ParseResult<Self> {
+	    unimplemented!()
 	}
     /*
 	named!(pub parse<Self>, ws!(alt_complete!(

@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use super::*;
 
 #[derive(Debug)]
@@ -10,15 +8,9 @@ pub enum Item {
 	Proc(Procedure),
 }
 
-/*
 impl Item {
-	named!(pub parse<Self>, map!(Procedure::parse, Item::Proc));
-}
-*/
-
-impl FromStr for Item {
-    type Err = String;
-    fn from_str(s: &str) -> Result<(Self, &str), Self::Err> {
-        Ok(Procedure::from_str(s)?)
-    }
+	pub fn parse(s: &str) -> ParseResult<Self> {
+	    let (p, s) = Procedure::parse(s)?;
+	    Ok((Item::Proc(p), s))
+	}
 }

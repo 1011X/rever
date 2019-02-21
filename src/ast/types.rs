@@ -8,38 +8,26 @@ pub enum Type {
     Char,
 	Pointer(Box<Type>),
 	Array(Box<Type>, usize),
-	Fn(Vec<Type>),
+	Fn(Vec<Type>, Box<Type>),
+	Proc(Vec<(bool, Type)>),
 	Composite(String),
 }
 
 impl Type {
-	named!(pub parse<Self>, ws!(alt_complete!(
-		value!(Type::Unit, tag!("unit"))
-		| value!(Type::Bool, tag!("bool"))
-		| value!(Type::U16, tag!("u16"))
-		| value!(Type::I16, tag!("i16"))
-		| value!(Type::Usize, tag!("usize"))
-		| value!(Type::Isize, tag!("isize"))
-		| value!(Type::Char, tag!("char"))
-		| map!(ws!(preceded!(tag!("^"), Type::parse)), |t| Type::Pointer(Box::new(t)))
-		| do_parse!(
-			tag!("[") >>
-			t: call!(Type::parse) >>
-			tag!(";") >>
-			n: num >>
-			tag!("]")
-			>> (Type::Array(Box::new(t), n as usize))
-		)
-		| do_parse!(
-			tag!("fn") >>
-			tag!("(") >>
-			types: separated_list!(tag!(","), Type::parse) >>
-			tag!(")")
-			>> (Type::Fn(types))
-		)
-		| map!(ws!(preceded!(tag!("type"), ident)), Type::Composite)
-	)));
+	pub fn parse(mut s: &str) -> ParseResult<Self> {
+	    // TODO check start_with's properly
+	    if s.starts_with("bool") {
+	        return Ok((Type::Bool, &s[4..]));
+        }
+        
+        if s.starts_with("u16") {
+            return Ok((Type::U16, &s[3..]));
+        }
+        
+        if s.starts_with("i16") {
+            return Ok((Type::I16, &s[3..]));
+        }
+        
+        Err(format!("unknown type: {}", s))
+	}
 }
-
-
-
