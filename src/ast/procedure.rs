@@ -11,9 +11,9 @@ pub struct Procedure {
 }
 
 impl Procedure {
-	pub fn eval(&self, args: &[Value], env: &mut ScopeTable) {
+	pub fn eval(&self, args: Vec<Value>, env: &mut ScopeTable) {
 	    for (i, arg) in self.args.iter().enumerate() {
-	        env.locals.insert(arg.name, args[i]);
+	        env.locals.insert(arg.name.clone(), args[i]);
 	    }
 	    
 	    for stmt in &self.code {
@@ -21,9 +21,9 @@ impl Procedure {
 	    }
 	}
 	
-	pub fn uneval(&self, args: &[Value], env: &mut ScopeTable) {
+	pub fn uneval(&self, args: Vec<Value>, env: &mut ScopeTable) {
 	    for (i, arg) in self.args.iter().enumerate() {
-	        env.locals.insert(arg.name, args[i]);
+	        env.locals.insert(arg.name.clone(), args[i]);
 	    }
 	    
 	    for stmt in &self.code {

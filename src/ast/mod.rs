@@ -113,8 +113,10 @@ pub fn ch(mut i: &str) -> ParseResult<char> {
 			return Err("single quote needs to be escaped".to_string());
 		}
 		else {
-			i.chars().nth(0)
-			.ok_or(Err("invalid character".to_string()))?
+		    match i.chars().nth(0) {
+		        Some(c) => c,
+		        None => return Err("invalid character".to_string()),
+		    }
 		}
 	;
 	

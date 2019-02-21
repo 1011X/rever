@@ -14,7 +14,7 @@ pub enum Type {
 }
 
 impl Type {
-	pub fn parse(mut s: &str) -> ParseResult<Self> {
+	pub fn parse(s: &str) -> ParseResult<Self> {
 	    // TODO check start_with's properly
 	    if s.starts_with("bool") {
 	        return Ok((Type::Bool, &s[4..]));

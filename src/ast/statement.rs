@@ -62,7 +62,7 @@ impl Statement {
             From(assert, do_block, loop_block, test) =>
                 From(test, do_block, loop_block, assert),
             
-            _involution => self
+            _ => self
         }
     }
 	
@@ -76,47 +76,53 @@ impl Statement {
 	            t.locals.remove(id);
 	        }
 	        Not(lval) => {
-	            t.locals[&lval.id] = match lval.eval(t) {
+	            *t.locals.get_mut(&lval.id).unwrap() = match lval.eval(t) {
                     Value::Bool(b) => Value::Bool(!b),
                     Value::Int(i) => Value::Int(!i),
                 };
             }
 	        RotLeft(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[&lval.id] = Value::Int(l.rotate_left(r as u32)),
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_left(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             RotRight(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[&lval.id] = Value::Int(l.rotate_right(r as u32)),
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_right(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             Xor(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[&lval.id] = Value::Int(l ^ r),
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l ^ r),
                 _ => panic!("tried to do something illegal"),
             }
             Add(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[&lval.id] = Value::Int(l.wrapping_add(r)),
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.wrapping_add(r)),
                 _ => panic!("tried to do something illegal"),
             }
             Sub(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
-                    t.locals[&lval.id] = Value::Int(l.wrapping_sub(r)),
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.wrapping_sub(r)),
                 _ => panic!("tried to do something illegal"),
             }
             Swap(left, right) => {
                 // TODO check types match
                 let temp = left.eval(t);
-                t.locals[&left.id] = right.eval(t);
-                t.locals[&right.id] = temp;
+                *t.locals.get_mut(&left.id).unwrap() = right.eval(t);
+                *t.locals.get_mut(&right.id).unwrap() = temp;
             }
             Do(name, args) => {
-                t.procedures[&name.id].eval(args, t);
+                let vals: Vec<Value> = args.iter()
+                    .map(|arg| arg.eval(t))
+                    .collect();
+                t.procedures[&name.id].eval(vals, t);
             }
             Undo(name, args) => {
-                t.procedures[&name.id].uneval(args, t);
+                let vals: Vec<Value> = args.iter()
+                    .map(|arg| arg.eval(t))
+                    .collect();
+                t.procedures[&name.id].uneval(vals, t);
             }
             If(test, block, else_block, assert) => {
                 match test.eval(t) {

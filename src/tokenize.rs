@@ -135,6 +135,8 @@ pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
             ">" => Token::Gt,
             //">>" => Token::Ror,
             //">=" => Token::Gte,
+            
+            _ => return Err("unrecognized symbol")
         });
     }
     
