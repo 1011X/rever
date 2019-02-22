@@ -78,19 +78,6 @@ pub fn ident(i: &str) -> ParseResult<&str> {
 	Ok((&i[..idx], &i[idx..]))
 }
 
-/*
-named!(ch<char>, delimited!(
-    tag!("'"),
-    alt!(
-        value!('\\', tag!(r"\\"))
-        | value!('\'', tag!(r"\'"))
-        | value!('\n', tag!(r"\n"))
-        | value!('\t', tag!(r"\t"))
-        | call!(::nom::anychar)
-    ),
-    tag!("'")
-));
-*/
 pub fn ch(mut i: &str) -> ParseResult<char> {
 	// '
 	has!(i, "'");
@@ -151,15 +138,6 @@ pub fn st(mut i: &str) -> ParseResult<String> {
 	// "
 	has!(i, "\"");
 }
-
-named!(block<Vec<Statement>>, ws!(delimited!(
-	tag!("{"),
-	// many0! is supressing error in stmt
-	many0!(
-		terminated!(Statement::parse, tag!(";"))
-	),
-	tag!("}")
-)));
 */
 
 
@@ -168,6 +146,13 @@ pub struct ScopeTable {
     //functions: HashMap<String, Function>,
     locals: HashMap<String, Value>,
 }
+
+pub struct StackFrame {
+    args: Vec<Value>,
+    
+}
+
+pub type Stack = Vec<StackFrame>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
@@ -185,9 +170,9 @@ impl From<Literal> for Value {
 }
 
 impl From<bool> for Value {
-    fn from(b: bool) -> Self {
-        if b { Value::Bool(true) }
-        else { Value::Bool(false) }
-    }
+    fn from(b: bool) -> Self { Value::Bool(b) }
 }
 
+impl From<i32> for Value {
+    fn from(n: i32) -> Self { Value::Int(n) }
+}

@@ -12,13 +12,22 @@ pub struct Procedure {
 
 impl Procedure {
 	pub fn eval(&self, args: Vec<Value>, env: &mut ScopeTable) {
+	    // verify arguments
+	    debug_assert!(
+	        args.len() == self.args.len(),
+	        "called with incorrect number of arguments"
+        );
+	    
 	    for (i, arg) in self.args.iter().enumerate() {
 	        env.locals.insert(arg.name.clone(), args[i]);
 	    }
 	    
+	    // execute actual code
 	    for stmt in &self.code {
 	        stmt.eval(env);
 	    }
+	    
+	    
 	}
 	
 	pub fn uneval(&self, args: Vec<Value>, env: &mut ScopeTable) {
