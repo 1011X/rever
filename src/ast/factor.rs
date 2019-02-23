@@ -1,6 +1,6 @@
 use crate::ast::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Factor {
 	Lit(Literal),
 	LVal(LValue),
@@ -18,8 +18,8 @@ impl Factor {
 	
 	pub fn eval(&self, t: &ScopeTable) -> Value {
 	    match self {
-	        Factor::Lit(l) => l.eval(t),
-	        Factor::LVal(l) => l.eval(t),
+	        Factor::Lit(lit) => lit.eval(t),
+	        Factor::LVal(lval) => lval.eval(t),
 	    }
 	}
 }

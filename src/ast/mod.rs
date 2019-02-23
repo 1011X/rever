@@ -17,19 +17,19 @@ List of state given to program:
 
 */
 
-mod arg;
 mod expr;
 mod factor;
 //mod function;
-mod procedure;
 mod item;
 mod literal;
 mod lvalue;
+mod param;
+mod procedure;
 mod program;
 mod statement;
 mod types;
 
-pub use self::arg::Arg;
+pub use self::param::Param;
 pub use self::expr::Expr;
 pub use self::factor::Factor;
 //pub use self::function::Function;
@@ -46,16 +46,6 @@ use std::collections::HashMap;
 
 pub type ParseResult<'a, T> = Result<(T, &'a str), String>;
 
-macro_rules! has {
-	($i:ident, $t:expr) => {
-		if $i.starts_with($t) {
-			return Err("invalid character".to_string());
-		}
-		
-		$i = &$i[$t.len()..];
-	}
-}
-
 // ident ::= [_A-Za-z][_A-Za-z0-9]*
 pub fn ident(i: &str) -> ParseResult<&str> {
 	let mut idx = 0;
@@ -71,85 +61,23 @@ pub fn ident(i: &str) -> ParseResult<&str> {
 	idx += 1;
 	
 	// [A-Za-z0-9_]*
-	while i.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_') {
+	while i[idx..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_') {
 		idx += 1;
 	}
 	
 	Ok((&i[..idx], &i[idx..]))
 }
 
-pub fn ch(mut i: &str) -> ParseResult<char> {
-	// '
-	has!(i, "'");
-	
-	let c =
-		// escape character
-		if i.starts_with('\\') {
-			i = &i[1..];
-			
-			match &i[..1] {
-				"\\" => '\\',
-				"'"  => '\'',
-				"\n" => '\n',
-				"\t" => '\t',
-				_ => return Err("unrecognized escaped character".to_string())
-			}
-		}
-		// anything else
-		else if i.starts_with('\'') {
-			return Err("single quote needs to be escaped".to_string());
-		}
-		else {
-		    match i.chars().nth(0) {
-		        Some(c) => c,
-		        None => return Err("invalid character".to_string()),
-		    }
-		}
-	;
-	
-	// '
-	has!(i, "'");
-	
-	Ok((c, i))
-}
-/*
-named!(st<String>, delimited!(
-    tag!("\""),
-    map_res!(
-        escaped_transform!(is_not!("\\\""), '\\', alt!(
-            value!(b"\\", tag!("\\"))
-            | value!(b"\"", tag!("\""))
-            | value!(b"\n", tag!("n"))
-            | value!(b"\t", tag!("t"))
-        )),
-        String::from_utf8
-    ),
-    tag!("\"")
-));
-
-pub fn st(mut i: &str) -> ParseResult<String> {
-	let mut s = String::new();
-	
-	// "
-	has!(i, "\"");
-	
-	
-	
-	// "
-	has!(i, "\"");
-}
-*/
-
 
 pub struct ScopeTable {
-    procedures: HashMap<String, Procedure>,
+    procedures: HashMap<String, Vec<(bool, Type)>>,
     //functions: HashMap<String, Function>,
     locals: HashMap<String, Value>,
 }
 
 pub struct StackFrame {
     args: Vec<Value>,
-    
+    locals: Vec<(String, Value)>,
 }
 
 pub type Stack = Vec<StackFrame>;
@@ -158,6 +86,15 @@ pub type Stack = Vec<StackFrame>;
 pub enum Value {
     Bool(bool),
     Int(i32),
+}
+
+impl Value {
+    fn get_type(&self) -> Type {
+        match self {
+            Value::Bool(_) => Type::Bool,
+            Value::Int(_) => Type::I32,
+        }
+    }
 }
 
 impl From<Literal> for Value {

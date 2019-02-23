@@ -140,7 +140,7 @@ pub fn tokenize(mut s: &str) -> Result<Vec<Token>, &str> {
                 _ => return Err("unrecognized symbol")
             });
         }
-        else if s == "" {
+        else if s.is_empty() {
             break;
         }
     }

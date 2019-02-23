@@ -4,22 +4,27 @@ use crate::ast::*;
 pub struct Procedure {
 	/// Name of the function.
 	pub name: String,
-	/// Arguments' setup within the function
-	pub args: Vec<Arg>,
+	/// Parameters' setup within the function
+	pub params: Vec<Param>,
 	/// Sequence of statements that make up the function.
 	pub code: Vec<Statement>,
 }
 
 impl Procedure {
-	pub fn eval(&self, args: Vec<Value>, env: &mut ScopeTable) {
-	    // verify arguments
-	    debug_assert!(
-	        args.len() == self.args.len(),
-	        "called with incorrect number of arguments"
+	pub fn eval(&self, args: Vec<Value>, env: &mut ScopeTable) -> Vec<Value> {
+	    // verify number of arguments and their types
+        assert_eq!(
+            args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
+            self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
         );
-	    
-	    for (i, arg) in self.args.iter().enumerate() {
-	        env.locals.insert(arg.name.clone(), args[i]);
+        
+        // store args in scope table
+        let kv_pairs = self.params.iter()
+            .map(|param| &param.name)
+            .zip(args.into_iter());
+        
+	    for (name, value) in kv_pairs {
+	        env.locals.insert(name.clone(), value);
 	    }
 	    
 	    // execute actual code
@@ -27,17 +32,41 @@ impl Procedure {
 	        stmt.eval(env);
 	    }
 	    
-	    
+	    // store arg values back in parameters
+	    self.params.iter()
+	        .map(|param| env.locals
+	            .remove(&param.name)
+	            .expect("...parameter disappeared??"))
+	        .collect()
 	}
 	
-	pub fn uneval(&self, args: Vec<Value>, env: &mut ScopeTable) {
-	    for (i, arg) in self.args.iter().enumerate() {
-	        env.locals.insert(arg.name.clone(), args[i]);
+	pub fn uneval(&self, args: Vec<Value>, env: &mut ScopeTable) -> Vec<Value> {
+	    // verify number of arguments and their types
+        assert_eq!(
+            args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
+            self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
+        );
+        
+        // store args in scope table
+        let kv_pairs = self.params.iter()
+            .map(|param| &param.name)
+            .zip(args.into_iter());
+        
+	    for (name, value) in kv_pairs {
+	        env.locals.insert(name.clone(), value);
 	    }
 	    
+	    // execute actual code
 	    for stmt in &self.code {
 	        stmt.clone().invert().eval(env);
 	    }
+	    
+	    // store arg values back in parameters
+	    self.params.iter()
+	        .map(|param| env.locals
+	            .remove(&param.name)
+	            .expect("...parameter disappeared??"))
+	        .collect()
 	}
 	
 	pub fn parse(mut s: &str) -> ParseResult<Self> {
@@ -52,8 +81,8 @@ impl Procedure {
 	    let (name, sx) = ident(s)?;
 	    s = sx.trim_start();
 	    
-	    // arguments
-	    let mut args = Vec::new();
+	    // parameters
+	    let mut params = Vec::new();
 	    
 	    if !s.starts_with('(') {
 	        return Err("expected start of argument list".to_string());
@@ -68,8 +97,8 @@ impl Procedure {
                 break;
             }
             
-            let (arg, sx) = Arg::parse(s)?;
-            args.push(arg);
+            let (param, sx) = Param::parse(s)?;
+            params.push(param);
             s = sx.trim_start();
             
             if s.starts_with(',') {
@@ -99,21 +128,9 @@ impl Procedure {
             s = sx.trim_start();
         }
 	    
-	    Ok((Procedure { name: name.to_string(), args, code }, s))
+	    Ok((Procedure { name: name.to_string(), params, code }, s))
 	}
     /*
-	named!(pub parse<Self>, ws!(do_parse!(
-		tag!("proc") >>
-		name: ident >>
-		args: delimited!(
-			tag!("("),
-			separated_list!(tag!(","), Arg::parse),
-			tag!(")")
-		) >>
-		code: block
-		>> (Procedure { name, args, code })
-	)));
-	
 	pub fn verify(&mut self) {
 		for statement in &mut self.code {
 			statement.verify();

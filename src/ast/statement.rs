@@ -1,53 +1,40 @@
 use crate::ast::*;
 
-/*
-#[derive(Debug)]
-pub enum FlatOp {
-	Add(Factor),
-	Sub(Factor),
-}
-*/
-
 #[derive(Debug, Clone)]
 pub enum Statement {
-	Var(String, Option<Type>, Literal),
-	Drop(String, Option<Type>, Literal),
+	Decl(String, Option<Type>, Expr, Vec<Statement>, Expr),
 	
 	Not(LValue),
 	//Neg(LValue),
 	
-	RotLeft(LValue, Factor),
-	RotRight(LValue, Factor),
+	RotLeft(LValue, Expr),
+	RotRight(LValue, Expr),
 	
-	//CCNot(LValue, Factor, Factor),
-	//Xor(LValue, Vec<Factor>),
-	Xor(LValue, Factor),
-	
-	//Add(LValue, Vec<FlatOp>),
-	Add(LValue, Factor),
-	//Sub(LValue, Vec<FlatOp>),
-	Sub(LValue, Factor),
+	Xor(LValue, Expr),
+	Add(LValue, Expr),
+	Sub(LValue, Expr),
 	
 	Swap(LValue, LValue),
 	//CSwap(Factor, LValue, LValue),
 	
-	Do(LValue, Vec<Factor>),
-	Undo(LValue, Vec<Factor>),
+	Do(LValue, Vec<Expr>),
+	Undo(LValue, Vec<Expr>),
 	
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
-	
 	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	
-	//Switch(String, Vec<String, Vec<Statement>>),
-	//Unsafe(Vec<Statement>),
+    //Let(String, Option<Type>, Literal),
+    //When(Expr, Vec<Statement>, Vec<Statement>),
+	//Switch(String, Vec<_, Vec<Statement>>),
+	//FromVar(String, Expr, Vec<Statement>, Vec<Statement>, Expr),
 }
 
 use self::Statement::*;
 impl Statement {
     pub fn invert(self) -> Self {
         match self {
-            Var(n, t, v) => Drop(n, t, v),
-            Drop(n, t, v) => Var(n, t, v),
+            Decl(name, typ, init, scope, dest) =>
+                Decl(name, typ, dest, scope, init),
             
             RotLeft(l, v) => RotRight(l, v),
             RotRight(l, v) => RotLeft(l, v),
@@ -68,6 +55,7 @@ impl Statement {
 	
 	pub fn eval(&self, t: &mut ScopeTable) {
 	    match self {
+	        /*
 	        Var(id, _, lit) => {
 	            t.locals.insert(id.clone(), Value::from(*lit));
 	        }
@@ -75,12 +63,14 @@ impl Statement {
 	            assert_eq!(t.locals[id], Value::from(lit.clone()));
 	            t.locals.remove(id);
 	        }
+	        */
 	        Not(lval) => {
 	            *t.locals.get_mut(&lval.id).unwrap() = match lval.eval(t) {
                     Value::Bool(b) => Value::Bool(!b),
                     Value::Int(i) => Value::Int(!i),
                 };
             }
+            /*
 	        RotLeft(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
                     *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_left(r as u32)),
@@ -91,11 +81,13 @@ impl Statement {
                     *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_right(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
+            */
             Xor(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
                     *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l ^ r),
                 _ => panic!("tried to do something illegal"),
             }
+            /*
             Add(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Int(l), Value::Int(r)) =>
                     *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.wrapping_add(r)),
@@ -106,12 +98,14 @@ impl Statement {
                     *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.wrapping_sub(r)),
                 _ => panic!("tried to do something illegal"),
             }
+            */
             Swap(left, right) => {
                 // TODO check types match
                 let temp = left.eval(t);
                 *t.locals.get_mut(&left.id).unwrap() = right.eval(t);
                 *t.locals.get_mut(&right.id).unwrap() = temp;
             }
+            /*
             Do(name, args) => {
                 let vals: Vec<Value> = args.iter()
                     .map(|arg| arg.eval(t))
@@ -160,11 +154,45 @@ impl Statement {
                     assert_eq!(assert.eval(t), Value::Bool(false));
                 }
             }
+            */
+            _ => unreachable!()
 	    }
 	}
 	
-	pub fn parse(s: &str) -> ParseResult<Self> {
-	    unimplemented!()
+	pub fn parse(mut s: &str) -> ParseResult<Self> {
+	    if s.starts_with("do")
+	    && !s[2..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_') {
+	        let (pr, sx) = LValue::parse(s)?;
+	        s = sx.trim_start();
+	        
+	        if !s.starts_with('(') {
+	            return Err("expected start of argument list".to_string());
+            }
+            s = &s[1..];
+            
+            let mut args = Vec::new();
+            
+            loop {
+                s = s.trim_start();
+                
+                if s.starts_with(')') {
+                    s = &s[1..];
+                    break;
+                }
+                
+                let (arg, sx) = Expr::parse(s)?;
+                args.push(arg);
+                s = sx.trim_start();
+                
+                if s.starts_with(',') {
+                    s = &s[1..];
+                }
+            }
+            
+            return Ok((Statement::Do(pr, args), s));
+	    }
+	    
+	    Err("unrecognized statement".to_string())
 	}
     /*
 	named!(pub parse<Self>, ws!(alt_complete!(
@@ -206,7 +234,7 @@ impl Statement {
 			})
 		)
 		// if block/branch
-		// "if" binexpr block ["else" block] "fi" binexpr
+		// "if" expr "then" block ["else" block] "fi" expr
 		| do_parse!(
 			tag!("if") >> p: call!(BinExpr::parse) >>
 			t: block >>
@@ -270,68 +298,25 @@ impl Statement {
 				_      => unreachable!()
 			})
 		)
-		// left/right rotation
-		// lval ("<<=" | ">>=") factor
-		| do_parse!(
-			l: call!(LValue::parse) >>
-			op: alt!(tag!("<<=") | tag!(">>=")) >>
-			r: call!(Factor::parse)
-			>> (match op {
-				b"<<=" => Statement::RotLeft(l, r),
-				b">>=" => Statement::RotRight(l, r),
-				_ => unreachable!()
-			})
-		)
-		// xor, cnot
-		// lval "^=" factor
-		| do_parse!(
-			l: call!(LValue::parse) >>
-			tag!("^=") >>
-			r: separated_nonempty_list!(
-				tag!("^"),
-				Factor::parse
-			)
-			>> (Statement::Xor(l, r))
-		)
-		// increment/add, decrement/subtract
-		// lval ("+=" | "-=") factor
-		| do_parse!(
-			l: call!(LValue::parse) >>
-			op: alt!(tag!("+=") | tag!("-=")) >>
-			r: call!(Factor::parse) >>
-			m: many0!(alt_complete!(
-				map!(preceded!(tag!("+"), Factor::parse), FlatOp::Add)
-				| map!(preceded!(tag!("-"), Factor::parse), FlatOp::Sub)
-			))
-			>> ({
-				let mut m = m;
-				m.insert(0, FlatOp::Add(r));
-				match op {
-					b"+=" => Statement::Add(l, m),
-					b"-=" => Statement::Sub(l, m),
-					_ => unreachable!()
-				}
-			})
-		)
 	)));
 	
 	pub fn verify(&mut self) {
-		match *self {
-			Statement::Let(_, _, ref typ, ref lit) => {
-				if let Some(ref typ) = *typ {
+		match self {
+			Statement::Let(_, _, typ, lit) => {
+				if let Some(typ) = *typ {
 					match (typ, lit) {
-						(&Type::Bool, &Literal::Bool(_))
-						| (&Type::Char, &Literal::Char(_))
-						| (&Type::U16, &Literal::Num(_))
-						| (&Type::I16, &Literal::Num(_))
-						| (&Type::Usize, &Literal::Num(_))
-						| (&Type::Isize, &Literal::Num(_)) => {}
+						(Type::Bool, Literal::Bool(_))
+						| (Type::Char, Literal::Char(_))
+						| (Type::U16, Literal::Num(_))
+						| (Type::I16, Literal::Num(_))
+						| (Type::Usize, Literal::Num(_))
+						| (Type::Isize, Literal::Num(_)) => {}
 						_ => panic!("literal must match type given")
 					}
 				}
 				// The following code is best left to a type check pass
 				else {
-					match *lit {
+					match lit {
 						Literal::Bool(_) => {typ.get_or_insert(Type::Bool);}
 						Literal::Char(_) => {typ.get_or_insert(Type::Char);}
 						_ => unimplemented!()
@@ -339,51 +324,51 @@ impl Statement {
 				}
 			}
 			
-			Statement::RotLeft(ref lval, ref factor)
-			| Statement::RotRight(ref lval, ref factor) => {
-				if let Factor::LVal(ref fac) = *factor {
+			Statement::RotLeft(lval, factor)
+			| Statement::RotRight(lval, factor) => {
+				if let Factor::LVal(fac) = factor {
 					assert!(lval.id != fac.id, "value can't modify itself");
 				}
 			}
 			
-			Statement::CCNot(ref lval, ref c0, ref c1) => {
-				if let Factor::LVal(ref fac) = *c0 {
+			Statement::CCNot(lval, c0, c1) => {
+				if let Factor::LVal(fac) = c0 {
 					assert!(lval.id != fac.id, "value can't modify itself");
 				}
-				if let Factor::LVal(ref fac) = *c1 {
+				if let Factor::LVal(fac) = c1 {
 					assert!(lval.id != fac.id, "value can't modify itself");
 				}
 			}
 			
-			Statement::Xor(ref lval, ref facs) => {
+			Statement::Xor(lval, facs) => {
 				for fac in facs {
-					if let Factor::LVal(ref fac) = *fac {
+					if let Factor::LVal(fac) = fac {
 						assert!(lval.id != fac.id, "value can't modify itself");
 					}
 				}
 			}
 			
-			Statement::Add(ref lval, ref flops)
-			| Statement::Sub(ref lval, ref flops) => {
+			Statement::Add(lval, flops)
+			| Statement::Sub(lval, flops) => {
 				for flop in flops {
-					match *flop {
-						FlatOp::Add(Factor::LVal(ref op)) =>
+					match flop {
+						FlatOp::Add(Factor::LVal(op)) =>
 							assert!(lval.id != op.id, "value can't modify itself"),
-						FlatOp::Sub(Factor::LVal(ref op)) =>
+						FlatOp::Sub(Factor::LVal(op)) =>
 							assert!(lval.id != op.id, "value can't modify itself"),
 						_ => {}
 					}
 				}
 			}
 			
-			Statement::CSwap(ref fac, ref lv0, ref lv1) => {
-				if let Factor::LVal(ref fac) = *fac {
+			Statement::CSwap(fac, lv0, lv1) => {
+				if let Factor::LVal(fac) = fac {
 					assert!(fac.id != lv0.id, "value can't modify itself");
 					assert!(fac.id != lv1.id, "value can't modify itself");
 				}
 			}
 			
-			Statement::From(_, ref fbody, ref rbody, _) =>
+			Statement::From(_, fbody, rbody, _) =>
 				assert!(fbody.is_some() || rbody.is_some(), "Must provide at least 1 body."),
 			
 			_ => {}
@@ -391,13 +376,13 @@ impl Statement {
 	}
 	
 	pub fn compile(&self, st: &mut SymbolTable) -> Vec<rel::Op> {
-		match *self {
-			Statement::Not(ref lval) => {
+		match self {
+			Statement::Not(lval) => {
 				let (r, mut code) = lval.compile(st);
 				code.push(Op::Not(r));
 				code
 			}
-			Statement::Neg(ref lval) => {
+			Statement::Neg(lval) => {
 				let (r, mut code) = lval.compile(st);
 				code.push(Op::Not(r));
 				code.push(Op::AddImm(r, 1));
@@ -420,12 +405,12 @@ impl Statement {
 				code
 				vec![Op::Nop]
 			}
-			Statement::Add(ref lval, ref fact) => {
+			Statement::Add(lval, fact) => {
 				let mut code: Vec<rel::Op> = Vec::new();
 				let (l, fetch_l) = lval.compile(st);
 				code.extend_from_slice(&fetch_l);
-				match *fact {
-					Factor::LVal(ref rval) => {
+				match fact {
+					Factor::LVal(rval) => {
 						let (r, fetch_r) = rval.compile(st);
 						code.extend_from_slice(&fetch_r);
 						code.push(Op::Add(l, r));
@@ -456,13 +441,13 @@ impl Statement {
 				code
 			}
 			
-			Statement::Sub(ref lval, ref fact) => {
+			Statement::Sub(lval, fact) => {
 				println!("{:?}", st);
 				let mut code: Vec<rel::Op> = Vec::new();
 				let (l, fetch_l) = lval.compile(st);
 				code.extend_from_slice(&fetch_l);
-				match *fact {
-					Factor::LVal(ref rval) => {
+				match fact {
+					Factor::LVal(rval) => {
 						let (r, fetch_r) = rval.compile(st);
 						code.extend_from_slice(&fetch_r);
 						code.push(Op::Sub(l, r));
@@ -493,12 +478,12 @@ impl Statement {
 				code
 			}
 			
-			Statement::Xor(ref lval, ref fact) => {
+			Statement::Xor(lval, fact) => {
 				let mut code: Vec<rel::Op> = Vec::new();
 				let (l, fetch_l) = lval.compile(st);
 				code.extend_from_slice(&fetch_l);
-				match *fact {
-					Factor::LVal(ref rval) => {
+				match fact {
+					Factor::LVal(rval) => {
 						let (r, fetch_r) = rval.compile(st);
 						code.extend_from_slice(&fetch_r);
 						code.push(Op::Xor(l, r));
@@ -527,12 +512,12 @@ impl Statement {
 				code
 			}
 			
-			Statement::RotLeft(ref lval, ref fact) => {
+			Statement::RotLeft(lval, fact) => {
 				let mut code: Vec<rel::Op> = Vec::new();
 				let (l, fetch_l) = lval.compile(st);
 				code.extend_from_slice(&fetch_l);
-				match *fact {
-					Factor::LVal(ref rval) => {
+				match fact {
+					Factor::LVal(rval) => {
 						let (r, fetch_r) = rval.compile(st);
 						code.extend_from_slice(&fetch_r);
 						code.push(Op::LRot(l, r));
@@ -554,12 +539,12 @@ impl Statement {
 				code
 			}
 			
-			Statement::RotRight(ref lval, ref fact) => {
+			Statement::RotRight(lval, fact) => {
 				let mut code: Vec<rel::Op> = Vec::new();
 				let (l, fetch_l) = lval.compile(st);
 				code.extend_from_slice(&fetch_l);
-				match *fact {
-					Factor::LVal(ref rval) => {
+				match fact {
+					Factor::LVal(rval) => {
 						let (r, fetch_r) = rval.compile(st);
 						code.extend_from_slice(&fetch_r);
 						code.push(Op::RRot(l, r));

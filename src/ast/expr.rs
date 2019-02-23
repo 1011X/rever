@@ -13,15 +13,16 @@ use crate::ast::*;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
+    Factor(Factor),
     Not(Box<Expr>),
     Group(Box<Expr>),
     
-	Eq(Factor, Factor),
-	Neq(Factor, Factor),
+	Eq(Box<Expr>, Box<Expr>),
+	Neq(Box<Expr>, Box<Expr>),
 	//Lte(Factor, Factor),
 	//Gte(Factor, Factor),
-	Lt(Factor, Factor),
-	Gt(Factor, Factor),
+	Lt(Box<Expr>, Box<Expr>),
+	Gt(Box<Expr>, Box<Expr>),
 	
 	And(Box<Expr>, Box<Expr>),
 	Or(Box<Expr>, Box<Expr>),
@@ -32,6 +33,7 @@ impl Expr {
 	pub fn eval(&self, t: &ScopeTable) -> Value {
 	    use self::Expr::*;
 	    match self {
+	        Factor(fact) => fact.eval(t),
 	        Group(e) => e.eval(t),
 	        Not(e) => match e.eval(t) {
 	            Value::Bool(true) => Value::Bool(false),
@@ -57,9 +59,13 @@ impl Expr {
             }
             Or(l, r) => match (l.eval(t), r.eval(t)) {
                 (Value::Bool(l), Value::Bool(r)) => Value::from(l || r),
-                _ => panic!("tried ANDing non-boolean expressions")
+                _ => panic!("tried ORing non-boolean expressions")
             }
 	    }
+	}
+	
+	pub fn parse(s: &str) -> ParseResult<Self> {
+	    unimplemented!();
 	}
 	
     /*

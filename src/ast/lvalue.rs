@@ -1,13 +1,13 @@
 use crate::ast::*;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Deref {
 	Direct,
-	Indexed(Factor),
+	Index(Factor),
 	Field(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LValue {
 	pub id: String,
 	pub ops: Vec<Deref>,
@@ -35,7 +35,7 @@ impl LValue {
                     return Err("no closing bracket at indexed deref".to_string());
                 }
                 s = &s[1..];
-                ops.push(Deref::Indexed(fact));
+                ops.push(Deref::Index(fact));
                 continue;
             }
             
@@ -63,4 +63,100 @@ impl LValue {
 		st.get(&self.id)
 	}
 	*/
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn simple() {
+        assert_eq!(
+            LValue::parse("a").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: Vec::new(),
+            }, "")
+        );
+    }
+    #[test]
+    fn direct() {
+        assert_eq!(
+            LValue::parse("a!").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![Deref::Direct],
+            }, "")
+        );
+        assert_eq!(
+            LValue::parse("a   !").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![Deref::Direct],
+            }, "")
+        );
+        assert_eq!(
+            LValue::parse("a!!").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![Deref::Direct, Deref::Direct],
+            }, "")
+        );
+    }
+    #[test]
+    fn index() {
+        assert_eq!(
+            LValue::parse("a[0]").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![Deref::Index(Factor::Lit(Literal::Num(0)))],
+            }, "")
+        );
+        assert_eq!(
+            LValue::parse("a   [   0   ]").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![Deref::Index(Factor::Lit(Literal::Num(0)))],
+            }, "")
+        );
+        assert_eq!(
+            LValue::parse("a[0][b]").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![
+                    Deref::Index(Factor::Lit(Literal::Num(0))),
+                    Deref::Index(Factor::LVal(LValue {
+                        id: "b".to_string(),
+                        ops: Vec::new(),
+                    })),
+                ],
+            }, "")
+        );
+    }
+    #[test]
+    fn field() {
+        assert_eq!(
+            LValue::parse("a.b").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![Deref::Field("b".to_string())],
+            }, "")
+        );
+        assert_eq!(
+            LValue::parse("a   .    b").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![Deref::Field("b".to_string())],
+            }, "")
+        );
+        assert_eq!(
+            LValue::parse("a.b.c").unwrap(),
+            (LValue {
+                id: "a".to_string(),
+                ops: vec![
+                    Deref::Field("b".to_string()),
+                    Deref::Field("c".to_string()),
+                ],
+            }, "")
+        );
+    }
 }
