@@ -1,17 +1,19 @@
-use crate::ast::*;
+use crate::tokenize::Token;
+use crate::interpret::{ScopeTable, Value};
+use super::*;
 
 #[derive(Debug)]
 pub struct Procedure {
 	/// Name of the function.
 	pub name: String,
-	/// Parameters' setup within the function
+	/// List of parameters for the procedure.
 	pub params: Vec<Param>,
-	/// Sequence of statements that make up the function.
+	/// Sequence of statements that define the procedure.
 	pub code: Vec<Statement>,
 }
 
 impl Procedure {
-	pub fn eval(&self, args: Vec<Value>, env: &mut ScopeTable) -> Vec<Value> {
+	pub fn eval(&self, env: &mut ScopeTable, args: Vec<Value>) -> Vec<Value> {
 	    // verify number of arguments and their types
         assert_eq!(
             args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
@@ -40,7 +42,7 @@ impl Procedure {
 	        .collect()
 	}
 	
-	pub fn uneval(&self, args: Vec<Value>, env: &mut ScopeTable) -> Vec<Value> {
+	pub fn uneval(&self, env: &mut ScopeTable, args: Vec<Value>) -> Vec<Value> {
 	    // verify number of arguments and their types
         assert_eq!(
             args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
@@ -69,66 +71,85 @@ impl Procedure {
 	        .collect()
 	}
 	
-	pub fn parse(mut s: &str) -> ParseResult<Self> {
-	    // starting keyword `proc`
-	    if !(s.starts_with("proc")
-	    && s[4..].starts_with(|c: char| !c.is_ascii_alphanumeric())) {
-	        return Err("expected `proc` at start of procedure".to_string());
+	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+	    // keyword `proc`
+	    if tokens.first() != Some(&Token::Proc) {
+	        return Err(format!("expected `proc`"));
 	    }
-	    s = s[4..].trim_start();
+	    tokens = &tokens[1..];
 	    
-	    // name
-	    let (name, sx) = ident(s)?;
-	    s = sx.trim_start();
+	    let name = match tokens.first() {
+	    	Some(Token::Ident(n)) => {
+			 	tokens = &tokens[1..];
+				n.clone()
+			}
+			_ => return Err(format!("expected identifier"))
+		};
+	    
+	    // starting '('
+	    if tokens.first() != Some(&Token::LParen) {
+	    	return Err(format!("expected start of argument list"));
+        }
+    	tokens = &tokens[1..];
 	    
 	    // parameters
 	    let mut params = Vec::new();
-	    
-	    if !s.starts_with('(') {
-	        return Err("expected start of argument list".to_string());
-        }
-        s = &s[1..];
         
         loop {
-            s = s.trim_start();
-            
-            if s.starts_with(')') {
-                s = &s[1..];
-                break;
-            }
-            
-            let (param, sx) = Param::parse(s)?;
-            params.push(param);
-            s = sx.trim_start();
-            
-            if s.starts_with(',') {
-                s = &s[1..];
-            }
+		    match tokens.first() {
+		    	// ending ')'
+		    	Some(Token::RParen) => {
+		    		tokens = &tokens[1..];
+		    		break;
+	    		}
+	    		// assume param
+		    	Some(_) => {
+				    let (param, t) = Param::parse(tokens)?;
+				    tokens = t;
+				    params.push(param);
+				    
+				    match tokens.first() {
+				    	Some(Token::RParen) => {
+				    		tokens = &tokens[1..];
+				    		break
+			    		}
+			    		Some(Token::Comma) => {}
+			    		_ => return Err(format!("expected `,`"))
+			    	}
+			    }
+			    None => return Err(format!("eof @ parameter list")),
+		    }
+	    }
+	    
+	    // code block section
+	    
+	    // starting '{'
+	    if tokens.first() != Some(&Token::LBrace) {
+	    	return Err(format!("expected `{{`"));
         }
-        s = s.trim_start();
+    	tokens = &tokens[1..];
         
         // code block
         let mut code = Vec::new();
         
-        if !s.starts_with('{') {
-            return Err("expected start of procedure definition".to_string());
-        }
-        s = &s[1..];
-        
         loop {
-            s = s.trim_start();
-            
-            if s.starts_with('}') {
-                s = &s[1..];
-                break;
-            }
-            
-            let (stmt, sx) = Statement::parse(s)?;
-            code.push(stmt);
-            s = sx.trim_start();
+        	match tokens.first() {
+        		// ending '}'
+        		Some(Token::RBrace) => {
+        			tokens = &tokens[1..];
+        			break;
+    			}
+    			// statement
+    			Some(_) => {
+    				let (stmt, tx) = Statement::parse(tokens)?;
+    				tokens = tx;
+    				code.push(stmt);
+    			}
+    			None => return Err(format!("eof @ proc definition"))
+			}
         }
 	    
-	    Ok((Procedure { name: name.to_string(), params, code }, s))
+	    Ok((Procedure { name, params, code }, tokens))
 	}
     /*
 	pub fn verify(&mut self) {

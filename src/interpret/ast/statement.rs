@@ -1,8 +1,10 @@
-use crate::ast::*;
+use crate::tokenize::Token;
+use crate::interpret::{Value, ScopeTable};
+use super::*;
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-	Decl(String, Option<Type>, Expr, Vec<Statement>, Expr),
+	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
 	
 	Not(LValue),
 	//Neg(LValue),
@@ -33,8 +35,8 @@ use self::Statement::*;
 impl Statement {
     pub fn invert(self) -> Self {
         match self {
-            Decl(name, typ, init, scope, dest) =>
-                Decl(name, typ, dest, scope, init),
+            Var(name, typ, init, scope, dest) =>
+                Var(name, typ, dest, scope, init),
             
             RotLeft(l, v) => RotRight(l, v),
             RotRight(l, v) => RotLeft(l, v),
@@ -67,38 +69,39 @@ impl Statement {
 	        Not(lval) => {
 	            *t.locals.get_mut(&lval.id).unwrap() = match lval.eval(t) {
                     Value::Bool(b) => Value::Bool(!b),
-                    Value::Int(i) => Value::Int(!i),
+                    Value::Unsigned(i) => Value::Unsigned(!i),
+                    _ => panic!("tried to do something illegal")
                 };
             }
             /*
 	        RotLeft(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Int(l), Value::Int(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_left(r as u32)),
+                (Value::Unsigned(l), Value::Unsigned(r)) =>
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_left(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             RotRight(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Int(l), Value::Int(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_right(r as u32)),
+                (Value::Unsigned(l), Value::Unsigned(r)) =>
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_right(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             */
             Xor(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Int(l), Value::Int(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l ^ r),
+                (Value::Unsigned(l), Value::Unsigned(r)) =>
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l ^ r),
                 _ => panic!("tried to do something illegal"),
             }
-            /*
+            
             Add(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Int(l), Value::Int(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.wrapping_add(r)),
+                (Value::Unsigned(l), Value::Unsigned(r)) =>
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.wrapping_add(r)),
                 _ => panic!("tried to do something illegal"),
             }
             Sub(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Int(l), Value::Int(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Int(l.wrapping_sub(r)),
+                (Value::Unsigned(l), Value::Unsigned(r)) =>
+                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.wrapping_sub(r)),
                 _ => panic!("tried to do something illegal"),
             }
-            */
+            
             Swap(left, right) => {
                 // TODO check types match
                 let temp = left.eval(t);
@@ -159,40 +162,104 @@ impl Statement {
 	    }
 	}
 	
-	pub fn parse(mut s: &str) -> ParseResult<Self> {
-	    if s.starts_with("do")
-	    && !s[2..].starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_') {
-	        let (pr, sx) = LValue::parse(s)?;
-	        s = sx.trim_start();
-	        
-	        if !s.starts_with('(') {
-	            return Err("expected start of argument list".to_string());
-            }
-            s = &s[1..];
-            
-            let mut args = Vec::new();
-            
-            loop {
-                s = s.trim_start();
-                
-                if s.starts_with(')') {
-                    s = &s[1..];
-                    break;
-                }
-                
-                let (arg, sx) = Expr::parse(s)?;
-                args.push(arg);
-                s = sx.trim_start();
-                
-                if s.starts_with(',') {
-                    s = &s[1..];
-                }
-            }
-            
-            return Ok((Statement::Do(pr, args), s));
-	    }
-	    
-	    Err("unrecognized statement".to_string())
+	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+		match tokens.first() {
+			Some(Token::Do) => {
+				tokens = &tokens[1..];
+				
+				let (pr, tx) = LValue::parse(tokens)?;
+				tokens = tx;
+				
+				// parse arg list
+				// '('
+				match tokens.first() {
+					Some(Token::LParen) => tokens = &tokens[1..],
+					_ => return Err(format!("expected start of arg list"))
+				}
+				
+				let mut args = Vec::new();
+				
+				loop {
+					match tokens.first() {
+						Some(Token::RParen) => {
+							tokens = &tokens[1..];
+							break;
+						}
+						Some(_) => {
+							let (arg, tx) = Expr::parse(tokens)?;
+							tokens = tx;
+							args.push(arg);
+						}
+						None => return Err(format!("eof @ call statement"))
+					}
+				}
+				
+				Ok((Statement::Do(pr, args), tokens))
+			}
+			Some(Token::Var) => {
+			    tokens = &tokens[1..];
+			    
+			    // get name
+			    let name = match tokens.first() {
+			        Some(Token::Ident(name)) => name.clone(),
+			        Some(_) => return Err(format!("expected var name")),
+			        None => return Err(format!("eof @ var name")),
+			    };
+			    tokens = &tokens[1..];
+			    
+			    // get optional type
+                // TODO idea: choose how to parse expression based on type
+			    let mut typ = None;
+		        if let Some(Token::Colon) = tokens.first() {
+		            tokens = &tokens[1..];
+		            let (t, tx) = Type::parse(tokens)?;
+		            typ = Some(t);
+		            tokens = tx;
+		        }
+			    
+			    // check for assignment op
+			    match tokens.first() {
+			        Some(Token::Assign) => {tokens = &tokens[1..]}
+			        _ => return Err(format!("expected assignment operator"))
+			    }
+			    
+			    // get initialization expression
+			    let (init, tx) = Expr::parse(tokens)?;
+			    tokens = tx;
+			    
+			    // get list of statements for which this scope is valid
+			    let mut block = Vec::new();
+			    while tokens.first() != Some(&Token::Drop) {
+			        let (stmt, tx) = Statement::parse(tokens)?;
+			        block.push(stmt);
+			        tokens = tx;
+			    }
+			    
+			    // get deinit name
+			    match tokens.first() {
+			        Some(Token::Ident(n)) if *n == name =>
+			            tokens = &tokens[1..],
+			        Some(Token::Ident(e)) =>
+			            return Err(format!("expected {:?}, got {:?}", name, e)),
+			        Some(_) =>
+			            return Err(format!("expected var name")),
+			        None =>
+			            return Err(format!("eof @ var name")),
+			    }
+			    
+			    // check for assignment op
+			    match tokens.first() {
+			        Some(Token::Assign) => {tokens = &tokens[1..]}
+			        _ => return Err(format!("expected assignment operator"))
+			    }
+			    
+			    // get deinit expression
+			    let (drop, tx) = Expr::parse(tokens)?;
+			    
+			    Ok((Statement::Var(name, typ, init, block, drop), tx))
+			}
+			_ => Err(format!("unrecognized statement"))
+		}
 	}
     /*
 	named!(pub parse<Self>, ws!(alt_complete!(
