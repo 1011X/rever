@@ -30,7 +30,7 @@ Reversibility can be extended to conditionals, loops, and procedures.
 **Conditionals** can have at most 4 parts: the test, a code block, an optional else-block, and an assertion. The test and assertion are swapped when running the conditional in reverse. Nothing else changes.
 
 ```
-if a = b then
+if a = b
     a += b    // a' = a + b = b + b = 2b
 else
     a -= b
@@ -43,17 +43,17 @@ The reason there are two blocks is to give the flexibility of running the test b
 
 ```
 // i goes from 0 to 100 (exclusive)
-from i = 0 do
+from i = 0
     a += i
     i += 1
-until i = 100
+until i = 100 end
 
 // i goes from 0 to 100 (inclusive)
-from i = 0 do
+from i = 0
     a += i
-loop
-    i += 1
 until i = 100
+    i += 1
+end
 ```
 
 **Assertions** should allow a statement running in reverse to determine which branch to run (for conditionals) or what the starting condition is (in loops).
@@ -63,79 +63,66 @@ In conditionals, they should reflect what changes the first code block made to t
 In loops, the assertion can be the end value of the iterating variable, or a predicate that depends on any variable whose value depends on the loop.
 
 
-Procedures
-----------
+Procedures and Functions
+------------------------
 
-In math, reversible functions must have the same number of values in their output as they do in their input. Thus procedures follow a similar rule, except instead of explicitly returning a tuple of values, values are *moved* when called (rather than copied) and *moved back* when the procedure is done.
+Rever has both procedures and functions, and for good reason.
 
-Procedures are reversed by reversing the order of its statements and inverting them. Any increments become decrements (and vice versa), conditionals and loops are inverted, and so on. However, it's worth noting that **expressions are not inverted** when going in reverse, only statements.
+**Procedures** run a series of statements, optionally taking a list of arguments. Parameters are called in a "move-in move-out" fashion, similar to ["copy-in copy-out"](https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_copy-restore). This means that, if a procedure marks one of its parameters as mutable, then the value of the variable given to that parameter by the caller could change after the procedure is called. Procedures also can't return values and therefore can't be used in expressions.
 
-When calling a procedure, the method of call determines whether it's run forwards or backwards. In Rever, a procedure is called using either `do` or `undo` as a preceding keyword to the actual call.
+**Functions** evaluate a list of immutable arguments and return a value. This means that a function can be used in expressions. Unlike procedures, functions cannot have side-effects; variables outside of their scope are not accessible.
+
+When a procedure is called using `undo`, it is reversed by inverting its statements and then reversing their order. Any increments become decrements (and vice versa), conditionals and loops are inverted, and so on. Only statements are inverted, not expressions.
+
+In functions, the special keyword `return` can be used as the name for the value that will be returned. The initial value of `return` will be either its specified default value (if any) or a zero-initialized value (subject to change on actual implementation).
+
+### Definition
 
 ```
-proc add(var a: i32, b: i32) {
+proc add(var a: u8, b: u8)
     a += b
-}
+end
 
-var a = 11
-do add(a, 3)    // a = 14
-undo add(a, 14) // a = 0
+fn mul(a: u8, b: u8): u8
+    a * b
+end
+
+proc hello
+    do print "Hello world!"
+end
+```
+
+### Call
+
+```
+var c := mul(3, 2)  -- c = 6
+
+do   add(c, 1)      -- c = 7, usual form
+undo add c, 7       -- c = 0, terse form
 ```
 
 Recursion is also allowed.
 
 ```
 // a fibonacci number generating procedure
-proc fib(var x1: i32, var x2: i32, var n: i32) {
-    if n = 0 then
-        x1 ^= 0
-        x2 ^= 1
+proc fib(var x1: i32, var x2: i32, var n: i32)
+    if n = 0 do
+        x1 := 0
+        x2 := 1
     else
         n -= 1
-        do fib(x1, x2, n)
+        do fib x1, x2, n
         x1 += x2
         x1 <> x2
     fi x1 = 0 and x2 = 1
-}
+end
 ```
 
-### Functions
+### Rationale
 
-A (planned) feature of Rever is to allow a special type of procedure called a function. It differs from typical procedures in that they can return a single value and can be used in expressions. You may have heard of them.
+You may be asking "why can't we just use functions all the time?", which is a good question.
 
-To achieve this, all parameters are kept immutable and a special keyword `return` is used as a variable name to represent the value that will be returned. The initial value of `return` will be either its specified default value (if any) or a zero-initialized value (subject to change on actual implementation).
-
-```
-proc mul(a: i32, b: i32, var r: i32) {
-    var i = 0
-    from i = 0 do
-        if b ^ (1 << i) != 0 then
-            r += a << i
-        fi b ^ (1 << i) != 0
-        i += 1
-    until i = 32
-    drop i = 32
-}
-// ...is functionally equivalent to...
-fn mul(a: i32, b: i32): i32 {
-    var i = 0
-    from i = 0 do
-        if b ^ (1 << i) != 0 then
-            return += a << i
-        fi b ^ (1 << i) != 0
-        i += 1
-    until i = 32
-    drop i = 32
-}
-
-// except you can use it in expressions!
-var a = 3
-var b = 10
-// ...
-if mul(a, b) = 30 then
-    // ...
-fi mul(a, b) = 30
-```
+The answer is that procedures and functions have some properties that are mutually incompatible if we want to maintain the property of reversibility. Consider the mutable parameters of procedures; if functions had them, they wouldn't be usable in expressions anymore because functions are sometimes run twice in order to verify a state (e.g. using the same function in the `if` and `fi` sections of a branch). This could result in code that only runs in one direction but not another, or side-effects that show up twice.
 
 
 Features under consideration
@@ -144,6 +131,8 @@ Features under consideration
 It can become a bit tedious (and error-prone!) to repeat expressions multiple times in different places. That's why some alternate control structures are being considered for some special-case code. These consist of `for`, `when`, and `match`.
 
 ### `when` blocks
+
+**Status**: discontinued in favor of `if ... end`.
 
 Instead of writing
 ```
@@ -161,19 +150,47 @@ when a = b or b = c and c = d then
 end
 ```
 
-and not have to worry about the test and assertion mismatching. Some analysis could also be done so that variables in the test aren't being modified in the code block.
+and not have to worry about the test and assertion mismatching.
+
+Some analysis could also be done so that variables in the test aren't being modified in the code block.
+
+### Chained comparisons
+
+*A la* Python
+
+```
+if a = b = c
+    do something
+fi a = b = c
+
+if start <= x <= end
+    do something
+end
+```
+
+### Special boolean operators
+
+In the same vein as chained comparisons, instead of using `&&` for AND and `||` for OR as short-circuiting boolean operators, we can have special syntax in the conditional statement.
+
+```
+if a = b, c > d; a != d
+    do something
+end
+```
+
+This would be the same as `a = b && c > d || a != d` in C-like languages.
 
 ### `match` blocks
 
-A similar structure, `match`, would also be useful when there's more than 1 value being tested.
+A pattern-matching statement like `match` would be useful when a variable is being checked for multiple values.
 
 Instead of
 ```
-when a = b then
+if a = b
     // ...
-else when a = c
+else if a = c
     // ...
-else when a = d
+else if a = d
     // ...
 end
 end
@@ -182,7 +199,7 @@ end
 
 you can write something like this (syntax subject to change):
 ```
-match a with
+match a
     | b then // ... end
     | c then // ... end
     | d then // ... end
@@ -196,18 +213,11 @@ end
 A common case for loops is to iterate through a range of numbers, a list of items, etc. So a `for` loop is being considered:
 
 ```
-// for numbers
-for i in 0..100 do
+for i in 0..100   -- for numbers
     // ...
-loop
-    // ...
-done
+end
 
-// for a list?
-
-for i in list do
+for i in list     -- for finite lists
     // ...
-loop
-    // ...
-done
+end
 ```

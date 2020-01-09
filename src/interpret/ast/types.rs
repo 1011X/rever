@@ -3,15 +3,14 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-	Unit,
 	Bool,
-	U16, I16, U32, I32, U64, I64, Usize, Isize,
+	Uint, Int,
     Char, String,
-	Pointer(Box<Type>),
-	Array(Box<Type>, usize),
-	Fn(Vec<Type>, Box<Type>),
+	//Pointer(Box<Type>),
+	//Array(Box<Type>, usize),
+	//Fn(Vec<Type>, Box<Type>),
 	Proc(Vec<(bool, Type)>),
-	Composite(String),
+	//Composite(String),
 }
 
 impl Type {
@@ -20,8 +19,8 @@ impl Type {
 			Some(Token::Ident(t)) if t == "bool" =>
 				Ok((Type::Bool, &tokens[1..])),
 			
-			Some(Token::Ident(t)) if t == "u64" =>
-				Ok((Type::U64, &tokens[1..])),
+			Some(Token::Ident(t)) if t == "uint" =>
+				Ok((Type::Uint, &tokens[1..])),
 			
 			_f =>
 		        Err(format!("unknown type: {:?}", _f))
@@ -43,8 +42,8 @@ mod tests {
     #[test]
     fn int() {
     	assert_eq!(
-    		Type::parse(&tokenize("u64").unwrap()).unwrap(),
-    		(Type::U64, &[][..])
+    		Type::parse(&tokenize("uint").unwrap()).unwrap(),
+    		(Type::Uint, &[][..])
 		);
 	}
 }

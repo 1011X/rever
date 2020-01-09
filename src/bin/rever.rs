@@ -10,7 +10,7 @@ fn main() {
 	match env::args().skip(1).next() {
 		// start REPL
 		None => {
-			println!(">>> ");
+			print!(">>> ");
 			unimplemented!();
 		}
 		

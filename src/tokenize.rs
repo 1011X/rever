@@ -1,9 +1,10 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     // keywords
-    Proc, Do, Undo, From, Until, Loop, If, Then, Else, Fi, Let, Var, Drop, Mod,
+    Do, Drop, Else, End, Fi, Fn, From, If, Let, Loop, Mod, Proc, Then, Undo,
+    Until, Var,
     // unused
-    Fn, Return, Match, As, For, In, //Goto, ComeFrom,
+    Match, As, For, In, //Goto, ComeFrom,
     
     // brackets
     LParen, RParen, LBracket, RBracket, LBrace, RBrace,
@@ -16,8 +17,11 @@ pub enum Token {
     Rol, Ror,
     
     // multi-purpose
-    Eq, Comma, Colon, At, Add, Sub, Semicolon, Period,
+    Add, At, Colon, Comma, Eq, Period, Semicolon, Sub,
+    Star, FSlash,
     Bang, Assign, Caret,
+    
+    Newline,
     
     Comment(String),
     
@@ -63,7 +67,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
                     }
                 }
                 
-                match &*token {
+                match token.as_str() {
                     // keywords
                     "proc"  => Token::Proc,
                     "do"    => Token::Do,
@@ -80,12 +84,13 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
                     "drop"  => Token::Drop,
                     "mod"   => Token::Mod,
                     
-                    "fn"     => Token::Fn,
-                    "return" => Token::Return,
-                    "match"  => Token::Match,
-                    "as"     => Token::As,
-                    "for"    => Token::For,
-                    "in"     => Token::In,
+                    // reserved
+                    "fn"    => Token::Fn,
+                    //"return" => Token::Return,
+                    "match" => Token::Match,
+                    "as"    => Token::As,
+                    "for"   => Token::For,
+                    "in"    => Token::In,
 
                     _ => Token::Ident(token)
                 }
@@ -171,8 +176,8 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
             '≥' => Token::Gte,
 
             // space
-            // TODO should newlines have their own token?
-            ' ' | '\t' | '\n' => continue,
+            '\n' => Token::Newline,
+            ' ' | '\t' => continue,
 
             // comment
             '/' => match chars.peek() {
@@ -205,9 +210,10 @@ mod tests {
 	
 	#[test]
 	fn keywords() {
-		assert_eq!(tokenize("proc"), Ok(vec![Token::Proc]));
-		assert_eq!(tokenize("  proc  "), Ok(vec![Token::Proc]));
-		assert_eq!(tokenize("do"), Ok(vec![Token::Do]));
-		assert_eq!(tokenize("undo"), Ok(vec![Token::Undo]));
+		assert_eq!(tokenize("do").unwrap(), vec![Token::Do]);
+		assert_eq!(tokenize("  do  \t").unwrap(), vec![Token::Do]);
+		assert_eq!(tokenize("does").unwrap(), vec![
+		    Token::Ident(String::from("does"))
+	    ]);
 	}
 }

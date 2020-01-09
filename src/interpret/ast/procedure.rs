@@ -1,5 +1,5 @@
 use crate::tokenize::Token;
-use crate::interpret::{ScopeTable, Value};
+use crate::interpret::{Scope, Value};
 use super::*;
 
 #[derive(Debug)]
@@ -13,62 +13,65 @@ pub struct Procedure {
 }
 
 impl Procedure {
-	pub fn eval(&self, env: &mut ScopeTable, args: Vec<Value>) -> Vec<Value> {
+    // TODO perhaps the arguments should be stored in a HashMap, the local vars
+    // in a vector, and then turn the vector into a hashmap and compare keys at
+    // the end to verify everything is there.
+    /*
+    fn call_base(&self, forward: bool, args: Vec<Value>) -> Vec<Value> {
 	    // verify number of arguments and their types
         assert_eq!(
             args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
             self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
         );
         
-        // store args in scope table
-        let kv_pairs = self.params.iter()
-            .map(|param| &param.name)
-            .zip(args.into_iter());
+        // store args in scope stack
+        let mut vars: Vec<(String, Value)> = self.params.iter()
+            .map(|param| param.name.clone())
+            .zip(args.into_iter())
+            .collect();
         
-	    for (name, value) in kv_pairs {
-	        env.locals.insert(name.clone(), value);
-	    }
-	    
 	    // execute actual code
-	    for stmt in &self.code {
-	        stmt.eval(env);
-	    }
-	    
+        if forward {
+	        for stmt in &self.code {
+	            stmt.eval(&mut vars);
+	        }
+        }
+        else {
+            for stmt in &self.code {
+	            stmt.clone().invert().eval(&mut vars);
+	        }
+        }
+        
+        // verify number of arguments and their types again
+        assert_eq!(
+            args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
+            self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
+        );
+            
 	    // store arg values back in parameters
 	    self.params.iter()
-	        .map(|param| env.locals
-	            .remove(&param.name)
-	            .expect("...parameter disappeared??"))
+	        .map(|param| {
+	            let var = vars.iter().rposition(|(id, _)| *id == param.name)
+	                .expect("...parameter disappeared??");
+	            vars.remove(var);
+            })
 	        .collect()
+    }
+    
+	pub fn call(&self, args: Vec<Value>) -> Vec<Value> {
+	    self.call_base(true, args)
 	}
 	
-	pub fn uneval(&self, env: &mut ScopeTable, args: Vec<Value>) -> Vec<Value> {
-	    // verify number of arguments and their types
-        assert_eq!(
-            args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
-            self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
-        );
-        
-        // store args in scope table
-        let kv_pairs = self.params.iter()
-            .map(|param| &param.name)
-            .zip(args.into_iter());
-        
-	    for (name, value) in kv_pairs {
-	        env.locals.insert(name.clone(), value);
-	    }
+	pub fn uncall(&self, args: Vec<Value>) -> Vec<Value> {
+	    self.call_base(false, args)
+	}
+	*/
+	
+	// add the procedure to the scope
+	pub fn eval(&self, t: &mut Scope) {
+	    unimplemented!()
 	    
-	    // execute actual code
-	    for stmt in &self.code {
-	        stmt.clone().invert().eval(env);
-	    }
 	    
-	    // store arg values back in parameters
-	    self.params.iter()
-	        .map(|param| env.locals
-	            .remove(&param.name)
-	            .expect("...parameter disappeared??"))
-	        .collect()
 	}
 	
 	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
@@ -122,20 +125,12 @@ impl Procedure {
 	    }
 	    
 	    // code block section
-	    
-	    // starting '{'
-	    if tokens.first() != Some(&Token::LBrace) {
-	    	return Err(format!("expected `{{`"));
-        }
-    	tokens = &tokens[1..];
-        
-        // code block
         let mut code = Vec::new();
         
         loop {
         	match tokens.first() {
-        		// ending '}'
-        		Some(Token::RBrace) => {
+        		// ending 'end'
+        		Some(Token::End) => {
         			tokens = &tokens[1..];
         			break;
     			}

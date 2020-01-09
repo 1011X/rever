@@ -1,5 +1,5 @@
 use crate::tokenize::Token;
-use crate::interpret::{ScopeTable, Value};
+use crate::interpret::{Scope, Value};
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,8 +68,8 @@ impl LValue {
         Ok((LValue { id: name, ops }, tokens))
 	}
 	
-	pub fn eval(&self, t: &ScopeTable) -> Value {
-	    t.locals[&self.id].clone()
+	pub fn eval(&self, t: &Scope) -> Value {
+	    t.iter().rfind(|(id, _)| *id == self.id).unwrap().1.clone()
 	}
 	
 	/*

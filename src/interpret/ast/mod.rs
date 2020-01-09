@@ -29,14 +29,14 @@ mod statement;
 mod term;
 mod types;
 
-pub use self::param::Param;
 pub use self::expr::Expr;
 //pub use self::function::Function;
-pub use self::procedure::Procedure;
 pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::LValue;
 pub use self::module::Module;
+pub use self::param::Param;
+pub use self::procedure::Procedure;
 pub use self::statement::Statement;
 pub use self::term::Term;
 pub use self::types::Type;

@@ -16,7 +16,7 @@ Ideas:
 */
 
 use crate::tokenize::Token;
-use crate::interpret::{ScopeTable, Value};
+use crate::interpret::{Scope, Value};
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -47,7 +47,7 @@ pub enum Expr {
 }
 
 impl Expr {
-	pub fn eval(&self, t: &ScopeTable) -> Value {
+	pub fn eval(&self, t: &Scope) -> Value {
 		match self {
 			Expr::Term(term) => term.eval(t),
 			Expr::Group(e) => e.eval(t),
@@ -113,7 +113,11 @@ impl Expr {
 	
 	// "term" here is not to be confused with Term; Term is a variable or
 	// literal, while term here means "stuff separated by + or -"
-	fn parse_term(tokens: &[Token]) -> ParseResult<Self> {
+	fn parse_term(mut tokens: &[Token]) -> ParseResult<Self> {
+		let mut facts: Vec<(Token, Expr)> = Vec::new();
+		let (first, t) = Expr::parse_factor(tokens)?;
+		tokens = t;
+		
 	    unimplemented!()
 	}
 	

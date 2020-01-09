@@ -1,2 +1,3 @@
-var a := 9;
-drop a := 9;
+var a := 9
+do something
+drop a := 9

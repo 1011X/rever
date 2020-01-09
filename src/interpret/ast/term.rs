@@ -1,5 +1,5 @@
 use crate::tokenize::Token;
-use crate::interpret::{ScopeTable, Value};
+use crate::interpret::{Scope, Value};
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -19,7 +19,7 @@ impl Term {
 	    }
 	}
 	
-	pub fn eval(&self, t: &ScopeTable) -> Value {
+	pub fn eval(&self, t: &Scope) -> Value {
 	    match self {
 	        Term::Lit(lit) => lit.eval(),
 	        Term::LVal(lval) => lval.eval(t),

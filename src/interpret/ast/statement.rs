@@ -1,12 +1,12 @@
 use crate::tokenize::Token;
-use crate::interpret::{Value, ScopeTable};
+use crate::interpret::{Scope, Value};
 use super::*;
 
 #[derive(Debug, Clone)]
 pub enum Statement {
 	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
 	
-	Not(LValue),
+	//Not(LValue),
 	//Neg(LValue),
 	
 	RotLeft(LValue, Expr),
@@ -19,8 +19,8 @@ pub enum Statement {
 	Swap(LValue, LValue),
 	//CSwap(Factor, LValue, LValue),
 	
-	Do(LValue, Vec<Expr>),
-	Undo(LValue, Vec<Expr>),
+	Do(String, Vec<Expr>),
+	Undo(String, Vec<Expr>),
 	
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
@@ -38,8 +38,8 @@ impl Statement {
             Var(name, typ, init, scope, dest) =>
                 Var(name, typ, dest, scope, init),
             
-            RotLeft(l, v) => RotRight(l, v),
-            RotRight(l, v) => RotLeft(l, v),
+            //RotLeft(l, v) => RotRight(l, v),
+            //RotRight(l, v) => RotLeft(l, v),
             Add(l, v) => Sub(l, v),
             Sub(l, v) => Add(l, v),
             
@@ -55,72 +55,107 @@ impl Statement {
         }
     }
 	
-	pub fn eval(&self, t: &mut ScopeTable) {
+	pub fn eval(&self, t: &mut Scope) {
 	    match self {
+	        Var(id, _, init, block, dest) => {
+	            t.push((id.clone(), init.eval(t)));
+	            for stmt in block {
+	                stmt.eval(t);
+	            }
+	            let (final_id, final_val) = t.pop().unwrap();
+	            assert_eq!(*id, final_id);
+	            assert_eq!(final_val, dest.eval(t));
+	        }
 	        /*
-	        Var(id, _, lit) => {
-	            t.locals.insert(id.clone(), Value::from(*lit));
-	        }
-	        Drop(id, _, lit) => {
-	            assert_eq!(t.locals[id], Value::from(lit.clone()));
-	            t.locals.remove(id);
-	        }
-	        */
-	        Not(lval) => {
-	            *t.locals.get_mut(&lval.id).unwrap() = match lval.eval(t) {
-                    Value::Bool(b) => Value::Bool(!b),
-                    Value::Unsigned(i) => Value::Unsigned(!i),
-                    _ => panic!("tried to do something illegal")
-                };
-            }
-            /*
 	        RotLeft(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Unsigned(l), Value::Unsigned(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_left(r as u32)),
+                    *t.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_left(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             RotRight(lval, fact) => match (lval.eval(t), fact.eval(t)) {
                 (Value::Unsigned(l), Value::Unsigned(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_right(r as u32)),
+                    *t.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_right(r as u32)),
                 _ => panic!("tried to do something illegal"),
             }
             */
             Xor(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Unsigned(l), Value::Unsigned(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l ^ r),
+                (Value::Unsigned(l), Value::Unsigned(r)) => {
+                    let pos = t.iter()
+                        .rposition(|var| var.0 == lval.id)
+                        .expect("variable name not found");
+                    t[pos].1 = Value::Unsigned(l ^ r);
+                }
                 _ => panic!("tried to do something illegal"),
             }
             
             Add(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Unsigned(l), Value::Unsigned(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.wrapping_add(r)),
+                (Value::Unsigned(l), Value::Unsigned(r)) => {
+                    let pos = t.iter()
+                        .rposition(|var| var.0 == lval.id)
+                        .expect("variable name not found");
+                    t[pos].1 = Value::Unsigned(l.wrapping_add(r));
+                }
                 _ => panic!("tried to do something illegal"),
             }
             Sub(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-                (Value::Unsigned(l), Value::Unsigned(r)) =>
-                    *t.locals.get_mut(&lval.id).unwrap() = Value::Unsigned(l.wrapping_sub(r)),
+                (Value::Unsigned(l), Value::Unsigned(r)) => {
+                    let pos = t.iter()
+                        .rposition(|var| var.0 == lval.id)
+                        .expect("variable name not found");
+                    t[pos].1 = Value::Unsigned(l.wrapping_sub(r));
+                }
                 _ => panic!("tried to do something illegal"),
             }
             
             Swap(left, right) => {
-                // TODO check types match
-                let temp = left.eval(t);
-                *t.locals.get_mut(&left.id).unwrap() = right.eval(t);
-                *t.locals.get_mut(&right.id).unwrap() = temp;
+                let left_idx = t.iter()
+                    .rposition(|var| var.0 == left.id)
+                    .expect("variable name not found");
+                let right_idx = t.iter()
+                    .rposition(|var| var.0 == right.id)
+                    .expect("variable name not found");
+                
+                // ensure types are the same
+                assert_eq!(
+                    t[left_idx].1.get_type(),
+                    t[right_idx].1.get_type(),
+                    "tried to swap variables with different types"
+                );
+                
+                // get names of values being swapped for later
+                let left_name = t[left_idx].0.clone();
+                let right_name = t[right_idx].0.clone();
+                
+                t.swap(left_idx, right_idx);
+                
+                // rectify names
+                t[left_idx].0 = left_name;
+                t[right_idx].0 = right_name;
             }
             /*
+            // TODO find a way to call procedures. maybe by adding a `call`
+            // method to `Value`.
             Do(name, args) => {
                 let vals: Vec<Value> = args.iter()
                     .map(|arg| arg.eval(t))
                     .collect();
-                t.procedures[&name.id].eval(vals, t);
+                t.iter()
+                    .rfind(|var| var.0 == name.id)
+                    .unwrap()
+                    .1
+                    .call(vals, t);
             }
             Undo(name, args) => {
                 let vals: Vec<Value> = args.iter()
                     .map(|arg| arg.eval(t))
                     .collect();
-                t.procedures[&name.id].uneval(vals, t);
+                t.iter()
+                    .rfind(|var| var.0 == name.id)
+                    .unwrap()
+                    .1
+                    .uncall(vals, t);
             }
+            
             If(test, block, else_block, assert) => {
                 match test.eval(t) {
                     Value::Bool(true) => {
@@ -167,21 +202,20 @@ impl Statement {
 			Some(Token::Do) => {
 				tokens = &tokens[1..];
 				
-				let (pr, tx) = LValue::parse(tokens)?;
-				tokens = tx;
+	            let name =
+	            	if let Some(Token::Ident(n)) = tokens.first() {
+				        tokens = &tokens[1..];
+				        n.clone()
+			        } else {
+				        return Err(format!("expected procedure name"));
+			        };
 				
 				// parse arg list
-				// '('
-				match tokens.first() {
-					Some(Token::LParen) => tokens = &tokens[1..],
-					_ => return Err(format!("expected start of arg list"))
-				}
-				
 				let mut args = Vec::new();
 				
 				loop {
 					match tokens.first() {
-						Some(Token::RParen) => {
+						Some(Token::Newline) => {
 							tokens = &tokens[1..];
 							break;
 						}
@@ -190,25 +224,26 @@ impl Statement {
 							tokens = tx;
 							args.push(arg);
 						}
-						None => return Err(format!("eof @ call statement"))
+						None =>
+						    return Err(format!("eof @ call statement"))
 					}
 				}
 				
-				Ok((Statement::Do(pr, args), tokens))
+				Ok((Statement::Do(name, args), tokens))
 			}
+			
 			Some(Token::Var) => {
 			    tokens = &tokens[1..];
 			    
 			    // get name
 			    let name = match tokens.first() {
 			        Some(Token::Ident(name)) => name.clone(),
-			        Some(_) => return Err(format!("expected var name")),
-			        None => return Err(format!("eof @ var name")),
+			        Some(_) => return Err(format!("expected var name at start")),
+			        None => return Err(format!("eof @ var name start")),
 			    };
 			    tokens = &tokens[1..];
 			    
 			    // get optional type
-                // TODO idea: choose how to parse expression based on type
 			    let mut typ = None;
 		        if let Some(Token::Colon) = tokens.first() {
 		            tokens = &tokens[1..];
@@ -227,6 +262,12 @@ impl Statement {
 			    let (init, tx) = Expr::parse(tokens)?;
 			    tokens = tx;
 			    
+			    // get newline
+			    match tokens.first() {
+			        Some(Token::Newline) => {tokens = &tokens[1..]}
+			        _ => return Err(format!("expected newline character"))
+			    }
+			    
 			    // get list of statements for which this scope is valid
 			    let mut block = Vec::new();
 			    while tokens.first() != Some(&Token::Drop) {
@@ -234,6 +275,7 @@ impl Statement {
 			        block.push(stmt);
 			        tokens = tx;
 			    }
+		        tokens = &tokens[1..];
 			    
 			    // get deinit name
 			    match tokens.first() {
@@ -242,9 +284,9 @@ impl Statement {
 			        Some(Token::Ident(e)) =>
 			            return Err(format!("expected {:?}, got {:?}", name, e)),
 			        Some(_) =>
-			            return Err(format!("expected var name")),
+			            return Err(format!("expected var name at end")),
 			        None =>
-			            return Err(format!("eof @ var name")),
+			            return Err(format!("eof @ var name end")),
 			    }
 			    
 			    // check for assignment op
@@ -255,10 +297,22 @@ impl Statement {
 			    
 			    // get deinit expression
 			    let (drop, tx) = Expr::parse(tokens)?;
+			    tokens = tx;
 			    
-			    Ok((Statement::Var(name, typ, init, block, drop), tx))
+			    // get newline
+			    match tokens.first() {
+			        Some(Token::Newline) => {tokens = &tokens[1..]}
+			        _ => return Err(format!("expected newline character"))
+			    }
+			    
+			    Ok((Statement::Var(name, typ, init, block, drop), tokens))
 			}
-			_ => Err(format!("unrecognized statement"))
+			
+			Some(token) =>
+			    Err(format!("unrecognized token: {:?}", token)),
+		    
+		    None =>
+		        Err(format!("eof @ statement")),
 		}
 	}
     /*

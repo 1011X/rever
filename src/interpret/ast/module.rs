@@ -8,7 +8,7 @@ pub struct Module {
 impl Module {
 	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
 	    let mut items = Vec::new();
-		while ! tokens.is_empty() {
+		while !tokens.is_empty() {
     		let (item, t) = Item::parse(tokens)?;
     		tokens = t;
     		items.push(item);
