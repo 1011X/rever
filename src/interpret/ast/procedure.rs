@@ -70,8 +70,6 @@ impl Procedure {
 	// add the procedure to the scope
 	pub fn eval(&self, t: &mut Scope) {
 	    unimplemented!()
-	    
-	    
 	}
 	
 	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
