@@ -47,6 +47,130 @@ pub enum Expr {
 }
 
 impl Expr {
+	// Note to future self: This is how the parser should be structured:
+	// expr -> term {(+|-) term}
+	// term -> fact {(*|/) fact}
+	// fact -> exp {^ exp}
+	// exp -> ( expr )
+	//     -> factor
+	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+	    enum Op { Add, Sub }
+	    
+		let mut terms: Vec<(Op, Expr)> = Vec::new();
+		
+		// parse first factor expression
+		let (first, t) = Expr::parse_term(tokens)?;
+		tokens = t;
+		
+		while tokens.first() == Some(&Token::Add) || tokens.first() == Some(&Token::Sub) {
+		    let op = match tokens.first().unwrap() {
+		        Token::Add => Op::Add,
+		        Token::Sub => Op::Sub,
+		        _ => unreachable!()
+		    };
+		    tokens = &tokens[1..];
+		    
+		    let (fact, t) = Expr::parse_term(tokens)?;
+		    tokens = t;
+		    terms.push((op, fact));
+		}
+		
+		if terms.is_empty() {
+		    return Ok((first, tokens));
+		}
+		
+		let res = terms.into_iter()
+			.fold(first, |acc, (op, base)| match op {
+				Op::Add => Expr::Add(Box::new(acc), Box::new(base)),
+				Op::Sub => Expr::Sub(Box::new(acc), Box::new(base)),
+			});
+		
+		Ok((res, tokens))
+	}
+	
+	// "term" here is not to be confused with Term; Term is a variable or
+	// literal, while term here means "stuff separated by + or -"
+	fn parse_term(mut tokens: &[Token]) -> ParseResult<Self> {
+	    enum Op { Mul, Div }
+	    
+		let mut facts: Vec<(Op, Expr)> = Vec::new();
+		
+		// parse first factor expression
+		let (first, t) = Expr::parse_factor(tokens)?;
+		tokens = t;
+		
+		while tokens.first() == Some(&Token::Star) || tokens.first() == Some(&Token::FSlash) {
+		    let op = match tokens.first().unwrap() {
+		        Token::Star => Op::Mul,
+		        Token::FSlash => Op::Div,
+		        _ => unreachable!()
+		    };
+		    tokens = &tokens[1..];
+		    
+		    let (fact, t) = Expr::parse_factor(tokens)?;
+		    tokens = t;
+		    facts.push((op, fact));
+		}
+		
+		if facts.is_empty() {
+		    return Ok((first, tokens));
+		}
+		
+		let res = facts.into_iter()
+			.fold(first, |acc, (op, base)| match op {
+				Op::Mul => Expr::Mul(Box::new(acc), Box::new(base)),
+				Op::Div => Expr::Div(Box::new(acc), Box::new(base)),
+			});
+		
+		Ok((res, tokens))
+	}
+	
+	fn parse_factor(mut tokens: &[Token]) -> ParseResult<Self> {
+		let mut exps = Vec::new();
+		let (first, t) = Expr::parse_exp(tokens)?;
+		tokens = t;
+		
+		while tokens.first() == Some(&Token::Caret) {
+			let (exp, t) = Expr::parse_exp(&tokens[1..])?;
+			tokens = t;
+			exps.push(exp);
+		}
+		
+		if exps.is_empty() {
+		    return Ok((first, tokens));
+		}
+		
+		let last = exps.pop().unwrap();
+		let res = exps.into_iter()
+			.rfold(last, |acc, base|
+			    Expr::Exp(Box::new(base), Box::new(acc))
+		    );
+		
+		Ok((Expr::Exp(Box::new(first), Box::new(res)), tokens))
+	}
+	
+	fn parse_exp(tokens: &[Token]) -> ParseResult<Self> {
+		// check if there's an open parenthesis
+		if tokens.first() == Some(&Token::LParen) {
+			let (expr, t) = Expr::parse(&tokens[1..])?;
+			
+			// make sure there's a closing parenthesis
+			if t.first() != Some(&Token::RParen) {
+				Err(format!("no closing parenthesis found"))
+			}
+			else {
+				Ok((Expr::Group(Box::new(expr)), &t[1..]))
+			}
+		}
+		else {
+			// otherwise, treat it as a Term.
+			let (term, t) = Term::parse(tokens)?;
+			Ok((Expr::Term(term), t))
+		}
+	}
+	
+	
+	/*
 	pub fn eval(&self, t: &Scope) -> Value {
 		match self {
 			Expr::Term(term) => term.eval(t),
@@ -100,70 +224,7 @@ impl Expr {
 			}
 		}
 	}
-	
-	// Note to future self: This is how the parser should be structured:
-	// expr -> term {(+|-) term}
-	// term -> fact {(*|/) fact}
-	// fact -> exp {^ exp}
-	// exp -> ( expr )
-	//     -> factor
-	pub fn parse(tokens: &[Token]) -> ParseResult<Self> {
-	    Expr::parse_factor(tokens)
-	}
-	
-	// "term" here is not to be confused with Term; Term is a variable or
-	// literal, while term here means "stuff separated by + or -"
-	fn parse_term(mut tokens: &[Token]) -> ParseResult<Self> {
-		let mut facts: Vec<(Token, Expr)> = Vec::new();
-		let (first, t) = Expr::parse_factor(tokens)?;
-		tokens = t;
-		
-	    unimplemented!()
-	}
-	
-	fn parse_factor(mut tokens: &[Token]) -> ParseResult<Self> {
-		let mut exps = Vec::new();
-		let (first, t) = Expr::parse_exp(tokens)?;
-		tokens = t;
-		
-		while tokens.first() == Some(&Token::Caret) {
-			let (exp, t) = Expr::parse_exp(&tokens[1..])?;
-			tokens = t;
-			exps.push(exp);
-		}
-		
-		if exps.is_empty() {
-		    return Ok((first, tokens));
-		}
-		
-		let last = exps.pop().unwrap();
-		let res = exps.into_iter()
-			.rfold(last, |acc, base|
-			    Expr::Exp(Box::new(base), Box::new(acc))
-		    );
-		
-		Ok((Expr::Exp(Box::new(first), Box::new(res)), tokens))
-	}
-	
-	fn parse_exp(tokens: &[Token]) -> ParseResult<Self> {
-		// check if there's an open parenthesis
-		if tokens.first() == Some(&Token::LParen) {
-			let (expr, t) = Expr::parse(&tokens[1..])?;
-			
-			// make sure there's a closing parenthesis
-			if t.first() != Some(&Token::RParen) {
-				Err(format!("no closing parenthesis found"))
-			}
-			else {
-				Ok((Expr::Group(Box::new(expr)), &t[1..]))
-			}
-		}
-		else {
-			// otherwise, treat it as a Term.
-			let (term, t) = Term::parse(tokens)?;
-			Ok((Expr::Term(term), t))
-		}
-	}
+	*/
 }
 
 impl From<Term> for Expr {
