@@ -1,10 +1,10 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
     // keywords
-    Do, Drop, Else, End, Fi, Fn, From, If, Let, Loop, Mod, Proc, Then, Undo,
-    Until, Var,
+    And, Do, Drop, Else, End, Fi, From, If, Mod, Not, Or, Proc,
+    Then, Undo, Until, Var,
     // unused
-    Match, As, For, In, //Goto, ComeFrom,
+    Fn, Let, Loop, Match, As, For, In, //Goto, ComeFrom,
     
     // brackets
     LParen, RParen, LBracket, RBracket, LBrace, RBrace,
@@ -13,7 +13,10 @@ pub enum Token {
     Swap,
     // relational
     Neq, Lt, Gt, Lte, Gte,
-    // rotation
+    // bit shifting
+    Shl, Shr,
+    // TODO: choose symbols for bit rotation in statements and expressions.
+    // tentative options:  :<  >:  <:  :>
     Rol, Ror,
     
     // multi-purpose
@@ -22,8 +25,6 @@ pub enum Token {
     Bang, Assign, Caret,
     
     Newline,
-    
-    Comment(String),
     
     // ident and number
     Ident(String),
@@ -37,11 +38,15 @@ order of ops:
 1. parens
 2. function call
 3. - ~ @ ! not
-4. ** << >> shl shr
+4. ^ << >> shl shr <: :> rol ror
 5. * / & div mod and
-6. + - | ^ or
+6. + - or
 7. = != < > <= >=
 */
+
+impl Token {
+	
+}
 
 
 pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
@@ -53,10 +58,11 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
             // identifiers and keywords
             // [_A-Za-z]
             '_' | 'A'..='Z' | 'a'..='z' => {
-                let mut token = String::with_capacity(1);
+                let mut token = String::with_capacity(5);
                 token.push(c);
                 
-                // [_A-Za-z0-9]
+                // supports prime' annotation
+                // [_A-Za-z0-9]*
                 while let Some(&c) = chars.peek() {
                     if c == '_' || c.is_ascii_alphanumeric() {
                         token.push(chars.next().unwrap());
@@ -69,28 +75,31 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
                 
                 match token.as_str() {
                     // keywords
-                    "proc"  => Token::Proc,
+                    "and"   => Token::And,
                     "do"    => Token::Do,
-                    "undo"  => Token::Undo,
-                    "from"  => Token::From,
-                    "until" => Token::Until,
-                    "loop"  => Token::Loop,
-                    "if"    => Token::If,
-                    "then"  => Token::Then,
-                    "else"  => Token::Else,
-                    "fi"    => Token::Fi,
-                    "let"   => Token::Let,
-                    "var"   => Token::Var,
                     "drop"  => Token::Drop,
+                    "else"  => Token::Else,
+                    "end"   => Token::End,
+                    "fi"    => Token::Fi,
+                    "fn"    => Token::Fn,
+                    "from"  => Token::From,
+                    "if"    => Token::If,
+                    "let"   => Token::Let,
                     "mod"   => Token::Mod,
+                    "not"   => Token::Not,
+                    "or"    => Token::Or,
+                    "proc"  => Token::Proc,
+                    "then"  => Token::Then,
+                    "undo"  => Token::Undo,
+                    "until" => Token::Until,
+                    "var"   => Token::Var,
                     
                     // reserved
-                    "fn"    => Token::Fn,
-                    //"return" => Token::Return,
-                    "match" => Token::Match,
                     "as"    => Token::As,
                     "for"   => Token::For,
                     "in"    => Token::In,
+                    "loop"  => Token::Loop,
+                    "match" => Token::Match,
 
                     _ => Token::Ident(token)
                 }
@@ -103,8 +112,9 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
                 token.push(c);
 				
                 // [0-9]*
-                while let Some('0'..='9') = chars.peek() {
-                    token.push(chars.next().unwrap());
+                while let Some(c @ '0'..='9') = chars.peek() {
+                    token.push(*c);
+                    chars.next();
                 }
                 
                 token.shrink_to_fit();
@@ -112,21 +122,32 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
             }
             
             // handle strings
-            '"' => {
+            '"' | '“' | '«' => {
             	let mut string = String::new();
+            	let dual = match c {
+            		'"' => '"',
+            		'“' => '”',
+            		'«' => '»',
+            		_ => unreachable!()
+            	};
             	
             	loop {
             		match chars.next() {
-            			Some('"') => break,
+            			Some(c) if c == dual => break,
             			Some('\\') => string.push(match chars.next() {
             				Some('\\') => '\\',
             				Some('"')  => '"',
+            				Some('”')  => '”',
+            				Some('»')  => '»',
+            				
             				Some('n')  => '\n',
             				Some('t')  => '\t',
             				Some('0')  => '\0',
             				
-	            			Some(_) | None =>
-	            				return Err("eof @ escaped character")
+	            			Some(_) =>
+	            				return Err("unknown escape character"),
+	            			None =>
+	            				return Err("eof @ escaped character"),
             			}),
             			Some(c) => string.push(c),
             			None => return Err("eof @ string"),
@@ -138,18 +159,35 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
             }
 
             '!' => match chars.peek() {
-                Some('=') => {chars.next(); Token::Neq}
+                Some('=') => {
+                	chars.next();
+                	Token::Neq
+            	}
                 _ => Token::Bang
             }
             '<' => match chars.peek() {
-                Some('>') => {chars.next(); Token::Swap}
-                //Some('=') => {chars.next(); Token::Lte}
+                Some('>') => {
+                	chars.next();
+            		Token::Swap
+        		}
+                Some('=') => {
+                	chars.next();
+                	Token::Lte
+            	}
+            	/*
+                Some(':') => {
+                	chars.next();
+                	Token::Rol
+            	}
+            	*/
                 _ => Token::Lt
             }
             '>' => match chars.peek() {
-                Some('=') => {chars.next(); Token::Gte}
-                //_ => Token::Gt
-                _ => return Err("eof @ `>=`")
+                Some('=') => {
+                	chars.next();
+                	Token::Gte
+            	}
+                _ => Token::Gt
             }
 
             '(' => Token::LParen,
@@ -161,8 +199,16 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
             ',' => Token::Comma,
             '.' => Token::Period,
             ':' => match chars.peek() {
-                Some('=') => {chars.next(); Token::Assign}
-                //_ => Token::Gt
+                Some('=') => {
+                	chars.next();
+                	Token::Assign
+            	}
+            	/*
+                Some('>') => {
+                	chars.next();
+                	Token::Ror
+            	}
+            	*/
                 _ => Token::Colon
             }
             ';' => Token::Semicolon,
@@ -172,34 +218,31 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
             '^' => Token::Caret,
             
             '≠' => Token::Neq,
-            //'≤' => Token::Lte,
+            '≤' => Token::Lte,
             '≥' => Token::Gte,
 
             // space
-            '\n' => Token::Newline,
             ' ' | '\t' => continue,
+            
+            // track newlines
+            '\n' => Token::Newline,
 
             // comment
-            '/' => match chars.peek() {
-                Some('/') => {
-                    chars.next();
-                    let mut comment = String::new();
-                    
-                    while let Some(c) = chars.next() {
-                        if c == '\n' { break }
-                        else { comment.push(c) }
-                    }
-                    
-                    comment.shrink_to_fit();
-                    Token::Comment(comment)
-                }
-                _ => return Err("//")
-            }
+            '#' => {
+		        while chars.peek() != Some(&'\n') {
+		        	chars.next();
+		        }
+		        continue;
+	        }
             
             _ => return Err("unrecognized symbol")
         });
     }
     
+    if tokens.last() == Some(&Token::Newline) {
+    	tokens.pop();
+	}
+    tokens.dedup_by(|a, b| *a == Token::Newline && *b == Token::Newline);
     tokens.shrink_to_fit();
     Ok(tokens)
 }

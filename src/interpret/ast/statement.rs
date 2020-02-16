@@ -1,5 +1,4 @@
 use crate::tokenize::Token;
-use crate::interpret::{Scope, Value};
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -53,6 +52,263 @@ impl Statement {
 			_ => self
 		}
 	}
+	
+	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+		match tokens.first() {
+			// do/undo
+			Some(stmt_tok @ Token::Do) | Some(stmt_tok @ Token::Undo) => {
+				tokens = &tokens[1..];
+				
+				let name =
+					if let Some(Token::Ident(n)) = tokens.first() {
+						tokens = &tokens[1..];
+						n.clone()
+					} else {
+						return Err(format!("expected procedure name"));
+					};
+				
+				// TODO check for parentheses. if so, go into multiline mode
+				
+				// parse arg list
+				let mut args = Vec::new();
+				loop {
+					match tokens.first() {
+						None => break,
+						Some(Token::Newline) => {
+							tokens = &tokens[1..];
+							break;
+						}
+						Some(_) => {
+							let (arg, tx) = Expr::parse(tokens)?;
+							tokens = tx;
+							args.push(arg);
+						}
+					}
+				}
+				
+				match stmt_tok {
+					Token::Do   => Ok((Statement::Do(name, args), tokens)),
+					Token::Undo => Ok((Statement::Undo(name, args), tokens)),
+					_ => unreachable!()
+				}
+			}
+			
+			// from-until
+			Some(Token::From) => {
+				tokens = &tokens[1..];
+				
+				// parse loop assertion
+				let (assert, mut tokens) = Expr::parse(tokens)?;
+				
+				// ensure there's a newline afterwards
+				if tokens.first() != Some(&Token::Newline) {
+					return Err(format!("expected newline after from expression {:?}", tokens));
+				}
+				tokens = &tokens[1..];
+				
+				// parse the main loop block
+				let mut main_block = Vec::new();
+				while tokens.first() != Some(&Token::Until) {
+					let (stmt, t) = Statement::parse(tokens)?;
+					main_block.push(stmt);
+					tokens = t;
+				}
+				tokens = &tokens[1..];
+				
+				// parse the `until` test expression
+				let (test, mut tokens) = Expr::parse(tokens)?;
+				
+				// ensure there's a newline afterwards
+				if tokens.first() != Some(&Token::Newline) {
+					return Err(format!("expected newline after until expression"));
+				}
+				tokens = &tokens[1..];
+				
+				// parse reverse loop block
+				let mut back_block = Vec::new();
+				while tokens.first() != Some(&Token::End) {
+					let (stmt, t) = Statement::parse(tokens)?;
+					back_block.push(stmt);
+					tokens = t;
+				}
+				tokens = &tokens[1..];
+				
+				// TODO check for optional `from` keyword; i.e `end from`
+				
+				// consume newline afterwards, if any
+				if tokens.first() == Some(&Token::Newline) {
+					tokens = &tokens[1..];
+				}
+				
+				Ok((From(assert, main_block, back_block, test), tokens))
+			}
+			
+			// var-drop
+			Some(Token::Var) => {
+				tokens = &tokens[1..];
+				
+				// get name
+				let name = match tokens.first() {
+					Some(Token::Ident(name)) => name.clone(),
+					Some(_) => return Err(format!("expected name @ var init")),
+					None => return Err(format!("eof @ var name init")),
+				};
+				tokens = &tokens[1..];
+				
+				// get optional type
+				let mut typ = None;
+				if let Some(Token::Colon) = tokens.first() {
+					tokens = &tokens[1..];
+					let (t, tx) = Type::parse(tokens)?;
+					typ = Some(t);
+					tokens = tx;
+				}
+				
+				// check for assignment op
+				match tokens.first() {
+					Some(Token::Assign) => {tokens = &tokens[1..]}
+					_ => return Err(format!("expected assignment op @ var init"))
+				}
+				
+				// get initialization expression
+				let (init, tx) = Expr::parse(tokens)?;
+				tokens = tx;
+				
+				// get newline
+				match tokens.first() {
+					Some(Token::Newline) => {tokens = &tokens[1..]}
+					_ => return Err(format!("expected newline after var init"))
+				}
+				
+				// get list of statements for which this variable is valid
+				let mut block = Vec::new();
+				while tokens.first() != Some(&Token::Drop) {
+					let (stmt, tx) = Statement::parse(tokens)?;
+					block.push(stmt);
+					tokens = tx;
+				}
+				tokens = &tokens[1..];
+				
+				// get deinit name
+				match tokens.first() {
+					Some(Token::Ident(n)) if *n == name =>
+						tokens = &tokens[1..],
+					Some(Token::Ident(e)) =>
+						return Err(format!("expected {:?}, got {:?}", name, e)),
+					Some(_) =>
+						return Err(format!("expected name @ drop")),
+					None =>
+						return Err(format!("eof @ var drop")),
+				}
+				
+				// check for assignment op
+				match tokens.first() {
+					Some(Token::Assign) => {tokens = &tokens[1..]}
+					_ => return Err(format!("expected assignment op @ drop"))
+				}
+				
+				// get deinit expression
+				let (drop, tx) = Expr::parse(tokens)?;
+				tokens = tx;
+				
+				// get newline, if any
+				if tokens.first() == Some(&Token::Newline) {
+					 tokens = &tokens[1..];
+				}
+				
+				Ok((Var(name, typ, init, block, drop), tokens))
+			}
+			
+			// if-else
+			Some(Token::If) => {
+				tokens = &tokens[1..];
+				
+				// parse if condition
+				let (cond, t) = Expr::parse(tokens)?;
+				tokens = t;
+				
+				// ensure there's a newline afterwards
+				if tokens.first() != Some(&Token::Newline) {
+					return Err(format!("expected newline after if expression {:?}", tokens));
+				}
+				tokens = &tokens[1..];
+				
+				// parse the main block
+				let mut main_block = Vec::new();
+				
+				while tokens.first() != Some(&Token::Else) && tokens.first() != Some(&Token::Fi) {
+					let (stmt, t) = Statement::parse(tokens)?;
+					main_block.push(stmt);
+					tokens = t;
+				}
+					
+				// TODO: allow if-statements to end with `end`, such that if
+				// they do, the assertion becomes the same as the condition.
+				
+				// parse else section
+				let mut else_block = Vec::new();
+				
+				if tokens.first() == Some(&Token::Else) {
+					tokens = &tokens[1..];
+					
+					// TODO: have at least 1 statement after `else`.
+					// TODO: remove newline requirement below?
+					
+					// ensure there's a newline afterwards
+					if tokens.first() != Some(&Token::Newline) {
+						return Err(format!("expected newline after else {:?}", tokens));
+					}
+					tokens = &tokens[1..];
+					
+					// parse the else block
+					while tokens.first() != Some(&Token::Fi) {
+						let (stmt, t) = Statement::parse(tokens)?;
+						else_block.push(stmt);
+						tokens = t;
+					}
+				}
+				tokens = &tokens[1..];
+				
+				// parse the `fi` assertion
+				let (assert, mut tokens) = Expr::parse(tokens)?;
+				
+				// TODO check for optional `if` keyword; i.e `end if`
+				
+				// consume newline afterwards, if any
+				if tokens.first() == Some(&Token::Newline) {
+					tokens = &tokens[1..];
+				}
+				
+				Ok((If(cond, main_block, else_block, assert), tokens))
+			}
+			
+			Some(token) =>
+				if let Ok((lval, tokens)) = LValue::parse(tokens) {
+					match tokens.first() {
+						Some(Token::Assign) | Some(Token::Add) | Some(Token::Sub) => {
+							unimplemented!()
+						}
+						
+						Some(Token::Swap) => {
+						    let (rval, t) = LValue::parse(tokens)?;
+						    Ok((Swap(lval, rval), t))
+						}
+						
+						Some(_) => {
+						    unimplemented!()
+						}
+						
+						None => Err(format!("eof @ lval statement op")),
+					}
+				} else {
+					Err(format!("unrecognized statement: {:?}; {:?}", token, &tokens[1..]))
+				}
+			
+			None =>
+				Err(format!("eof @ statement")),
+		}
+	}
+	
 	/*
 	pub fn eval(&self, t: &mut Scope) {
 		match self {
@@ -193,468 +449,6 @@ impl Statement {
 			}
 			
 			_ => unreachable!()
-		}
-	}
-	*/
-	
-	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
-		match tokens.first() {
-			// `do` and `undo`
-			Some(stmt_tok @ Token::Do) | Some(stmt_tok @ Token::Undo) => {
-				tokens = &tokens[1..];
-				
-				let name =
-					if let Some(Token::Ident(n)) = tokens.first() {
-						tokens = &tokens[1..];
-						n.clone()
-					} else {
-						return Err(format!("expected procedure name"));
-					};
-				
-				// TODO check for parentheses. if so, go into multiline mode
-				
-				// parse arg list
-				let mut args = Vec::new();
-				loop {
-					match tokens.first() {
-						Some(Token::Newline) => {
-							tokens = &tokens[1..];
-							break;
-						}
-						Some(_) => {
-							let (arg, tx) = Expr::parse(tokens)?;
-							tokens = tx;
-							args.push(arg);
-						}
-						None =>
-							return Err(format!("eof @ call statement"))
-					}
-				}
-				
-				match stmt_tok {
-					Token::Do   => Ok((Statement::Do(name, args), tokens)),
-					Token::Undo => Ok((Statement::Undo(name, args), tokens)),
-					_ => unreachable!()
-				}
-			}
-			
-			// `from`
-			Some(Token::From) => {
-				tokens = &tokens[1..];
-				
-				// parse loop assertion
-				let (assert, t) = Expr::parse(tokens)?;
-				tokens = t;
-				
-				// ensure there's a newline afterwards
-				if tokens.first() != Some(&Token::Newline) {
-					return Err(format!("expected newline after from expression"));
-				}
-				tokens = &tokens[1..];
-				
-				// parse the main loop block
-				let mut main_block = Vec::new();
-				while tokens.first() != Some(&Token::Until) {
-					let (stmt, t) = Statement::parse(tokens)?;
-					main_block.push(stmt);
-					tokens = t;
-				}
-				tokens = &tokens[1..];
-				
-				// parse the `until` test expression
-				let (test, t) = Expr::parse(tokens)?;
-				tokens = t;
-				
-				// ensure there's a newline afterwards
-				if tokens.first() != Some(&Token::Newline) {
-					return Err(format!("expected newline after until expression"));
-				}
-				tokens = &tokens[1..];
-				
-				// parse reverse loop block
-				let mut back_block = Vec::new();
-				while tokens.first() != Some(&Token::End) {
-					let (stmt, t) = Statement::parse(tokens)?;
-					back_block.push(stmt);
-					tokens = t;
-				}
-				tokens = &tokens[1..];
-				
-				// TODO check for optional `from` keyword; i.e `end from`
-				
-				Ok((From(assert, main_block, back_block, test), tokens))
-			}
-			
-			// `var`
-			Some(Token::Var) => {
-				tokens = &tokens[1..];
-				
-				// get name
-				let name = match tokens.first() {
-					Some(Token::Ident(name)) => name.clone(),
-					Some(_) => return Err(format!("expected var name at start")),
-					None => return Err(format!("eof @ var name start")),
-				};
-				tokens = &tokens[1..];
-				
-				// get optional type
-				let mut typ = None;
-				if let Some(Token::Colon) = tokens.first() {
-					tokens = &tokens[1..];
-					let (t, tx) = Type::parse(tokens)?;
-					typ = Some(t);
-					tokens = tx;
-				}
-				
-				// check for assignment op
-				match tokens.first() {
-					Some(Token::Assign) => {tokens = &tokens[1..]}
-					_ => return Err(format!("expected assignment operator"))
-				}
-				
-				// get initialization expression
-				let (init, tx) = Expr::parse(tokens)?;
-				tokens = tx;
-				
-				// get newline
-				match tokens.first() {
-					Some(Token::Newline) => {tokens = &tokens[1..]}
-					_ => return Err(format!("expected newline character"))
-				}
-				
-				// get list of statements for which this variable is valid
-				let mut block = Vec::new();
-				while tokens.first() != Some(&Token::Drop) {
-					let (stmt, tx) = Statement::parse(tokens)?;
-					block.push(stmt);
-					tokens = tx;
-				}
-				tokens = &tokens[1..];
-				
-				// get deinit name
-				match tokens.first() {
-					Some(Token::Ident(n)) if *n == name =>
-						tokens = &tokens[1..],
-					Some(Token::Ident(e)) =>
-						return Err(format!("expected {:?}, got {:?}", name, e)),
-					Some(_) =>
-						return Err(format!("expected var name at end")),
-					None =>
-						return Err(format!("eof @ var name end")),
-				}
-				
-				// check for assignment op
-				match tokens.first() {
-					Some(Token::Assign) => {tokens = &tokens[1..]}
-					_ => return Err(format!("expected assignment operator"))
-				}
-				
-				// get deinit expression
-				let (drop, tx) = Expr::parse(tokens)?;
-				tokens = tx;
-				
-				// get newline
-				match tokens.first() {
-					Some(Token::Newline) => {tokens = &tokens[1..]}
-					_ => return Err(format!("expected newline character"))
-				}
-				
-				Ok((Var(name, typ, init, block, drop), tokens))
-			}
-			
-			Some(_) =>
-				if let Ok((lval, tokens)) = LValue::parse(tokens) {
-					match tokens.first() {
-						Some(Token::Assign) | Some(Token::Add) | Some(Token::Sub) => {
-							unimplemented!()
-						}
-						
-						Some(Token::Swap) => {
-						    let (rval, t) = LValue::parse(tokens)?;
-						    Ok((Swap(lval, rval), t))
-						}
-						
-						Some(_) => {
-						    unimplemented!()
-						}
-						
-						None => Err(format!("eof @ lval statement op")),
-					}
-				} else {
-					Err(format!("unrecognized statement"))
-				}
-			
-			None =>
-				Err(format!("eof @ statement")),
-		}
-	}
-	/*
-	pub fn verify(&mut self) {
-		match self {
-			Statement::Let(_, _, typ, lit) => {
-				if let Some(typ) = *typ {
-					match (typ, lit) {
-						(Type::Bool, Literal::Bool(_))
-						| (Type::Char, Literal::Char(_))
-						| (Type::U16, Literal::Num(_))
-						| (Type::I16, Literal::Num(_))
-						| (Type::Usize, Literal::Num(_))
-						| (Type::Isize, Literal::Num(_)) => {}
-						_ => panic!("literal must match type given")
-					}
-				}
-				// The following code is best left to a type check pass
-				else {
-					match lit {
-						Literal::Bool(_) => {typ.get_or_insert(Type::Bool);}
-						Literal::Char(_) => {typ.get_or_insert(Type::Char);}
-						_ => unimplemented!()
-					}
-				}
-			}
-			
-			Statement::RotLeft(lval, factor)
-			| Statement::RotRight(lval, factor) => {
-				if let Factor::LVal(fac) = factor {
-					assert!(lval.id != fac.id, "value can't modify itself");
-				}
-			}
-			
-			Statement::CCNot(lval, c0, c1) => {
-				if let Factor::LVal(fac) = c0 {
-					assert!(lval.id != fac.id, "value can't modify itself");
-				}
-				if let Factor::LVal(fac) = c1 {
-					assert!(lval.id != fac.id, "value can't modify itself");
-				}
-			}
-			
-			Statement::Xor(lval, facs) => {
-				for fac in facs {
-					if let Factor::LVal(fac) = fac {
-						assert!(lval.id != fac.id, "value can't modify itself");
-					}
-				}
-			}
-			
-			Statement::Add(lval, flops)
-			| Statement::Sub(lval, flops) => {
-				for flop in flops {
-					match flop {
-						FlatOp::Add(Factor::LVal(op)) =>
-							assert!(lval.id != op.id, "value can't modify itself"),
-						FlatOp::Sub(Factor::LVal(op)) =>
-							assert!(lval.id != op.id, "value can't modify itself"),
-						_ => {}
-					}
-				}
-			}
-			
-			Statement::CSwap(fac, lv0, lv1) => {
-				if let Factor::LVal(fac) = fac {
-					assert!(fac.id != lv0.id, "value can't modify itself");
-					assert!(fac.id != lv1.id, "value can't modify itself");
-				}
-			}
-			
-			Statement::From(_, fbody, rbody, _) =>
-				assert!(fbody.is_some() || rbody.is_some(), "Must provide at least 1 body."),
-			
-			_ => {}
-		}
-	}
-	
-	pub fn compile(&self, st: &mut SymbolTable) -> Vec<rel::Op> {
-		match self {
-			Statement::Not(lval) => {
-				let (r, mut code) = lval.compile(st);
-				code.push(Op::Not(r));
-				code
-			}
-			Statement::Neg(lval) => {
-				let (r, mut code) = lval.compile(st);
-				code.push(Op::Not(r));
-				code.push(Op::AddImm(r, 1));
-				code
-			}
-			Statement::Call(..) => {
-				let code = vec![];
-				
-				for fac in args {
-					code.extend(fac.compile(st));
-				}
-				
-				code.extend(lval.compile(st, |r| vec![
-					Op::SwapPc(r),
-					Op::Immediate(Reg::R1, (offset >> 8) as u8),
-					Op::RotLeftImm(Reg::R1, 8),
-					Op::Immediate(Reg::R1, offset as u8),
-					Op::CSub(r, )
-				]));
-				code
-				vec![Op::Nop]
-			}
-			Statement::Add(lval, fact) => {
-				let mut code: Vec<rel::Op> = Vec::new();
-				let (l, fetch_l) = lval.compile(st);
-				code.extend_from_slice(&fetch_l);
-				match fact {
-					Factor::LVal(rval) => {
-						let (r, fetch_r) = rval.compile(st);
-						code.extend_from_slice(&fetch_r);
-						code.push(Op::Add(l, r));
-						code.extend_from_slice(&Reverse::reverse(fetch_r));
-						st.ret_reg(&mut code, r);
-					}
-					Factor::Lit(Literal::Num(n)) => match n {
-						// if we're just adding zero, nothing needs to be done
-						0 => return Vec::new(),
-						1...255 => {
-							code.push(Op::AddImm(l, n as u8));
-						}
-						_ => {
-							let temp = st.get_reg(&mut code);
-							code.extend_from_slice(&[
-								Op::XorImm(temp, (n >> 8) as u8),
-								Op::LRotImm(temp, 8),
-								Op::XorImm(temp, n as u8),
-								Op::Add(l, temp)
-							]);
-							st.ret_reg(&mut code, temp);
-						}
-					}
-					Factor::Lit(_) => panic!("what are you doing")
-				}
-				code.extend_from_slice(&Reverse::reverse(fetch_l));
-				st.ret_reg(&mut code, l);
-				code
-			}
-			
-			Statement::Sub(lval, fact) => {
-				println!("{:?}", st);
-				let mut code: Vec<rel::Op> = Vec::new();
-				let (l, fetch_l) = lval.compile(st);
-				code.extend_from_slice(&fetch_l);
-				match fact {
-					Factor::LVal(rval) => {
-						let (r, fetch_r) = rval.compile(st);
-						code.extend_from_slice(&fetch_r);
-						code.push(Op::Sub(l, r));
-						code.extend_from_slice(&Reverse::reverse(fetch_r));
-						st.ret_reg(&mut code, r);
-					}
-					Factor::Lit(Literal::Num(n)) => match n {
-						// if we're just subtracting zero, nothing needs to be done
-						0 => return Vec::new(),
-						1...255 => {
-							code.push(Op::SubImm(l, n as u8));
-						}
-						_ => {
-							let temp = st.get_reg(&mut code);
-							code.extend_from_slice(&[
-								Op::XorImm(temp, (n >> 8) as u8),
-								Op::LRotImm(temp, 8),
-								Op::XorImm(temp, n as u8),
-								Op::Sub(l, temp)
-							]);
-							st.ret_reg(&mut code, temp);
-						}
-					}
-					Factor::Lit(_) => panic!("what are you doing")
-				}
-				code.extend_from_slice(&Reverse::reverse(fetch_l));
-				st.ret_reg(&mut code, l);
-				code
-			}
-			
-			Statement::Xor(lval, fact) => {
-				let mut code: Vec<rel::Op> = Vec::new();
-				let (l, fetch_l) = lval.compile(st);
-				code.extend_from_slice(&fetch_l);
-				match fact {
-					Factor::LVal(rval) => {
-						let (r, fetch_r) = rval.compile(st);
-						code.extend_from_slice(&fetch_r);
-						code.push(Op::Xor(l, r));
-						code.extend_from_slice(&Reverse::reverse(fetch_r));
-						st.ret_reg(&mut code, r);
-					}
-					Factor::Lit(Literal::Num(n)) => match n {
-						// if we're just xoring zero, nothing needs to be done
-						0 => return Vec::new(),
-						1...255 => {
-							code.push(Op::XorImm(l, n as u8));
-						}
-						_ => {
-							code.extend_from_slice(&[
-								Op::XorImm(l, n as u8),
-								Op::RRotImm(l, 8),
-								Op::XorImm(l, (n >> 8) as u8),
-								Op::LRotImm(l, 8),
-							]);
-						}
-					}
-					Factor::Lit(_) => panic!("what are you doing")
-				}
-				code.extend_from_slice(&Reverse::reverse(fetch_l));
-				st.ret_reg(&mut code, l);
-				code
-			}
-			
-			Statement::RotLeft(lval, fact) => {
-				let mut code: Vec<rel::Op> = Vec::new();
-				let (l, fetch_l) = lval.compile(st);
-				code.extend_from_slice(&fetch_l);
-				match fact {
-					Factor::LVal(rval) => {
-						let (r, fetch_r) = rval.compile(st);
-						code.extend_from_slice(&fetch_r);
-						code.push(Op::LRot(l, r));
-						code.extend_from_slice(&Reverse::reverse(fetch_r));
-						st.ret_reg(&mut code, r);
-					}
-					Factor::Lit(Literal::Num(n)) => match n {
-						// if we're just adding zero, nothing needs to be done
-						0 => return Vec::new(),
-						_ => {
-							let val = n % 16;
-							code.push(Op::LRotImm(l, val as u8));
-						}
-					}
-					Factor::Lit(_) => panic!("what are you doing")
-				}
-				code.extend_from_slice(&Reverse::reverse(fetch_l));
-				st.ret_reg(&mut code, l);
-				code
-			}
-			
-			Statement::RotRight(lval, fact) => {
-				let mut code: Vec<rel::Op> = Vec::new();
-				let (l, fetch_l) = lval.compile(st);
-				code.extend_from_slice(&fetch_l);
-				match fact {
-					Factor::LVal(rval) => {
-						let (r, fetch_r) = rval.compile(st);
-						code.extend_from_slice(&fetch_r);
-						code.push(Op::RRot(l, r));
-						code.extend_from_slice(&Reverse::reverse(fetch_r));
-						st.ret_reg(&mut code, r);
-					}
-					Factor::Lit(Literal::Num(n)) => match n {
-						// if we're just adding zero, nothing needs to be done
-						0 => return Vec::new(),
-						_ => {
-							let val = n % 16;
-							code.push(Op::RRotImm(l, val as u8));
-						}
-					}
-					Factor::Lit(_) => panic!("what are you doing")
-				}
-				code.extend_from_slice(&Reverse::reverse(fetch_l));
-				st.ret_reg(&mut code, l);
-				code
-			}
-			_ => vec![Op::Nop]
 		}
 	}
 	*/

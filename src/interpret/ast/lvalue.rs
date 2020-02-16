@@ -24,7 +24,7 @@ impl LValue {
 				tokens = &tokens[1..];
 				n.clone()
 			} else {
-				return Err(format!("expected identifier"));
+				return Err(format!("expected identifier @ lval {:?}", tokens));
 			};
 	    
 	    loop {
@@ -61,7 +61,7 @@ impl LValue {
     				
 					tokens = &tokens[1..];
     			}
-    			_ => break,
+    			_ => break
 			}
 		}
         
@@ -71,13 +71,6 @@ impl LValue {
 	pub fn eval(&self, t: &Scope) -> Value {
 	    t.iter().rfind(|(id, _)| *id == self.id).unwrap().1.clone()
 	}
-	
-	/*
-	pub fn compile(&self, st: &mut SymbolTable) -> (rel::Reg, Vec<rel::Op>) {
-		// TODO maybe move some of the stuff SymbolTable::get does over here?
-		st.get(&self.id)
-	}
-	*/
 }
 
 #[cfg(test)]

@@ -180,9 +180,9 @@ It can become a bit tedious (and error-prone!) to repeat expressions multiple ti
 *A la* Python
 
 ```
-if a = b = c
+if a = 0
     do something
-fi a = b = c
+fi b > c
 
 if start <= x <= end
     do something
@@ -194,12 +194,12 @@ end
 In the same vein as chained comparisons, instead of using `&&` for AND and `||` for OR as short-circuiting boolean operators, we can have special syntax in the conditional statement.
 
 ```
-if a = b, c > d; a != d
+if a > x > b, x != 0; x = 1
     do something
 end
 ```
 
-This would be the same as `a = b && c > d || a != d` in C-like languages. `&&` and `||` can be used when short-circuiting is desired, while the special syntax can behave like in Pascal.
+This would be the same as `a = b && c > d || a != d` in C-like languages. `and` and `or` can be used when short-circuiting is desired, while the special syntax can behave like in Pascal.
 
 ### `match` blocks
 

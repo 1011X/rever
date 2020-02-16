@@ -26,14 +26,11 @@ fn main() {
 		// interpret file
 		Some(file) => {
 			let source = open(file).expect("Could not read file");
-			
-			println!("Source:\n{:?}\n", source);
-			
-			let tokens = tokenize(&source).expect("Could not tokenize");
+			let tokens = tokenize(&source).expect("Lexer error");
 			
 			println!("Tokens: {:#?}", tokens);
 			
-			let ast = interpret::parse_module(&tokens).expect("Syntax error");
+			let ast = interpret::parse_items(&tokens).expect("Syntax error");
 			
 			println!("AST: {:#?}", ast);
 		}

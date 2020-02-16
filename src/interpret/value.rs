@@ -6,7 +6,7 @@ pub enum Value {
     Unsigned(u64),
     //Signed(u64),
     //Char(char),
-    //String(String),
+    String(String),
     //Proc(Vec<Param>, Vec<Statement>),
 }
 
@@ -18,7 +18,7 @@ impl Value {
             Value::Unsigned(_) => Type::Uint,
             //Value::Signed(_) => Type::I32,
             //Value::Char(_) => Type::Char,
-            //Value::String(_) => Type::String,
+            Value::String(_) => Type::String,
         }
     }
 }
@@ -31,6 +31,7 @@ impl From<Literal> for Value {
             Literal::Bool(b) => Value::Bool(b),
             Literal::Unsigned(n) => Value::Unsigned(n),
             //Literal::Signed(n) => Value::Signed(n),
+            Literal::String(s) => Value::String(s.clone()),
         }
     }
 }
@@ -42,8 +43,7 @@ impl From<bool> for Value {
 impl From<u64> for Value {
     fn from(n: u64) -> Self { Value::Unsigned(n) }
 }
-/*
+
 impl From<String> for Value {
 	fn from(s: String) -> Self { Value::String(s) }
 }
-*/

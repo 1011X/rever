@@ -9,7 +9,7 @@ pub enum Literal {
 	Unsigned(u64),
 	//Signed(u64),
 	//Char(char),
-	//String(String),
+	String(String),
 }
 
 impl Literal {
@@ -18,7 +18,7 @@ impl Literal {
 			//Literal::Nil         => Value::Nil,
 			Literal::Bool(b)     => Value::Bool(*b),
 			Literal::Unsigned(n) => Value::Unsigned(*n),
-			//Literal::String(s)   => Value::String(s.clone()),
+			Literal::String(s)   => Value::String(s.clone()),
 		}
 	}
 	
@@ -44,10 +44,10 @@ impl Literal {
 				}
 				//}
 			}
-			/*
+			
 			Some(Token::String(st)) =>
 				Ok((Literal::String(st.clone()), &tokens[1..])),
-			*/
+			
 			_ => Err(format!("invalid literal value"))
 		}
 	}
