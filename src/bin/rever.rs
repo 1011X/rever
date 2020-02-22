@@ -26,13 +26,22 @@ fn main() {
 		// interpret file
 		Some(file) => {
 			let source = open(file).expect("Could not read file");
-			let tokens = tokenize(&source).expect("Lexer error");
+			let mut tokens = tokenize(&source)
+				.expect("Lexer error")
+				.into_iter()
+				.peekable();
 			
-			println!("Tokens: {:#?}", tokens);
-			
-			let ast = interpret::parse_items(&tokens).expect("Syntax error");
-			
-			println!("AST: {:#?}", ast);
+			match interpret::parse_items(&mut tokens) {
+				Ok(ast) => {
+					println!("AST: {:#?}", ast);
+				}
+				Err(e) => {
+					let remaining_tokens = tokens.clone()
+						.collect::<Box<[_]>>();
+					println!("Expected {}.", e);
+					println!("Tokens: {:#?}", remaining_tokens);
+				}
+			}
 		}
 	} 
 }

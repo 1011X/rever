@@ -43,4 +43,6 @@ pub use self::types::Type;
 
 use crate::tokenize::Token;
 
-pub type ParseResult<'t, T> = Result<(T, &'t [Token]), String>;
+pub type Tokens = std::iter::Peekable<std::vec::IntoIter<Token>>;
+
+pub type ParseResult<T> = Result<T, &'static str>;

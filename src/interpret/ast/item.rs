@@ -12,20 +12,18 @@ pub enum Item {
 }
 
 impl Item {
-	pub fn parse(t: &[Token]) -> ParseResult<Self> {
-		match t.first() {
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+		match tokens.peek() {
 			Some(Token::Proc) => {
-				let (p, tx) = Procedure::parse(t)?;
-				Ok((Item::Proc(p), tx))
+				let p = Procedure::parse(tokens)?;
+				Ok(Item::Proc(p))
 			}
 			Some(Token::Mod) => {
-				let (m, tx) = Module::parse(t)?;
-				Ok((Item::Mod(m), tx))
+				let m = Module::parse(tokens)?;
+				Ok(Item::Mod(m))
 			}
-			Some(_) =>
-				Err(format!("unrecognized item")),
-			None =>
-				Err(format!("eof @ item")),
+			//t => Err(("item", t.clone())),
+			_ => Err("a module or procedure")
 		}
 	}
 }

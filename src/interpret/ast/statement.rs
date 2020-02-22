@@ -3,6 +3,8 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum Statement {
+	Skip,
+	
 	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
 	//Let(String, Option<Type>, Expr),
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
@@ -53,260 +55,311 @@ impl Statement {
 		}
 	}
 	
-	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
-		match tokens.first() {
-			// do/undo
-			Some(stmt_tok @ Token::Do) | Some(stmt_tok @ Token::Undo) => {
-				tokens = &tokens[1..];
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+		let res = match tokens.peek() {
+			// skip
+			Some(Token::Skip) => {
+				tokens.next();
+				Ok(Skip)
+			}
+			
+			// do
+			Some(Token::Do) => {
+				tokens.next();
 				
-				let name =
-					if let Some(Token::Ident(n)) = tokens.first() {
-						tokens = &tokens[1..];
-						n.clone()
-					} else {
-						return Err(format!("expected procedure name"));
-					};
+				let name = match tokens.next() {
+					Some(Token::Ident(name)) => name,
+					_ => return Err("procedure name")
+				};
 				
 				// TODO check for parentheses. if so, go into multiline mode
 				
 				// parse arg list
 				let mut args = Vec::new();
+				
 				loop {
-					match tokens.first() {
-						None => break,
-						Some(Token::Newline) => {
-							tokens = &tokens[1..];
-							break;
-						}
+					match tokens.peek() {
+						None | Some(Token::Newline) => break,
 						Some(_) => {
-							let (arg, tx) = Expr::parse(tokens)?;
-							tokens = tx;
+							let arg = Expr::parse(tokens)?;
 							args.push(arg);
 						}
 					}
 				}
 				
-				match stmt_tok {
-					Token::Do   => Ok((Statement::Do(name, args), tokens)),
-					Token::Undo => Ok((Statement::Undo(name, args), tokens)),
-					_ => unreachable!()
+				Ok(Statement::Do(name, args))
+			}
+			
+			// undo
+			// And no, you can't merge `do` and `undo` by using `tok @ pattern`
+			// and matching later because it gives a "cannot borrow `*tokens`
+			// as mutable more than once at a time" error.
+			Some(Token::Undo) => {
+				tokens.next();
+				
+				let name = match tokens.next() {
+					Some(Token::Ident(name)) => name,
+					_ => return Err("procedure name")
+				};
+				
+				// TODO check for parentheses. if so, go into multiline mode
+				
+				// parse arg list
+				let mut args = Vec::new();
+				
+				loop {
+					match tokens.peek() {
+						None | Some(Token::Newline) => break,
+						Some(_) => {
+							let arg = Expr::parse(tokens)?;
+							args.push(arg);
+						}
+					}
 				}
+				
+				Ok(Statement::Undo(name, args))
 			}
 			
 			// from-until
 			Some(Token::From) => {
-				tokens = &tokens[1..];
+				tokens.next();
 				
 				// parse loop assertion
-				let (assert, mut tokens) = Expr::parse(tokens)?;
+				let assert = Expr::parse(tokens)?;
 				
 				// ensure there's a newline afterwards
-				if tokens.first() != Some(&Token::Newline) {
-					return Err(format!("expected newline after from expression {:?}", tokens));
+				if tokens.next() != Some(Token::Newline) {
+					return Err("newline after from expression");
 				}
-				tokens = &tokens[1..];
 				
 				// parse the main loop block
 				let mut main_block = Vec::new();
-				while tokens.first() != Some(&Token::Until) {
-					let (stmt, t) = Statement::parse(tokens)?;
-					main_block.push(stmt);
-					tokens = t;
+				loop {
+					match tokens.peek() {
+						Some(Token::Until) => {
+							tokens.next();
+							break;
+						}
+						Some(_) => {
+							let stmt = Statement::parse(tokens)?;
+							main_block.push(stmt);
+						}
+						None => return Err("a statement or `until`")
+					}
 				}
-				tokens = &tokens[1..];
 				
 				// parse the `until` test expression
-				let (test, mut tokens) = Expr::parse(tokens)?;
+				let test = Expr::parse(tokens)?;
 				
 				// ensure there's a newline afterwards
-				if tokens.first() != Some(&Token::Newline) {
-					return Err(format!("expected newline after until expression"));
+				if tokens.next() != Some(Token::Newline) {
+					return Err("newline after until expression");
 				}
-				tokens = &tokens[1..];
 				
 				// parse reverse loop block
 				let mut back_block = Vec::new();
-				while tokens.first() != Some(&Token::End) {
-					let (stmt, t) = Statement::parse(tokens)?;
-					back_block.push(stmt);
-					tokens = t;
+				loop {
+					match tokens.peek() {
+						Some(Token::End) => {
+							tokens.next();
+							break;
+						}
+						Some(_) => {
+							let stmt = Statement::parse(tokens)?;
+							back_block.push(stmt);
+						}
+						None => return Err("a statement or `end`")
+					}
 				}
-				tokens = &tokens[1..];
 				
 				// TODO check for optional `from` keyword; i.e `end from`
 				
-				// consume newline afterwards, if any
-				if tokens.first() == Some(&Token::Newline) {
-					tokens = &tokens[1..];
-				}
-				
-				Ok((From(assert, main_block, back_block, test), tokens))
+				Ok(From(assert, main_block, back_block, test))
 			}
 			
 			// var-drop
 			Some(Token::Var) => {
-				tokens = &tokens[1..];
+				tokens.next();
 				
 				// get name
-				let name = match tokens.first() {
-					Some(Token::Ident(name)) => name.clone(),
-					Some(_) => return Err(format!("expected name @ var init")),
-					None => return Err(format!("eof @ var name init")),
+				let name = match tokens.next() {
+					Some(Token::Ident(name)) => name,
+					_ => return Err("variable name")
 				};
-				tokens = &tokens[1..];
 				
 				// get optional type
 				let mut typ = None;
-				if let Some(Token::Colon) = tokens.first() {
-					tokens = &tokens[1..];
-					let (t, tx) = Type::parse(tokens)?;
+				
+				if tokens.peek() == Some(&Token::Colon) {
+					tokens.next();
+					let t = Type::parse(tokens)?;
 					typ = Some(t);
-					tokens = tx;
 				}
 				
 				// check for assignment op
-				match tokens.first() {
-					Some(Token::Assign) => {tokens = &tokens[1..]}
-					_ => return Err(format!("expected assignment op @ var init"))
+				if tokens.next() != Some(Token::Assign) {
+					return Err("`:=`");
 				}
 				
 				// get initialization expression
-				let (init, tx) = Expr::parse(tokens)?;
-				tokens = tx;
+				let init = Expr::parse(tokens)?;
 				
 				// get newline
-				match tokens.first() {
-					Some(Token::Newline) => {tokens = &tokens[1..]}
-					_ => return Err(format!("expected newline after var init"))
+				if tokens.next() != Some(Token::Newline) {
+					return Err("newline after variable declaration");
 				}
 				
 				// get list of statements for which this variable is valid
 				let mut block = Vec::new();
-				while tokens.first() != Some(&Token::Drop) {
-					let (stmt, tx) = Statement::parse(tokens)?;
-					block.push(stmt);
-					tokens = tx;
+				loop {
+					match tokens.peek() {
+						Some(Token::Drop) => {
+							tokens.next();
+							break;
+						}
+						Some(_) => {
+							let stmt = Statement::parse(tokens)?;
+							block.push(stmt);
+						}
+						None => return Err("a statement or `drop`")
+					}
 				}
-				tokens = &tokens[1..];
 				
 				// get deinit name
-				match tokens.first() {
-					Some(Token::Ident(n)) if *n == name =>
-						tokens = &tokens[1..],
-					Some(Token::Ident(e)) =>
-						return Err(format!("expected {:?}, got {:?}", name, e)),
-					Some(_) =>
-						return Err(format!("expected name @ drop")),
-					None =>
-						return Err(format!("eof @ var drop")),
+				match tokens.next() {
+					Some(Token::Ident(n)) if *n == name => {}
+					_ => return Err("same variable name as before")
 				}
 				
 				// check for assignment op
-				match tokens.first() {
-					Some(Token::Assign) => {tokens = &tokens[1..]}
-					_ => return Err(format!("expected assignment op @ drop"))
+				if tokens.next() != Some(Token::Assign) {
+					return Err("`:=`");
 				}
 				
 				// get deinit expression
-				let (drop, tx) = Expr::parse(tokens)?;
-				tokens = tx;
+				let drop = Expr::parse(tokens)?;
 				
-				// get newline, if any
-				if tokens.first() == Some(&Token::Newline) {
-					 tokens = &tokens[1..];
-				}
-				
-				Ok((Var(name, typ, init, block, drop), tokens))
+				Ok(Var(name, typ, init, block, drop))
 			}
 			
 			// if-else
 			Some(Token::If) => {
-				tokens = &tokens[1..];
+				tokens.next();
 				
 				// parse if condition
-				let (cond, t) = Expr::parse(tokens)?;
-				tokens = t;
+				let cond = Expr::parse(tokens)?;
 				
 				// ensure there's a newline afterwards
-				if tokens.first() != Some(&Token::Newline) {
-					return Err(format!("expected newline after if expression {:?}", tokens));
+				if tokens.next() != Some(Token::Newline) {
+					return Err("newline after if predicate");
 				}
-				tokens = &tokens[1..];
 				
 				// parse the main block
 				let mut main_block = Vec::new();
 				
-				while tokens.first() != Some(&Token::Else) && tokens.first() != Some(&Token::Fi) {
-					let (stmt, t) = Statement::parse(tokens)?;
-					main_block.push(stmt);
-					tokens = t;
-				}
-					
+				// if `else` or `fi` is found, end block.
 				// TODO: allow if-statements to end with `end`, such that if
 				// they do, the assertion becomes the same as the condition.
+				loop {
+					match tokens.peek() {
+						Some(Token::Else) |
+						Some(Token::Fi) => break,
+						
+						Some(_) => {
+							let stmt = Statement::parse(tokens)?;
+							main_block.push(stmt);
+						}
+						None => return Err("eof @ if main block")
+					}
+				}
 				
 				// parse else section
 				let mut else_block = Vec::new();
 				
-				if tokens.first() == Some(&Token::Else) {
-					tokens = &tokens[1..];
+				// saw `else`
+				if tokens.peek() == Some(&Token::Else) {
+					tokens.next();
 					
 					// TODO: have at least 1 statement after `else`.
 					// TODO: remove newline requirement below?
 					
 					// ensure there's a newline afterwards
-					if tokens.first() != Some(&Token::Newline) {
-						return Err(format!("expected newline after else {:?}", tokens));
+					if tokens.next() != Some(Token::Newline) {
+						return Err("newline after else");
 					}
-					tokens = &tokens[1..];
 					
-					// parse the else block
-					while tokens.first() != Some(&Token::Fi) {
-						let (stmt, t) = Statement::parse(tokens)?;
-						else_block.push(stmt);
-						tokens = t;
+					// parse else block
+					loop {
+						match tokens.peek() {
+							Some(Token::Fi) => {
+								tokens.next();
+								break;
+							}
+							Some(_) => {
+								let stmt = Statement::parse(tokens)?;
+								else_block.push(stmt);
+							}
+							None => return Err("a statement or `fi`")
+						}
 					}
 				}
-				tokens = &tokens[1..];
+				
+				// consume `fi`
+				tokens.next();
 				
 				// parse the `fi` assertion
-				let (assert, mut tokens) = Expr::parse(tokens)?;
+				let assert = Expr::parse(tokens)?;
 				
 				// TODO check for optional `if` keyword; i.e `end if`
 				
-				// consume newline afterwards, if any
-				if tokens.first() == Some(&Token::Newline) {
-					tokens = &tokens[1..];
-				}
-				
-				Ok((If(cond, main_block, else_block, assert), tokens))
+				Ok(If(cond, main_block, else_block, assert))
 			}
 			
-			Some(token) =>
-				if let Ok((lval, tokens)) = LValue::parse(tokens) {
-					match tokens.first() {
-						Some(Token::Assign) | Some(Token::Add) | Some(Token::Sub) => {
-							unimplemented!()
+			Some(_) =>
+				if let Ok(lval) = LValue::parse(tokens) {
+					match tokens.peek() {
+						Some(Token::Assign) => {
+							tokens.next();
+							
+						    let expr = Expr::parse(tokens)?;
+						    Ok(Xor(lval, expr))
+						}
+						Some(Token::AddAssign) => {
+							tokens.next();
+							
+						    let expr = Expr::parse(tokens)?;
+						    Ok(Add(lval, expr))
+						}
+						Some(Token::SubAssign) => {
+							tokens.next();
+							
+						    let expr = Expr::parse(tokens)?;
+						    Ok(Sub(lval, expr))
 						}
 						
 						Some(Token::Swap) => {
-						    let (rval, t) = LValue::parse(tokens)?;
-						    Ok((Swap(lval, rval), t))
+							tokens.next();
+							
+						    let rval = LValue::parse(tokens)?;
+						    Ok(Swap(lval, rval))
 						}
 						
-						Some(_) => {
-						    unimplemented!()
-						}
-						
-						None => Err(format!("eof @ lval statement op")),
+						Some(_) => Err("`:=`, `+=`, `-=`, or `<>`"),
+						None => Err("modifying operator"),
 					}
 				} else {
-					Err(format!("unrecognized statement: {:?}; {:?}", token, &tokens[1..]))
+					Err("a valid statement")
 				}
 			
-			None =>
-				Err(format!("eof @ statement")),
+			None => Err("a statement"),
+		};
+				
+		// consume newline afterwards, if any
+		if tokens.peek() == Some(&Token::Newline) {
+			tokens.next();
 		}
+		
+		res
 	}
 	
 	/*

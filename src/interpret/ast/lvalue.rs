@@ -16,61 +16,55 @@ pub struct LValue {
 }
 
 impl LValue {
-	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 	    let mut ops = Vec::new();
 	    
-	    let name =
-	    	if let Some(Token::Ident(n)) = tokens.first() {
-				tokens = &tokens[1..];
-				n.clone()
-			} else {
-				return Err(format!("expected identifier @ lval {:?}", tokens));
-			};
+	    // get lval name
+	    let name = match tokens.next() {
+	    	Some(Token::Ident(n)) => n,
+	    	_ => return Err("a location name")
+		};
 	    
 	    loop {
-	    	match tokens.first() {
+	    	match tokens.peek() {
 	    		// '!'
 	    		Some(Token::Bang) => {
-	    			tokens = &tokens[1..];
+	    			tokens.next();
 	    			ops.push(Deref::Direct);
     			}
     			// '['
     			Some(Token::LBracket) => {
-    				tokens = &tokens[1..];
+    				tokens.next();
+    				let fact = Term::parse(tokens)?;
     				
-    				let (fact, tx) = Term::parse(tokens)?;
-    				tokens = tx;
-    				
-    				if tokens.first() != Some(&Token::RBracket) {
-    					return Err(format!("expected `]` @ deref"));
+    				if tokens.next() != Some(Token::RBracket) {
+    					return Err("`]` after indexing");
     				}
     				
     				ops.push(Deref::Index(fact));
-    				tokens = &tokens[1..];
     			}
     			// '.'
     			Some(Token::Period) => {
-    				tokens = &tokens[1..];
+    				tokens.next();
     				
-    				if let Some(Token::Ident(name)) = tokens.first() {
-    					ops.push(Deref::Field(name.clone()));
+    				if let Some(Token::Ident(name)) = tokens.next() {
+    					ops.push(Deref::Field(name));
     				}
     				else {
-    					return Err(format!("expected identifier @ deref"));
+    					return Err("field name after variable");
     				}
-    				
-					tokens = &tokens[1..];
     			}
     			_ => break
 			}
 		}
         
-        Ok((LValue { id: name, ops }, tokens))
+        Ok(LValue { id: name, ops })
 	}
-	
+	/*
 	pub fn eval(&self, t: &Scope) -> Value {
 	    t.iter().rfind(|(id, _)| *id == self.id).unwrap().1.clone()
 	}
+	*/
 }
 
 #[cfg(test)]

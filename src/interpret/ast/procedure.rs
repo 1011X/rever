@@ -12,85 +12,73 @@ pub struct Procedure {
 }
 
 impl Procedure {
-	
-	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 	    // keyword `proc`
-	    if tokens.first() != Some(&Token::Proc) {
-	        return Err(format!("expected `proc` {:?}", tokens));
+	    if tokens.next() != Some(Token::Proc) {
+	        return Err("`proc`");
 	    }
-	    tokens = &tokens[1..];
 	    
 	    // get procedure name
-	    let name = match tokens.first() {
-	    	Some(Token::Ident(n)) => {
-			 	tokens = &tokens[1..];
-				n.clone()
-			}
-			_ => return Err(format!("expected identifier @ proc name"))
+	    let name = match tokens.next() {
+	    	Some(Token::Ident(n)) => n,
+			_ => return Err("procedure name")
 		};
 		
 		// parse parameter list
 		let mut params = Vec::new();
 		
 		// starting '('
-		if tokens.first() == Some(&Token::LParen) {
-			tokens = &tokens[1..];
+		if tokens.peek() == Some(&Token::LParen) {
+			tokens.next();
 		    
 		    loop {
 				// TODO add case for newline for multiline param declaration?
-				match tokens.first() {
+				match tokens.peek() {
 					// ending ')'
 					Some(Token::RParen) => {
-						tokens = &tokens[1..];
+						tokens.next();
 						break;
 					}
-					// try parsing Param
+					// try parsing as Param
 					Some(_) => {
-						let (param, t) = Param::parse(tokens)?;
-						tokens = t;
-						params.push(param);
+						params.push(Param::parse(tokens)?);
 						
-						match tokens.first() {
-							Some(Token::RParen) => {
-								tokens = &tokens[1..];
-								break
-							}
+						match tokens.next() {
+							Some(Token::RParen) => break,
 							Some(Token::Comma) => {}
-							_ => return Err(format!("expected `,`"))
+							_ => return Err("`,`")
 						}
 					}
-					None => return Err(format!("eof @ parameter list")),
+					None => return Err("`,` or `)`")
 				}
 			}
 		}
 		
 		// check for newline
-		if tokens.first() != Some(&Token::Newline) {
-			return Err(format!("expected newline after parameter list"));
+		if tokens.next() != Some(Token::Newline) {
+			return Err("newline after parameter list");
 		}
-		tokens = &tokens[1..];
 	    
 	    // code block section
         let mut code = Vec::new();
         
         loop {
-        	match tokens.first() {
-        		// ending 'end'
-        		Some(Token::End) => {
-        			tokens = &tokens[1..];
-        			break;
-    			}
-    			// statement
-    			Some(_) => {
-    				let (stmt, tx) = Statement::parse(tokens)?;
-    				tokens = tx;
-    				code.push(stmt);
-    			}
-    			None => return Err(format!("eof @ proc definition"))
+		    match tokens.peek() {
+				// ending 'end'
+				Some(Token::End) => {
+					tokens.next();
+					break;
+				}
+				// statement
+				Some(_) => {
+					let stmt = Statement::parse(tokens)?;
+					code.push(stmt);
+				}
+				None => return Err("a statement or `end`")
 			}
-        }
+		}
 	    
-	    Ok((Procedure { name, params, code }, tokens))
+	    Ok(Procedure { name, params, code })
 	}
 	
 	

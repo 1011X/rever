@@ -14,16 +14,12 @@ pub enum Type {
 }
 
 impl Type {
-	pub fn parse(tokens: &[Token]) -> ParseResult<Self> {
-		match tokens.first() {
-			Some(Token::Ident(t)) if t == "bool" =>
-				Ok((Type::Bool, &tokens[1..])),
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+		match tokens.peek() {
+			Some(Token::Ident(t)) if t == "bool" => Ok(Type::Bool),
+			Some(Token::Ident(t)) if t == "uint" => Ok(Type::Uint),
 			
-			Some(Token::Ident(t)) if t == "uint" =>
-				Ok((Type::Uint, &tokens[1..])),
-			
-			_f =>
-		        Err(format!("unknown type: {:?}", _f))
+			_ => Err("valid type")
 		}
 	}
 }

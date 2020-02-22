@@ -3,22 +3,18 @@ mod value;
 
 use std::fs::File;
 
-use super::tokenize::Token;
-use self::ast::Item;
-use self::ast::ParseResult;
+use self::ast::{Item, ParseResult, Tokens};
 
 pub use self::value::Value;
 
-pub fn parse_items(mut tokens: &[Token]) -> ParseResult<Vec<Item>> {
+pub fn parse_items(tokens: &mut Tokens) -> ParseResult<Vec<Item>> {
     let mut items = Vec::new();
     
-	while ! tokens.is_empty() {
-		let (item, t) = Item::parse(tokens)?;
-		tokens = t;
-		items.push(item);
+	while tokens.len() > 0 {
+		items.push(Item::parse(tokens)?);
 	}
 	
-	Ok((items, tokens))
+	Ok(items)
 }
 
 
