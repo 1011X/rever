@@ -8,36 +8,30 @@ pub struct Param {
 }
 
 impl Param {
-	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 	    // check mutability
 	    let mut mutable = false;
 	    
-	    if tokens.first() == Some(&Token::Var) {
+	    if tokens.peek() == Some(&Token::Var) {
 	    	mutable = true;
-	    	tokens = &tokens[1..];
+	    	tokens.next();
     	}
     	
-    	// read parameter name
-    	let name =
-    		if let Some(Token::Ident(n)) = tokens.first() {
-    			tokens = &tokens[1..];
-    			n.clone()
-			}
-			else {
-				return Err(format!("expected identifier @ param"));
-			};
+    	// get parameter name
+    	let name = match tokens.next() {
+    		Some(Token::Ident(n)) => n,
+    		_ => return Err("param name")
+		};
 		
 		// ':'
-		if tokens.first() != Some(&Token::Colon) {
-			return Err(format!("expected `:` @ param"));
+		if tokens.next() != Some(Token::Colon) {
+			return Err("`:` @ param");
 		}
-		tokens = &tokens[1..];
 	    
-	    // read type
-	    let (typ, tx) = Type::parse(tokens)?;
-	    tokens = tx;
+	    // get its type
+	    let typ = Type::parse(tokens)?;
 	    
-	    Ok((Param { name, mutable, typ }, tokens))
+	    Ok(Param { name, mutable, typ })
 	}
 }
 

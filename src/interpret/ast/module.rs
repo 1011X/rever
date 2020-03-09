@@ -14,36 +14,43 @@ pub struct Module {
 }
 
 impl Module {
-	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// `mod` keyword
-		if tokens.first() != Some(&Token::Mod) {
-			return Err(format!("expected `mod` @ module start"));
+		if tokens.next() != Some(Token::Mod) {
+			return Err("`mod`");
 		}
-		tokens = &tokens[1..];
 		
 		// get name
-		let name = match tokens.first() {
-			Some(Token::Ident(name)) => name.clone(),
-			Some(t) =>
-				return Err(format!("expected identifier, got {:?} {:?}", t, &tokens[1..])),
-			None =>
-				return Err(format!("eof @ mod name")),
+		let name = match tokens.next() {
+			Some(Token::Ident(name)) => name,
+			//t => return Err(("module name", t)),
+			_ => return Err("module name"),
 		};
 		
 		// get newline
-		if tokens.first() != Some(&Token::Newline) {
-			return Err(format!("expected newline @ module start"));
+		if tokens.next() != Some(Token::Newline) {
+			return Err("newline after module name");
 		}
-		tokens = &tokens[1..];
 		
 		// parse as many items as possible
 	    let mut items = Vec::new();
-		while tokens.first() != Some(&Token::End) {
-    		let (item, t) = Item::parse(tokens)?;
-    		tokens = t;
-    		items.push(item);
+	    
+		loop {
+			match tokens.peek() {
+				Some(Token::End) => {
+					tokens.next();
+					break;
+				}
+				Some(_) => {
+					let item = Item::parse(tokens)?;
+					items.push(item);
+				}
+				None => return Err("an item or `end`")
+			}
 		}
 		
-		Ok((Module { name, items }, tokens))
+		// TODO check for optional `mod` after `end`
+		
+		Ok(Module { name, items })
 	}
 }

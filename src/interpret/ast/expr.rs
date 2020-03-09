@@ -19,7 +19,9 @@ TODO:
 */
 
 use crate::tokenize::Token;
-use super::{ParseResult, Term};
+use super::{ParseResult, Term, Tokens};
+use crate::interpret::{Value, Scope};
+//use crate::interpret::EvalResult;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -61,18 +63,16 @@ impl Expr {
 	// exp  -> prim {^ prim}
 	// prim -> ( expr )
 	//      -> factor
-	pub fn parse(mut tokens: &[Token]) -> ParseResult<Self> {
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 	    enum Op { Eq, Neq, Lt, Gt, Lte, Gte, /* In */}
 		
 		// <term>
-		let (first, t) = Expr::parse_expr(tokens)?;
-		tokens = t;
-	    
+		let first = Expr::parse_expr(tokens)?;
 		let mut exprs: Vec<(Op, Expr)> = Vec::new();
 		
 		// { ('=' | '!=' | '<' | '>' | '<=' | '>=') <expr> }
 		loop {
-			let op = match tokens.first() {
+			let op = match tokens.peek() {
 				Some(Token::Eq)  => Op::Eq,
 				Some(Token::Neq) => Op::Neq,
 				Some(Token::Lt)  => Op::Lt,
@@ -82,14 +82,14 @@ impl Expr {
 				//Some(Token::In)  => Op::In,
 			    _ => break
 			};
+			tokens.next();
 		    
-		    let (expr, t) = Expr::parse_expr(&tokens[1..])?;
-		    tokens = t;
+		    let expr = Expr::parse_expr(tokens)?;
 		    exprs.push((op, expr));
 		}
 		
 		if exprs.is_empty() {
-		    return Ok((first, tokens));
+		    return Ok(first);
 		}
 		
 		let res = exprs.into_iter()
@@ -103,34 +103,32 @@ impl Expr {
 			//Op::In  => Expr::In(Box::new(acc), Box::new(base)),
 		});
 		
-		Ok((res, tokens))
+		Ok(res)
 	}
 	
-	pub fn parse_expr(mut tokens: &[Token]) -> ParseResult<Self> {
+	pub fn parse_expr(tokens: &mut Tokens) -> ParseResult<Self> {
 	    enum Op { Add, Sub, Or }
 		
 		// <term>
-		let (first, t) = Expr::parse_term(tokens)?;
-		tokens = t;
-	    
+		let first = Expr::parse_term(tokens)?;
 		let mut terms: Vec<(Op, Expr)> = Vec::new();
 		
 		// { ('+' | '-' | 'or') <term> }
 		loop {
-			let op = match tokens.first() {
-				Some(Token::Add) => Op::Add,
-				Some(Token::Sub) => Op::Sub,
-				Some(Token::Or)  => Op::Or,
+			let op = match tokens.peek() {
+				Some(Token::Plus)  => Op::Add,
+				Some(Token::Minus) => Op::Sub,
+				Some(Token::Or)    => Op::Or,
 			    _ => break
 			};
+			tokens.next();
 		    
-		    let (term, t) = Expr::parse_term(&tokens[1..])?;
-		    tokens = t;
+		    let term = Expr::parse_term(tokens)?;
 		    terms.push((op, term));
 		}
 		
 		if terms.is_empty() {
-		    return Ok((first, tokens));
+		    return Ok(first);
 		}
 		
 		let res = terms.into_iter()
@@ -140,35 +138,33 @@ impl Expr {
 			Op::Or  => Expr::Or(Box::new(acc), Box::new(base)),
 		});
 		
-		Ok((res, tokens))
+		Ok(res)
 	}
 	
-	fn parse_term(mut tokens: &[Token]) -> ParseResult<Self> {
+	fn parse_term(tokens: &mut Tokens) -> ParseResult<Self> {
 	    enum Op { Mul, Div, Mod, And }
 		
 		// <fact>
-		let (first, t) = Expr::parse_exp(tokens)?;
-		tokens = t;
-	    
+		let first = Expr::parse_exp(tokens)?;
 		let mut facts: Vec<(Op, Expr)> = Vec::new();
 		
 		// { ('*' | '/' | 'mod' | 'and') <fact> }
 		loop {
-			let op = match tokens.first() {
+			let op = match tokens.peek() {
 				Some(Token::Star)   => Op::Mul,
 				Some(Token::FSlash) => Op::Div,
 				Some(Token::Mod)    => Op::Mod,
 				Some(Token::And)    => Op::And,
 			    _ => break
 			};
+			tokens.next();
 		    
-		    let (fact, t) = Expr::parse_exp(&tokens[1..])?;
-		    tokens = t;
+		    let fact = Expr::parse_exp(tokens)?;
 		    facts.push((op, fact));
 		}
 		
 		if facts.is_empty() {
-		    return Ok((first, tokens));
+		    return Ok(first);
 		}
 		
 		let res = facts.into_iter()
@@ -179,121 +175,136 @@ impl Expr {
 			Op::And => Expr::And(Box::new(acc), Box::new(base)),
 		});
 		
-		Ok((res, tokens))
+		Ok(res)
 	}
 	
-	// TODO rework this allow multiple operators in exponential phase.
-	fn parse_exp(mut tokens: &[Token]) -> ParseResult<Self> {
+	fn parse_exp(tokens: &mut Tokens) -> ParseResult<Self> {
 		// <exp>
-		let (first, t) = Expr::parse_base(tokens)?;
-		tokens = t;
-		
+		let first = Expr::parse_base(tokens)?;
 		let mut exps = Vec::new();
 		
 		// { ('^') <exp> }
 		loop {
-			let op = match tokens.first() {
+			let op = match tokens.peek() {
 				Some(Token::Caret) => {}
 			    _ => break
 			};
+			tokens.next();
 		    
-		    let (exp, t) = Expr::parse_base(&tokens[1..])?;
-		    tokens = t;
+		    let exp = Expr::parse_base(tokens)?;
 		    exps.push(exp);
 		}
 		
 		if exps.is_empty() {
-		    return Ok((first, tokens));
+		    return Ok(first);
 		}
 		
 		let last = exps.pop().unwrap();
 		let res = exps.into_iter()
-			.rfold(last, |acc, base|
-			    Expr::Exp(Box::new(base), Box::new(acc))
-		    );
+		.rfold(last, |acc, base|
+		    Expr::Exp(Box::new(base), Box::new(acc))
+	    );
 		
-		Ok((Expr::Exp(Box::new(first), Box::new(res)), tokens))
+		Ok(Expr::Exp(Box::new(first), Box::new(res)))
 	}
 	
-	fn parse_base(tokens: &[Token]) -> ParseResult<Self> {
+	fn parse_base(tokens: &mut Tokens) -> ParseResult<Self> {
 		// check if there's an open parenthesis
-		if tokens.first() == Some(&Token::LParen) {
-			let (expr, t) = Expr::parse(&tokens[1..])?;
+		if tokens.peek() == Some(&Token::LParen) {
+			tokens.next();
+			
+			let expr = Expr::parse(tokens)?;
 			
 			// make sure there's a closing parenthesis
-			if t.first() != Some(&Token::RParen) {
-				Err(format!("no closing parenthesis found"))
+			if tokens.next() != Some(Token::RParen) {
+				return Err("closing parenthesis in subexpression");
 			}
-			else {
-				Ok((Expr::Group(Box::new(expr)), &t[1..]))
-			}
+			
+			Ok(Expr::Group(Box::new(expr)))
 		}
 		else {
 			// otherwise, treat it as a Term.
-			let (term, t) = Term::parse(tokens)?;
-			Ok((Expr::Term(term), t))
+			let term = Term::parse(tokens)?;
+			Ok(Expr::Term(term))
 		}
 	}
 	
-	/*
-	pub fn eval(&self, t: &Scope) -> Value {
+	pub fn eval(&self, t: &Scope) -> EvalResult {
 		match self {
-			Expr::Term(term) => term.eval(t),
-			Expr::Group(e) => e.eval(t),
+			// 1
+			Expr::Term(term) => Ok(term.eval(t)),
+			Expr::Group(e) => Ok(e.eval(t)?),
 			
-			Expr::Exp(base, exp) => unimplemented!(),
-			
-			Expr::Mul(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l * r),
-				_ => panic!("tried multiplying non-integer values")
-			}
-			Expr::Div(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l / r),
-				_ => panic!("tried dividing non-integer values")
+			// 3
+			Expr::Not(e) => match e.eval(t)? {
+				Value::Bool(true) => Ok(Value::Bool(false)),
+				Value::Bool(false) => Ok(Value::Bool(true)),
+				_ => Err("tried NOTting non-boolean expression")
 			}
 			
-			Expr::Add(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l + r),
-				_ => panic!("tried multiplying non-integer values")
-			}
-			Expr::Sub(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l - r),
-				_ => panic!("tried multiplying non-integer values")
+			// 4
+			Expr::Exp(base, exp) => match (base.eval(t)?, exp.eval(t)?) {
+				(Value::Int(b), Value::Int(e)) => Ok(Value::from(b.pow(e as u32))),
+				_ => Err("tried to get power of non-integer values")
 			}
 			
-			Expr::Eq(l, r) => Value::from(l.eval(t) == r.eval(t)),
-			Expr::Ne(l, r) => Value::from(l.eval(t) != r.eval(t)),
+			// 5
+			Expr::Mul(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l * r)),
+				_ => Err("tried multiplying non-integer values")
+			}
+			Expr::Div(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l / r)),
+				_ => Err("tried dividing non-integer values")
+			}
+			Expr::Mod(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from((l % r + r) % r)),
+				_ => Err("tried getting remainder of non-integer values")
+			}
+			Expr::And(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Bool(l), Value::Bool(r)) => Ok(Value::from(l && r)),
+				_ => Err("tried ANDing non-boolean values")
+			}
 			
-			Expr::Lt(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l < r),
-				_ => panic!("tried comparing non-integer values")
+			// 6
+			Expr::Add(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l + r)),
+				_ => Err("tried adding non-integer values")
 			}
-			Expr::Ge(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l >= r),
-				_ => panic!("tried comparing non-integer values")
+			Expr::Sub(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l - r)),
+				_ => Err("tried subtracting non-integer values")
+			}
+			Expr::Or(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Bool(l), Value::Bool(r)) => Ok(Value::from(l || r)),
+				_ => Err("tried ORing non-boolean expressions")
 			}
 			
+			// 7
+			Expr::Eq(l, r) => Ok(Value::from(l.eval(t)? == r.eval(t)?)),
+			Expr::Neq(l, r) => Ok(Value::from(l.eval(t)? != r.eval(t)?)),
 			
-			Expr::Not(e) => match e.eval(t) {
-				Value::Bool(true) => Value::Bool(false),
-				Value::Bool(false) => Value::Bool(true),
-				_ => panic!("tried negating non-boolean expression")
+			Expr::Lt(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l < r)),
+				_ => Err("tried comparing non-integer values")
 			}
-			Expr::And(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Bool(l), Value::Bool(r)) => Value::from(l && r),
-				_ => panic!("tried ANDing non-boolean expressions")
+			Expr::Lte(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l <= r)),
+				_ => Err("tried comparing non-integer values")
 			}
-			Expr::Or(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Bool(l), Value::Bool(r)) => Value::from(l || r),
-				_ => panic!("tried ORing non-boolean expressions")
+			
+			Expr::Gt(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l > r)),
+				_ => Err("tried comparing non-integer values")
+			}
+			Expr::Gte(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l >= r)),
+				_ => Err("tried comparing non-integer values")
 			}
 		}
 	}
-	*/
 }
 
 impl From<Term> for Expr {
-	fn from(f: Term) -> Self {
-		Expr::Term(f)
-	}
+	fn from(f: Term) -> Self { Expr::Term(f) }
 }

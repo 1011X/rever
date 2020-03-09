@@ -1,3 +1,33 @@
 proc main
+	var x := 0
+	var y := 1
 	do print "hello world"
+	x <> y
+	x -= 1
+	y += 1
+	y := 1
+	drop y := 0
+	drop x := 0
+end
+
+proc p
+	if a = 0
+		do x
+	else
+		if a = 1
+			do y
+		else
+			do z
+		fi
+	fi
+
+	
+	if a = 0
+		do x
+	else if a = 1
+		do y
+	else
+		do z
+	fi
+	fi
 end

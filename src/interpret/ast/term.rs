@@ -1,4 +1,3 @@
-use crate::tokenize::Token;
 use crate::interpret::{Scope, Value};
 use super::*;
 
@@ -9,13 +8,13 @@ pub enum Term {
 }
 
 impl Term {
-	pub fn parse(s: &[Token]) -> ParseResult<Self> {
-	    if let Ok((lit, s)) = Literal::parse(s) {
-	        Ok((Term::Lit(lit), s))
+	pub fn parse(s: &mut Tokens) -> ParseResult<Self> {
+	    if let Ok(lit) = Literal::parse(s) {
+	        Ok(Term::Lit(lit))
         }
         else {
-		    let (lval, s) = LValue::parse(s)?;
-		    Ok((Term::LVal(lval), s))
+		    let lval = LValue::parse(s)?;
+		    Ok(Term::LVal(lval))
 	    }
 	}
 	
@@ -28,13 +27,9 @@ impl Term {
 }
 
 impl From<Literal> for Term {
-    fn from(lit: Literal) -> Self {
-        Term::Lit(lit)
-    }
+    fn from(lit: Literal) -> Self { Term::Lit(lit) }
 }
 
 impl From<LValue> for Term {
-    fn from(lval: LValue) -> Self {
-        Term::LVal(lval)
-    }
+    fn from(lval: LValue) -> Self { Term::LVal(lval) }
 }

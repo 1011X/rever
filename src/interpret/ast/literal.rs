@@ -4,51 +4,51 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
-	//Nil,
+	Nil,
 	Bool(bool),
-	Unsigned(u64),
+	Int(i64),
 	//Signed(u64),
 	//Char(char),
 	String(String),
 }
 
 impl Literal {
-	pub fn eval(&self) -> Value {
-		match self {
-			//Literal::Nil         => Value::Nil,
-			Literal::Bool(b)     => Value::Bool(*b),
-			Literal::Unsigned(n) => Value::Unsigned(*n),
-			Literal::String(s)   => Value::String(s.clone()),
-		}
-	}
-	
-	pub fn parse(tokens: &[Token]) -> ParseResult<Self> {
-		match tokens.first() {
-			//Some(Token::Ident(x)) if x == "nil" =>
-				//Ok((Literal::Nil, &tokens[1..])),
+	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+		match tokens.next() {
+			Some(Token::Ident(x)) if x == "nil" =>
+				Ok(Literal::Nil),
 			
 			Some(Token::Ident(x)) if x == "true" =>
-				Ok((Literal::Bool(true), &tokens[1..])),
+				Ok(Literal::Bool(true)),
 			
 			Some(Token::Ident(x)) if x == "false" =>
-				Ok((Literal::Bool(false), &tokens[1..])),
+				Ok(Literal::Bool(false)),
 			
 			Some(Token::Number(num)) => {
 				/*if num.starts_with('+') || num.starts_with('-') {
 					let (n, tx) = Literal::snum(&num)?;
 					Ok((Literal::SNum(n), sx))
 				else {*/
-				match u64::from_str_radix(num, 10) {
-					Ok(n)  => Ok((Literal::Unsigned(n), &tokens[1..])),
-					Err(_) => Err(format!("number too big")),
+				match u64::from_str_radix(&num, 10) {
+					Ok(n)  => Ok(Literal::Unsigned(n)),
+					Err(_) => Err("a smaller number"),
 				}
 				//}
 			}
 			
 			Some(Token::String(st)) =>
-				Ok((Literal::String(st.clone()), &tokens[1..])),
+				Ok(Literal::String(st)),
 			
-			_ => Err(format!("invalid literal value"))
+			_ => Err("valid literal value")
+		}
+	}
+	
+	pub fn eval(&self) -> Value {
+		match self {
+			Literal::Nil         => Value::Nil,
+			Literal::Bool(b)   => Value::Bool(*b),
+			Literal::Int(n)    => Value::Int(*n),
+			Literal::String(s) => Value::String(s.clone()),
 		}
 	}
 }
