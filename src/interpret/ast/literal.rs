@@ -4,9 +4,9 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Literal {
-	//Nil,
+	Nil,
 	Bool(bool),
-	Unsigned(u64),
+	Int(i64),
 	//Signed(u64),
 	//Char(char),
 	String(String),
@@ -15,8 +15,8 @@ pub enum Literal {
 impl Literal {
 	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		match tokens.next() {
-			//Some(Token::Ident(x)) if x == "nil" =>
-				//Ok(Literal::Nil),
+			Some(Token::Ident(x)) if x == "nil" =>
+				Ok(Literal::Nil),
 			
 			Some(Token::Ident(x)) if x == "true" =>
 				Ok(Literal::Bool(true)),
@@ -45,10 +45,10 @@ impl Literal {
 	
 	pub fn eval(&self) -> Value {
 		match self {
-			//Literal::Nil         => Value::Nil,
-			Literal::Bool(b)     => Value::Bool(*b),
-			Literal::Unsigned(n) => Value::Unsigned(*n),
-			Literal::String(s)   => Value::String(s.clone()),
+			Literal::Nil         => Value::Nil,
+			Literal::Bool(b)   => Value::Bool(*b),
+			Literal::Int(n)    => Value::Int(*n),
+			Literal::String(s) => Value::String(s.clone()),
 		}
 	}
 }

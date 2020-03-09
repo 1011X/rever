@@ -17,6 +17,9 @@ pub fn parse_items(tokens: &mut Tokens) -> ParseResult<Vec<Item>> {
 	Ok(items)
 }
 
+type EvalResult = Result<Value, &'static str>;
+
+// TODO: add a scope for items
 
 pub type Scope = Vec<(String, Value)>;
 
@@ -30,7 +33,8 @@ pub type Stack = Vec<StackFrame>;
 
 /*
 // TODO: ensure reversibility of files and streams
-struct IoStack<T: Read + Write> {
-	
+struct ReverIo<T: Read + Write> {
+	fn copy(&mut self, buf: &mut [u8]) -> io::Result<usize>;
+	fn move(&mut self, buf: &mut [u8]) -> io::Result<usize>;
 }
 */

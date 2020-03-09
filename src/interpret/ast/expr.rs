@@ -20,6 +20,8 @@ TODO:
 
 use crate::tokenize::Token;
 use super::{ParseResult, Term, Tokens};
+use crate::interpret::{Value, Scope};
+//use crate::interpret::EvalResult;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -227,61 +229,80 @@ impl Expr {
 		}
 	}
 	
-	/*
-	pub fn eval(&self, t: &Scope) -> Value {
+	pub fn eval(&self, t: &Scope) -> EvalResult {
 		match self {
-			Expr::Term(term) => term.eval(t),
-			Expr::Group(e) => e.eval(t),
+			// 1
+			Expr::Term(term) => Ok(term.eval(t)),
+			Expr::Group(e) => Ok(e.eval(t)?),
 			
-			Expr::Exp(base, exp) => unimplemented!(),
-			
-			Expr::Mul(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l * r),
-				_ => panic!("tried multiplying non-integer values")
-			}
-			Expr::Div(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l / r),
-				_ => panic!("tried dividing non-integer values")
+			// 3
+			Expr::Not(e) => match e.eval(t)? {
+				Value::Bool(true) => Ok(Value::Bool(false)),
+				Value::Bool(false) => Ok(Value::Bool(true)),
+				_ => Err("tried NOTting non-boolean expression")
 			}
 			
-			Expr::Add(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l + r),
-				_ => panic!("tried multiplying non-integer values")
-			}
-			Expr::Sub(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l - r),
-				_ => panic!("tried multiplying non-integer values")
+			// 4
+			Expr::Exp(base, exp) => match (base.eval(t)?, exp.eval(t)?) {
+				(Value::Int(b), Value::Int(e)) => Ok(Value::from(b.pow(e as u32))),
+				_ => Err("tried to get power of non-integer values")
 			}
 			
-			Expr::Eq(l, r) => Value::from(l.eval(t) == r.eval(t)),
-			Expr::Ne(l, r) => Value::from(l.eval(t) != r.eval(t)),
+			// 5
+			Expr::Mul(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l * r)),
+				_ => Err("tried multiplying non-integer values")
+			}
+			Expr::Div(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l / r)),
+				_ => Err("tried dividing non-integer values")
+			}
+			Expr::Mod(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from((l % r + r) % r)),
+				_ => Err("tried getting remainder of non-integer values")
+			}
+			Expr::And(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Bool(l), Value::Bool(r)) => Ok(Value::from(l && r)),
+				_ => Err("tried ANDing non-boolean values")
+			}
 			
-			Expr::Lt(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l < r),
-				_ => panic!("tried comparing non-integer values")
+			// 6
+			Expr::Add(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l + r)),
+				_ => Err("tried adding non-integer values")
 			}
-			Expr::Ge(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => Value::from(l >= r),
-				_ => panic!("tried comparing non-integer values")
+			Expr::Sub(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l - r)),
+				_ => Err("tried subtracting non-integer values")
+			}
+			Expr::Or(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Bool(l), Value::Bool(r)) => Ok(Value::from(l || r)),
+				_ => Err("tried ORing non-boolean expressions")
 			}
 			
+			// 7
+			Expr::Eq(l, r) => Ok(Value::from(l.eval(t)? == r.eval(t)?)),
+			Expr::Neq(l, r) => Ok(Value::from(l.eval(t)? != r.eval(t)?)),
 			
-			Expr::Not(e) => match e.eval(t) {
-				Value::Bool(true) => Value::Bool(false),
-				Value::Bool(false) => Value::Bool(true),
-				_ => panic!("tried negating non-boolean expression")
+			Expr::Lt(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l < r)),
+				_ => Err("tried comparing non-integer values")
 			}
-			Expr::And(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Bool(l), Value::Bool(r)) => Value::from(l && r),
-				_ => panic!("tried ANDing non-boolean expressions")
+			Expr::Lte(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l <= r)),
+				_ => Err("tried comparing non-integer values")
 			}
-			Expr::Or(l, r) => match (l.eval(t), r.eval(t)) {
-				(Value::Bool(l), Value::Bool(r)) => Value::from(l || r),
-				_ => panic!("tried ORing non-boolean expressions")
+			
+			Expr::Gt(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l > r)),
+				_ => Err("tried comparing non-integer values")
+			}
+			Expr::Gte(l, r) => match (l.eval(t)?, r.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l >= r)),
+				_ => Err("tried comparing non-integer values")
 			}
 		}
 	}
-	*/
 }
 
 impl From<Term> for Expr {

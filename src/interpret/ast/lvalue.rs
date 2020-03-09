@@ -60,11 +60,10 @@ impl LValue {
         
         Ok(LValue { id: name, ops })
 	}
-	/*
+	
 	pub fn eval(&self, t: &Scope) -> Value {
 	    t.iter().rfind(|(id, _)| *id == self.id).unwrap().1.clone()
 	}
-	*/
 }
 
 #[cfg(test)]

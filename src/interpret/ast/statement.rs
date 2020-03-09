@@ -1,4 +1,6 @@
 use crate::tokenize::Token;
+use crate::interpret::{Value, Scope};
+//use crate::interpret::EvalResult;
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -31,9 +33,9 @@ pub enum Statement {
 	
 }
 
-use self::Statement::*;
 impl Statement {
 	pub fn invert(self) -> Self {
+		use self::Statement::*;
 		match self {
 			Var(name, typ, init, scope, dest) =>
 				Var(name, typ, dest, scope, init),
@@ -58,9 +60,10 @@ impl Statement {
 	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		let res = match tokens.peek() {
 			// skip
+			// TODO use this keyword as a prefix to comment out statements?
 			Some(Token::Skip) => {
 				tokens.next();
-				Ok(Skip)
+				Ok(Statement::Skip)
 			}
 			
 			// do
@@ -76,14 +79,10 @@ impl Statement {
 				
 				// parse arg list
 				let mut args = Vec::new();
-				
 				loop {
 					match tokens.peek() {
 						None | Some(Token::Newline) => break,
-						Some(_) => {
-							let arg = Expr::parse(tokens)?;
-							args.push(arg);
-						}
+						_ => args.push(Expr::parse(tokens)?),
 					}
 				}
 				
@@ -106,14 +105,10 @@ impl Statement {
 				
 				// parse arg list
 				let mut args = Vec::new();
-				
 				loop {
 					match tokens.peek() {
 						None | Some(Token::Newline) => break,
-						Some(_) => {
-							let arg = Expr::parse(tokens)?;
-							args.push(arg);
-						}
+						_ => args.push(Expr::parse(tokens)?),
 					}
 				}
 				
@@ -174,7 +169,7 @@ impl Statement {
 				
 				// TODO check for optional `from` keyword; i.e `end from`
 				
-				Ok(From(assert, main_block, back_block, test))
+				Ok(Statement::From(assert, main_block, back_block, test))
 			}
 			
 			// var-drop
@@ -239,7 +234,7 @@ impl Statement {
 				// get deinit expression
 				let drop = Expr::parse(tokens)?;
 				
-				Ok(Var(name, typ, init, block, drop))
+				Ok(Statement::Var(name, typ, init, block, drop))
 			}
 			
 			// if-else
@@ -256,12 +251,9 @@ impl Statement {
 				
 				// parse the main block
 				let mut main_block = Vec::new();
-				
-				// if `else` or `fi` is found, end block.
-				// TODO: allow if-statements to end with `end`, such that if
-				// they do, the assertion becomes the same as the condition.
 				loop {
 					match tokens.peek() {
+						// if `else` or `fi` is found, end block.
 						Some(Token::Else) |
 						Some(Token::Fi) => break,
 						
@@ -269,7 +261,7 @@ impl Statement {
 							let stmt = Statement::parse(tokens)?;
 							main_block.push(stmt);
 						}
-						None => return Err("eof @ if main block")
+						None => return Err("a statement, `else`, or `fi`")
 					}
 				}
 				
@@ -307,12 +299,13 @@ impl Statement {
 				// consume `fi`
 				tokens.next();
 				
-				// parse the `fi` assertion
-				let assert = Expr::parse(tokens)?;
+				// parse the `fi` assertion if any, else use initial condition
+				let assert = match tokens.peek() {
+					None | Some(Token::Newline) => cond.clone(),
+					_ => Expr::parse(tokens)?,
+				};
 				
-				// TODO check for optional `if` keyword; i.e `end if`
-				
-				Ok(If(cond, main_block, else_block, assert))
+				Ok(Statement::If(cond, main_block, else_block, assert))
 			}
 			
 			Some(_) =>
@@ -322,26 +315,26 @@ impl Statement {
 							tokens.next();
 							
 						    let expr = Expr::parse(tokens)?;
-						    Ok(Xor(lval, expr))
+						    Ok(Statement::Xor(lval, expr))
 						}
 						Some(Token::AddAssign) => {
 							tokens.next();
 							
 						    let expr = Expr::parse(tokens)?;
-						    Ok(Add(lval, expr))
+						    Ok(Statement::Add(lval, expr))
 						}
 						Some(Token::SubAssign) => {
 							tokens.next();
 							
 						    let expr = Expr::parse(tokens)?;
-						    Ok(Sub(lval, expr))
+						    Ok(Statement::Sub(lval, expr))
 						}
 						
 						Some(Token::Swap) => {
 							tokens.next();
 							
 						    let rval = LValue::parse(tokens)?;
-						    Ok(Swap(lval, rval))
+						    Ok(Statement::Swap(lval, rval))
 						}
 						
 						Some(_) => Err("`:=`, `+=`, `-=`, or `<>`"),
@@ -362,57 +355,59 @@ impl Statement {
 		res
 	}
 	
-	/*
 	pub fn eval(&self, t: &mut Scope) {
+		use self::Statement::*;
 		match self {
 			Var(id, _, init, block, dest) => {
-				t.push((id.clone(), init.eval(t)));
+				t.push((id.clone(), init.eval(t)?));
+				
 				for stmt in block {
 					stmt.eval(t);
 				}
+				
 				let (final_id, final_val) = t.pop().unwrap();
 				assert_eq!(*id, final_id);
-				assert_eq!(final_val, dest.eval(t));
+				assert_eq!(final_val, dest.eval(t)?);
 			}
-			
+			/*
 			RotLeft(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) =>
-					*t.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_left(r as u32)),
+				(Value::Int(l), Value::Int(r)) =>
+					*t.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_left(r as u32)),
 				_ => panic!("tried to do something illegal"),
 			}
 			RotRight(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) =>
-					*t.get_mut(&lval.id).unwrap() = Value::Unsigned(l.rotate_right(r as u32)),
+				(Value::Int(l), Value::Int(r)) =>
+					*t.get_mut(&lval.id).unwrap() = Value::Int(l.rotate_right(r as u32)),
 				_ => panic!("tried to do something illegal"),
+			}
+			*/
+			Xor(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => {
+					let pos = t.iter()
+						.rposition(|var| var.0 == lval.id)
+						.ok_or("variable name not found")?;
+					t[pos].1 = Value::Int(l ^ r);
+				}
+				_ => return Err("tried to do something illegal")
 			}
 			
-			Xor(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => {
+			Add(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => {
 					let pos = t.iter()
 						.rposition(|var| var.0 == lval.id)
 						.expect("variable name not found");
-					t[pos].1 = Value::Unsigned(l ^ r);
+					t[pos].1 = Value::Int(l.wrapping_add(r));
 				}
-				_ => panic!("tried to do something illegal"),
+				_ => return Err("tried to do something illegal")
 			}
-			
-			Add(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => {
+			Sub(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => {
 					let pos = t.iter()
 						.rposition(|var| var.0 == lval.id)
 						.expect("variable name not found");
-					t[pos].1 = Value::Unsigned(l.wrapping_add(r));
+					t[pos].1 = Value::Int(l.wrapping_sub(r));
 				}
-				_ => panic!("tried to do something illegal"),
-			}
-			Sub(lval, fact) => match (lval.eval(t), fact.eval(t)) {
-				(Value::Unsigned(l), Value::Unsigned(r)) => {
-					let pos = t.iter()
-						.rposition(|var| var.0 == lval.id)
-						.expect("variable name not found");
-					t[pos].1 = Value::Unsigned(l.wrapping_sub(r));
-				}
-				_ => panic!("tried to do something illegal"),
+				_ => return Err("tried to do something illegal"),
 			}
 			
 			Swap(left, right) => {
@@ -444,51 +439,53 @@ impl Statement {
 			// TODO find a way to call procedures. maybe by adding a `call`
 			// method to `Value`.
 			Do(name, args) => {
-				let vals: Vec<Value> = args.iter()
-					.map(|arg| arg.eval(t))
-					.collect();
+				let vals = Vec::new();
+				for arg in args {
+					vals.push(arg.eval(t)?);
+				}
 				t.iter()
-					.rfind(|var| var.0 == name.id)
+					.rfind(|var| var.0 == *name)
 					.unwrap()
 					.1
 					.call(vals, t);
 			}
 			Undo(name, args) => {
-				let vals: Vec<Value> = args.iter()
-					.map(|arg| arg.eval(t))
-					.collect();
+				let vals = Vec::new();
+				for arg in args {
+					vals.push(arg.eval(t)?);
+				}
 				t.iter()
-					.rfind(|var| var.0 == name.id)
+					.rfind(|var| var.0 == *name)
 					.unwrap()
 					.1
 					.uncall(vals, t);
 			}
 			
 			If(test, block, else_block, assert) => {
-				match test.eval(t) {
+				match test.eval(t)? {
 					Value::Bool(true) => {
 						for stmt in block {
 							stmt.eval(t);
 						}
-						assert_eq!(assert.eval(t), Value::Bool(true));
+						assert_eq!(assert.eval(t)?, Value::Bool(true));
 					}
 					Value::Bool(false) => {
 						for stmt in else_block {
 							stmt.eval(t);
 						}
-						assert_eq!(assert.eval(t), Value::Bool(false));
+						assert_eq!(assert.eval(t)?, Value::Bool(false));
 					}
-					_ => panic!("tried to do something illegal")
+					_ => return Err("tried to do something illegal")
 				}
 			}
 			From(assert, do_block, loop_block, test) => {
-				assert_eq!(assert.eval(t), Value::Bool(true));
+				assert_eq!(assert.eval(t)?, Value::Bool(true));
 				loop {
 					for stmt in do_block {
 						stmt.eval(t);
 					}
 					
-					match test.eval(t) {
+					match test.eval(t)? {
 						Value::Bool(true) => break,
 						Value::Bool(false) =>
 							for stmt in loop_block {
@@ -497,12 +494,13 @@ impl Statement {
 						_ => panic!("tried to do something illegal")
 					}
 					
-					assert_eq!(assert.eval(t), Value::Bool(false));
+					assert_eq!(assert.eval(t)?, Value::Bool(false));
 				}
 			}
 			
 			_ => unreachable!()
 		}
+		
+		//Ok(Value::Nil)
 	}
-	*/
 }

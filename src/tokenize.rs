@@ -60,7 +60,6 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 				let mut token = String::with_capacity(5);
 				token.push(c);
 				
-				// supports prime' annotation
 				// [_A-Za-z0-9]*
 				while let Some(&c) = chars.peek() {
 					if c == '_' || c.is_ascii_alphanumeric() {
