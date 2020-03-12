@@ -29,8 +29,8 @@ impl Literal {
 					let (n, tx) = Literal::snum(&num)?;
 					Ok((Literal::SNum(n), sx))
 				else {*/
-				match u64::from_str_radix(&num, 10) {
-					Ok(n)  => Ok(Literal::Unsigned(n)),
+				match i64::from_str_radix(&num, 10) {
+					Ok(n)  => Ok(Literal::Int(n)),
 					Err(_) => Err("a smaller number"),
 				}
 				//}

@@ -1,6 +1,6 @@
 use crate::tokenize::Token;
 use crate::interpret::{Value, Scope};
-//use crate::interpret::EvalResult;
+use crate::interpret::EvalResult;
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -355,7 +355,7 @@ impl Statement {
 		res
 	}
 	
-	pub fn eval(&self, t: &mut Scope) {
+	pub fn eval(&self, t: &mut Scope) -> EvalResult {
 		use self::Statement::*;
 		match self {
 			Var(id, _, init, block, dest) => {
@@ -497,10 +497,8 @@ impl Statement {
 					assert_eq!(assert.eval(t)?, Value::Bool(false));
 				}
 			}
-			
-			_ => unreachable!()
 		}
 		
-		//Ok(Value::Nil)
+		Ok(Value::Nil)
 	}
 }

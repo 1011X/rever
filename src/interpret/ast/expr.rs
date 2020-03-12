@@ -21,7 +21,7 @@ TODO:
 use crate::tokenize::Token;
 use super::{ParseResult, Term, Tokens};
 use crate::interpret::{Value, Scope};
-//use crate::interpret::EvalResult;
+use crate::interpret::EvalResult;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -210,7 +210,7 @@ impl Expr {
 	
 	fn parse_base(tokens: &mut Tokens) -> ParseResult<Self> {
 		// check if there's an open parenthesis
-		if tokens.peek() == Some(&Token::LParen) {
+		Ok(if tokens.peek() == Some(&Token::LParen) {
 			tokens.next();
 			
 			let expr = Expr::parse(tokens)?;
@@ -220,13 +220,11 @@ impl Expr {
 				return Err("closing parenthesis in subexpression");
 			}
 			
-			Ok(Expr::Group(Box::new(expr)))
-		}
-		else {
+			Expr::Group(Box::new(expr))
+		} else {
 			// otherwise, treat it as a Term.
-			let term = Term::parse(tokens)?;
-			Ok(Expr::Term(term))
-		}
+			Expr::Term(Term::parse(tokens)?)
+		})
 	}
 	
 	pub fn eval(&self, t: &Scope) -> EvalResult {
