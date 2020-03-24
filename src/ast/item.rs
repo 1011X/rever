@@ -1,7 +1,6 @@
-use crate::tokenize::Token;
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Item {
 	//Use(),
 	//Static(bool, String, Type, ConstExpr),
@@ -11,8 +10,8 @@ pub enum Item {
 	//Type(Type),
 }
 
-impl Item {
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+impl Parse for Item {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		match tokens.peek() {
 			Some(Token::Proc) => {
 				let p = Procedure::parse(tokens)?;
@@ -26,4 +25,12 @@ impl Item {
 			_ => Err("a module or procedure")
 		}
 	}
+}
+
+impl From<Module> for Item {
+	fn from(m: Module) -> Item { Item::Mod(m) }
+}
+
+impl From<Procedure> for Item {
+	fn from(p: Procedure) -> Item { Item::Proc(p) }
 }

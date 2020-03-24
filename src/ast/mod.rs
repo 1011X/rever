@@ -16,6 +16,9 @@ List of state given to program:
 * stdio
 
 */
+use crate::tokenize::{Token, Tokens};
+use crate::parse::{Parse, ParseResult};
+use crate::interpret::{EvalResult, Scope, Value};
 
 mod expr;
 //mod function;
@@ -40,9 +43,3 @@ pub use self::procedure::Procedure;
 pub use self::statement::Statement;
 pub use self::term::Term;
 pub use self::types::Type;
-
-use crate::tokenize::Token;
-
-pub type Tokens = std::iter::Peekable<std::vec::IntoIter<Token>>;
-
-pub type ParseResult<T> = Result<T, &'static str>;

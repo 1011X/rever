@@ -1,7 +1,7 @@
 proc main
 	var x := 0
 	var y := 1
-	do print "hello world"
+	do print: "hello world"
 	x <> y
 	x -= 1
 	y += 1
@@ -13,21 +13,25 @@ end
 proc p
 	if a = 0
 		do x
-	else
-		if a = 1
-			do y
-		else
-			do z
-		fi
-	fi
-
-	
-	if a = 0
-		do x
 	else if a = 1
 		do y
 	else
 		do z
 	fi
 	fi
+end proc p
+
+proc print_file(path: int)
+	var bytes := 80
+	var file := nil
+	var buf := nil
+	
+	do load: path, file
+	do take: file, buf, bytes
+	do print: buf, bytes
+	undo load: path, file
+	
+	drop buf := nil
+	drop file := nil
+	drop bytes := 80
 end

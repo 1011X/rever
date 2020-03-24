@@ -1,5 +1,3 @@
-use crate::tokenize::Token;
-use crate::interpret::Value;
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -12,40 +10,54 @@ pub enum Literal {
 	String(String),
 }
 
-impl Literal {
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		match tokens.next() {
-			Some(Token::Ident(x)) if x == "nil" =>
-				Ok(Literal::Nil),
+impl Parse for Literal {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+		Ok(match tokens.peek() {
+			Some(Token::Ident(x)) if x == "nil" => {
+				tokens.next();
+				Literal::Nil
+			}
 			
-			Some(Token::Ident(x)) if x == "true" =>
-				Ok(Literal::Bool(true)),
+			Some(Token::Ident(x)) if x == "true" => {
+				tokens.next();
+				Literal::Bool(true)
+			}
 			
-			Some(Token::Ident(x)) if x == "false" =>
-				Ok(Literal::Bool(false)),
+			Some(Token::Ident(x)) if x == "false" => {
+				tokens.next();
+				Literal::Bool(false)
+			}
 			
 			Some(Token::Number(num)) => {
 				/*if num.starts_with('+') || num.starts_with('-') {
 					let (n, tx) = Literal::snum(&num)?;
 					Ok((Literal::SNum(n), sx))
 				else {*/
-				match i64::from_str_radix(&num, 10) {
-					Ok(n)  => Ok(Literal::Int(n)),
-					Err(_) => Err("a smaller number"),
+				match i64::from_str_radix(num, 10) {
+					Ok(n)  => {
+						tokens.next();
+						Literal::Int(n)
+					}
+					Err(_) => return Err("a smaller number"),
 				}
 				//}
 			}
 			
-			Some(Token::String(st)) =>
-				Ok(Literal::String(st)),
+			Some(Token::String(st)) => {
+				let s = st.clone();
+				tokens.next();
+				Literal::String(s)
+			}
 			
-			_ => Err("valid literal value")
-		}
+			_ => return Err("valid literal value")
+		})
 	}
-	
+}
+
+impl Literal {
 	pub fn eval(&self) -> Value {
 		match self {
-			Literal::Nil         => Value::Nil,
+			Literal::Nil       => Value::Nil,
 			Literal::Bool(b)   => Value::Bool(*b),
 			Literal::Int(n)    => Value::Int(*n),
 			Literal::String(s) => Value::String(s.clone()),

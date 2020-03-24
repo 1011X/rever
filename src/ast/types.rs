@@ -1,4 +1,3 @@
-use crate::tokenize::Token;
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,13 +13,22 @@ pub enum Type {
 	//Composite(String),
 }
 
-impl Type {
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+impl Parse for Type {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		match tokens.peek() {
-			Some(Token::Ident(t)) if t == "bool" => Ok(Type::Bool),
+			Some(Token::Ident(t)) if t == "bool" => {
+				tokens.next();
+				Ok(Type::Bool)
+			}
 			//Some(Token::Ident(t)) if t == "uint" => Ok(Type::Uint),
-			Some(Token::Ident(t)) if t == "int" => Ok(Type::Int),
-			Some(Token::Ident(t)) if t == "str" => Ok(Type::String),
+			Some(Token::Ident(t)) if t == "int" => {
+				tokens.next();
+				Ok(Type::Int)
+			}
+			Some(Token::Ident(t)) if t == "str" => {
+				tokens.next();
+				Ok(Type::String)
+			}
 			
 			_ => Err("valid type")
 		}
@@ -31,6 +39,7 @@ impl Type {
 mod tests {
     use super::*;
     use crate::tokenize::tokenize;
+    
     #[test]
     fn boolean() {
     	assert_eq!(
@@ -38,6 +47,7 @@ mod tests {
     		(Type::Bool, &[][..])
 		);
 	}
+	
     #[test]
     fn int() {
     	assert_eq!(

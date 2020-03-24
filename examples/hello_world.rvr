@@ -1,0 +1,3 @@
+proc main
+	do print: "Hello, world!"
+end

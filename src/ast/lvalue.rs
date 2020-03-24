@@ -1,28 +1,27 @@
-use crate::tokenize::Token;
-use crate::interpret::{Scope, Value};
 use super::*;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Deref {
 	Direct,
-	Index(Term),
+	Index(Expr),
 	Field(String),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct LValue {
 	pub id: String,
 	pub ops: Vec<Deref>,
 }
 
-impl LValue {
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+// TODO ponder: is `var name` and `drop name` within statements part of a bigger pattern?
+impl Parse for LValue {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 	    let mut ops = Vec::new();
 	    
 	    // get lval name
 	    let name = match tokens.next() {
 	    	Some(Token::Ident(n)) => n,
-	    	_ => return Err("a location name")
+	    	_ => return Err("a variable name")
 		};
 	    
 	    loop {
@@ -35,13 +34,13 @@ impl LValue {
     			// '['
     			Some(Token::LBracket) => {
     				tokens.next();
-    				let fact = Term::parse(tokens)?;
+    				let expr = Expr::parse(tokens)?;
     				
     				if tokens.next() != Some(Token::RBracket) {
     					return Err("`]` after indexing");
     				}
     				
-    				ops.push(Deref::Index(fact));
+    				ops.push(Deref::Index(expr));
     			}
     			// '.'
     			Some(Token::Period) => {
@@ -60,7 +59,9 @@ impl LValue {
         
         Ok(LValue { id: name, ops })
 	}
-	
+}
+
+impl LValue {
 	pub fn eval(&self, t: &Scope) -> Value {
 	    t.iter().rfind(|(id, _)| *id == self.id).unwrap().1.clone()
 	}

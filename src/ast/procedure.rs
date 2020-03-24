@@ -1,7 +1,9 @@
-use crate::tokenize::Token;
 use super::*;
 
-#[derive(Debug)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Dir { Fore, Back }
+
+#[derive(Debug, Clone)]
 pub struct Procedure {
 	/// Name of the function.
 	pub name: String,
@@ -11,8 +13,8 @@ pub struct Procedure {
 	pub code: Vec<Statement>,
 }
 
-impl Procedure {
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+impl Parse for Procedure {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// keyword `proc`
 		if tokens.next() != Some(Token::Proc) {
 			return Err("`proc`");
@@ -54,6 +56,19 @@ impl Procedure {
 			}
 		}
 		
+		// Verify that all parameter names are unique.
+		/* Dev note: this is O((n^2 - n) / 2) but is actually better than the
+		usual O(n log n + 2n) solution (copy, sort, then compare neighbors)
+		because we expect a small number of parameters.
+		Ideal is 9 parameters or less. */
+		for (i, Param { name: first, .. }) in params.iter().enumerate() {
+			for Param { name: second, .. } in &params[i + 1..] {
+				if first == second {
+					return Err("parameter name to be unique")
+				}
+			}
+		}
+		
 		// check for newline
 		if tokens.next() != Some(Token::Newline) {
 			return Err("newline after parameter list");
@@ -78,20 +93,34 @@ impl Procedure {
 			}
 		}
 		
+		// the optional `proc` in `end proc`
+		if tokens.peek() == Some(&Token::Proc) {
+			tokens.next();
+			
+			// the optional name of procedure after `end proc`
+			if tokens.peek() == Some(&Token::Ident(name.clone())) {
+				tokens.next();
+			}
+		}
+		
+		// the likely newline afterwards
+		if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
+		
 		Ok(Procedure { name, params, code })
 	}
-	
-	
+}
+
+impl Procedure {
 	// TODO perhaps the arguments should be stored in a HashMap, the local vars
 	// in a vector, and then turn the vector into a hashmap and compare keys at
 	// the end to verify everything is there.
-	/*
-	fn call_base(&self, forward: bool, args: Vec<Value>) -> Vec<Value> {
+	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> Vec<Value> {
 		// verify number of arguments and their types
 		assert_eq!(
 			args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
 			self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
 		);
+		//for (arg, param) in args.iter
 		
 		// store args in scope stack
 		let mut vars: Vec<(String, Value)> = self.params.iter()
@@ -100,45 +129,38 @@ impl Procedure {
 			.collect();
 		
 		// execute actual code
-		if forward {
+		if dir == Dir::Fore {
 			for stmt in &self.code {
-				stmt.eval(&mut vars);
+				stmt.eval(&mut vars, m);
 			}
-		}
-		else {
+		} else {
 			for stmt in &self.code {
-				stmt.clone().invert().eval(&mut vars);
+				stmt.clone().invert().eval(&mut vars, m);
 			}
 		}
 		
 		// verify number of arguments and their types again
 		assert_eq!(
-			args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
+			vars.iter().map(|(_, val)| val.get_type()).collect::<Vec<_>>(),
 			self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
 		);
 			
 		// store arg values back in parameters
-		self.params.iter()
-			.map(|param| {
-				let var = vars.iter().rposition(|(id, _)| *id == param.name)
-					.expect("...parameter disappeared??");
-				vars.remove(var);
-			})
+		vars.into_iter()
+			.map(|(_, val)| val)
 			.collect()
 	}
 	
-	pub fn call(&self, args: Vec<Value>) -> Vec<Value> {
-		self.call_base(true, args)
+	pub fn call(&self, args: Vec<Value>, m: &Module) -> Vec<Value> {
+		self.call_base(Dir::Fore, args, m)
 	}
 	
-	pub fn uncall(&self, args: Vec<Value>) -> Vec<Value> {
-		self.call_base(false, args)
+	pub fn uncall(&self, args: Vec<Value>, m: &Module) -> Vec<Value> {
+		self.call_base(Dir::Back, args, m)
 	}
-	*/
-	
-	// add the procedure to the scope
 	/*
-	pub fn eval(&self, t: &mut Scope) {
+	// add the procedure to the scope
+	pub fn eval(&self, t: &mut Scope) -> EvalResult {
 		unimplemented!()
 	}
 	*/

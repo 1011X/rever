@@ -7,8 +7,8 @@ pub struct Param {
 	pub typ: Type,
 }
 
-impl Param {
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+impl Parse for Param {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 	    // check mutability
 	    let mut mutable = false;
 	    
@@ -20,12 +20,12 @@ impl Param {
     	// get parameter name
     	let name = match tokens.next() {
     		Some(Token::Ident(n)) => n,
-    		_ => return Err("param name")
+    		_ => return Err("parameter name")
 		};
 		
 		// ':'
 		if tokens.next() != Some(Token::Colon) {
-			return Err("`:` @ param");
+			return Err("`:` after parameter name");
 		}
 	    
 	    // get its type

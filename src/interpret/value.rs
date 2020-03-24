@@ -1,4 +1,4 @@
-use super::ast::{Literal, Param, Statement, Type};
+use crate::ast::{Literal, Type};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
@@ -7,7 +7,7 @@ pub enum Value {
     Int(i64),
     //Char(char),
     String(String),
-    //Proc(Vec<Param>, Vec<Statement>),
+    //Proc(String),
 }
 
 impl Value {

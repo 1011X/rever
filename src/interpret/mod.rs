@@ -1,23 +1,10 @@
-mod ast;
 mod value;
 
-use std::fs::File;
-
-use self::ast::{Item, ParseResult, Tokens};
+//use std::fs::File;
 
 pub use self::value::Value;
 
-pub fn parse_items(tokens: &mut Tokens) -> ParseResult<Vec<Item>> {
-    let mut items = Vec::new();
-    
-	while tokens.len() > 0 {
-		items.push(Item::parse(tokens)?);
-	}
-	
-	Ok(items)
-}
-
-type EvalResult = Result<Value, &'static str>;
+pub type EvalResult = Result<Value, &'static str>;
 
 // TODO: add a scope for items
 

@@ -43,10 +43,7 @@ order of ops:
 7. = != < > <= >=
 */
 
-impl Token {
-	
-}
-
+pub type Tokens = std::iter::Peekable<std::vec::IntoIter<Token>>;
 
 pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 	let mut tokens = Vec::with_capacity(s.len());

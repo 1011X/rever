@@ -18,10 +18,7 @@ TODO:
 + Add precedences 2, 
 */
 
-use crate::tokenize::Token;
-use super::{ParseResult, Term, Tokens};
-use crate::interpret::{Value, Scope};
-use crate::interpret::EvalResult;
+use super::*;
 
 #[derive(Debug, Clone)]
 pub enum Expr {
@@ -55,7 +52,7 @@ pub enum Expr {
 	Gte(Box<Expr>, Box<Expr>),
 }
 
-impl Expr {
+impl Parse for Expr {
 	// Note to future self: This is how the parser should be structured:
 	// bxpr -> expr {(=|≠|<|>|≤|≥|in) expr}
 	// expr -> term {(+|-|or) term}
@@ -63,7 +60,7 @@ impl Expr {
 	// exp  -> prim {^ prim}
 	// prim -> ( expr )
 	//      -> factor
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 	    enum Op { Eq, Neq, Lt, Gt, Lte, Gte, /* In */}
 		
 		// <term>
@@ -105,7 +102,9 @@ impl Expr {
 		
 		Ok(res)
 	}
-	
+}
+
+impl Expr {
 	pub fn parse_expr(tokens: &mut Tokens) -> ParseResult<Self> {
 	    enum Op { Add, Sub, Or }
 		
@@ -217,7 +216,7 @@ impl Expr {
 			
 			// make sure there's a closing parenthesis
 			if tokens.next() != Some(Token::RParen) {
-				return Err("closing parenthesis in subexpression");
+				return Err("`)` after subexpression");
 			}
 			
 			Expr::Group(Box::new(expr))

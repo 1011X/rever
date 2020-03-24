@@ -7,14 +7,14 @@
 
 use super::*;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Module {
-	name: String,
-	items: Vec<Item>,
+	pub name: String,
+	pub items: Vec<Item>,
 }
 
-impl Module {
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+impl Parse for Module {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// `mod` keyword
 		if tokens.next() != Some(Token::Mod) {
 			return Err("`mod`");

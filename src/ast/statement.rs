@@ -1,6 +1,3 @@
-use crate::tokenize::Token;
-use crate::interpret::{Value, Scope};
-use crate::interpret::EvalResult;
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -56,8 +53,10 @@ impl Statement {
 			_ => self
 		}
 	}
-	
-	pub fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+}
+
+impl Parse for Statement {
+	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		let res = match tokens.peek() {
 			// skip
 			// TODO use this keyword as a prefix to comment out statements?
@@ -66,50 +65,93 @@ impl Statement {
 				Ok(Statement::Skip)
 			}
 			
-			// do
+			/* do-call syntax accepts three forms:
+			   + `do something`
+			   + `do something: some, args` (1 arg min) TODO
+			   + `do something(
+			          multiline,
+			          args
+			      )` (0 arg min) TODO
+			   also has special syntax like:
+			   + do something: var new_var, drop used_var
+			*/
 			Some(Token::Do) => {
 				tokens.next();
 				
 				let name = match tokens.next() {
 					Some(Token::Ident(name)) => name,
-					_ => return Err("procedure name")
+					_ => return Err("procedure name after `do`")
 				};
 				
 				// TODO check for parentheses. if so, go into multiline mode
-				
-				// parse arg list
 				let mut args = Vec::new();
-				loop {
-					match tokens.peek() {
-						None | Some(Token::Newline) => break,
-						_ => args.push(Expr::parse(tokens)?),
+				
+				if tokens.peek() == Some(&Token::Newline) {
+					// do nothing
+				} else if tokens.peek() == Some(&Token::Colon) {
+					tokens.next();
+					// TODO check for newline, in case expression is missing
+					args.push(Expr::parse(tokens)?);
+					loop {
+						match tokens.peek() {
+							None | Some(Token::Newline) => break,
+							Some(Token::Comma) => {
+								tokens.next();
+								// TODO check for "substatements" first.
+								// E.g. `var file` or `drop buf` in args.
+								args.push(Expr::parse(tokens)?);
+							}
+							_ => return Err("`,` or newline"),
+						}
 					}
+				} else if tokens.peek() == Some(&Token::LParen) {
+					tokens.next();
+					unimplemented!();
+				} else {
+					return Err("`:`, or newline");
 				}
 				
 				Ok(Statement::Do(name, args))
 			}
 			
 			// undo
-			// And no, you can't merge `do` and `undo` by using `tok @ pattern`
-			// and matching later because it gives a "cannot borrow `*tokens`
-			// as mutable more than once at a time" error.
+			// accepts same forms as `do`.
+			// And no, you can't merge the `do` and `undo` branches by using
+			// `tok @ pattern` and matching at the end because it gives a
+			// "cannot borrow `*tokens` as mutable more than once at a time"
+			// error (as of rustc v1.42.0).
 			Some(Token::Undo) => {
 				tokens.next();
 				
 				let name = match tokens.next() {
 					Some(Token::Ident(name)) => name,
-					_ => return Err("procedure name")
+					_ => return Err("procedure name after `undo`")
 				};
 				
 				// TODO check for parentheses. if so, go into multiline mode
-				
-				// parse arg list
 				let mut args = Vec::new();
-				loop {
-					match tokens.peek() {
-						None | Some(Token::Newline) => break,
-						_ => args.push(Expr::parse(tokens)?),
+				
+				if tokens.peek() == Some(&Token::Newline) {
+					// do nothing
+				} else if tokens.peek() == Some(&Token::Colon) {
+					tokens.next();
+					// TODO check for newline, in case expression is missing
+					args.push(Expr::parse(tokens)?);
+					loop {
+						match tokens.peek() {
+							None | Some(Token::Newline) => break,
+							Some(Token::Comma) => {
+								tokens.next();
+								args.push(Expr::parse(tokens)?);
+							}
+							_ => return Err("`,` or newline"),
+						}
 					}
+				} else if tokens.peek() == Some(&Token::LParen) {
+					tokens.next();
+					unimplemented!();
+				} else {
+					return Err("`:`, or newline");
 				}
 				
 				Ok(Statement::Undo(name, args))
@@ -159,20 +201,25 @@ impl Statement {
 							tokens.next();
 							break;
 						}
-						Some(_) => {
-							let stmt = Statement::parse(tokens)?;
-							back_block.push(stmt);
-						}
-						None => return Err("a statement or `end`")
+						Some(_) =>
+							back_block.push(Statement::parse(tokens)?),
+						None =>
+							return Err("a statement or `end`")
 					}
 				}
 				
-				// TODO check for optional `from` keyword; i.e `end from`
+				// the optional `from` in `end from`
+				if tokens.peek() == Some(&Token::From) { tokens.next(); }
+				
+				// the optional `from` in `end from`
+				if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
 				
 				Ok(Statement::From(assert, main_block, back_block, test))
 			}
 			
 			// var-drop
+			// TODO is `var name` and `drop name` part of a bigger pattern?
+			// Tune to crate::interpret::ast::LValue to find out!
 			Some(Token::Var) => {
 				tokens.next();
 				
@@ -272,32 +319,36 @@ impl Statement {
 				if tokens.peek() == Some(&Token::Else) {
 					tokens.next();
 					
-					// TODO: have at least 1 statement after `else`.
-					// TODO: remove newline requirement below?
-					
-					// ensure there's a newline afterwards
-					if tokens.next() != Some(Token::Newline) {
-						return Err("newline after else");
-					}
-					
-					// parse else block
-					loop {
-						match tokens.peek() {
-							Some(Token::Fi) => {
-								tokens.next();
-								break;
+					// check if newline to parse a block
+					if tokens.peek() == Some(&Token::Newline) {
+						tokens.next();
+						// parse else block. MUST have at least 1 statement.
+						loop {
+							match tokens.peek() {
+								// TODO is minimum statement requirement a good idea?
+								Some(Token::Fi) if else_block.is_empty() =>
+									return Err("else-block to have at least 1 statement"),
+								Some(Token::Fi) =>
+									break,
+								Some(_) =>
+									else_block.push(Statement::parse(tokens)?),
+								None =>
+									return Err("a statement or `fi`"),
 							}
-							Some(_) => {
-								let stmt = Statement::parse(tokens)?;
-								else_block.push(stmt);
-							}
-							None => return Err("a statement or `fi`")
 						}
+					} else if tokens.peek() == Some(&Token::If) {
+						// check if it's a single `if` statement. this allows
+						// "embedding" of chained `if` statements.
+						let stmt = Statement::parse(tokens)?;
+						else_block.push(stmt);
+					} else {
+						return Err("chaining `if` or a newline");
 					}
 				}
 				
-				// consume `fi`
-				tokens.next();
+				if tokens.next() != Some(Token::Fi) {
+					return Err("`fi` to finish `if` statement");
+				}
 				
 				// parse the `fi` assertion if any, else use initial condition
 				let assert = match tokens.peek() {
@@ -354,15 +405,18 @@ impl Statement {
 		
 		res
 	}
-	
-	pub fn eval(&self, t: &mut Scope) -> EvalResult {
+}
+
+impl Statement {
+	pub fn eval(&self, t: &mut Scope, m: &Module) -> EvalResult {
 		use self::Statement::*;
 		match self {
+			Skip => {}
 			Var(id, _, init, block, dest) => {
 				t.push((id.clone(), init.eval(t)?));
 				
 				for stmt in block {
-					stmt.eval(t);
+					stmt.eval(t, m)?;
 				}
 				
 				let (final_id, final_val) = t.pop().unwrap();
@@ -436,42 +490,51 @@ impl Statement {
 				t[right_idx].0 = right_name;
 			}
 			
-			// TODO find a way to call procedures. maybe by adding a `call`
-			// method to `Value`.
-			Do(name, args) => {
-				let vals = Vec::new();
+			// TODO find a way to call procedures.
+			/* Clearly we need more info here. Eventually we'll need to store
+			the "path" of the current module with the procedure, but for now
+			just having the items of the current module is good enough. So find
+			a way to make that available. */
+			Do(callee_name, args) => {
+				let mut vals = Vec::new();
 				for arg in args {
 					vals.push(arg.eval(t)?);
 				}
-				t.iter()
-					.rfind(|var| var.0 == *name)
-					.unwrap()
-					.1
-					.call(vals, t);
+				for item in &m.items {
+					if let Item::Proc(pr) = item {
+						if pr.name == *callee_name {
+							pr.call(vals, m);
+							break;
+						}
+					}
+				}
 			}
-			Undo(name, args) => {
-				let vals = Vec::new();
+			Undo(callee_name, args) => {
+				let mut vals = Vec::new();
 				for arg in args {
 					vals.push(arg.eval(t)?);
 				}
-				t.iter()
-					.rfind(|var| var.0 == *name)
-					.unwrap()
-					.1
-					.uncall(vals, t);
+				for item in &m.items {
+					if let Item::Proc(pr) = item {
+						if pr.name == *callee_name {
+							pr.uncall(vals, m);
+							break;
+						}
+					}
+				}
 			}
 			
 			If(test, block, else_block, assert) => {
 				match test.eval(t)? {
 					Value::Bool(true) => {
 						for stmt in block {
-							stmt.eval(t);
+							stmt.eval(t, m)?;
 						}
 						assert_eq!(assert.eval(t)?, Value::Bool(true));
 					}
 					Value::Bool(false) => {
 						for stmt in else_block {
-							stmt.eval(t);
+							stmt.eval(t, m)?;
 						}
 						assert_eq!(assert.eval(t)?, Value::Bool(false));
 					}
@@ -482,14 +545,14 @@ impl Statement {
 				assert_eq!(assert.eval(t)?, Value::Bool(true));
 				loop {
 					for stmt in do_block {
-						stmt.eval(t);
+						stmt.eval(t, m)?;
 					}
 					
 					match test.eval(t)? {
 						Value::Bool(true) => break,
 						Value::Bool(false) =>
 							for stmt in loop_block {
-								stmt.eval(t);
+								stmt.eval(t, m)?;
 							}
 						_ => panic!("tried to do something illegal")
 					}
