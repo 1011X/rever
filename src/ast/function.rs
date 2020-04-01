@@ -1,4 +1,4 @@
-use super::statement::Statement;
+use super::*;
 
 #[derive(Debug, Clone)]
 pub struct Function {

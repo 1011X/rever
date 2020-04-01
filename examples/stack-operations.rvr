@@ -1,0 +1,53 @@
+/* Various stack operations */
+
+/* Move n stack elements from one stack to another */
+proc move_stack(var src: stack, var dst: stack, n: int)
+    from var m := 0 until n
+        var x := 0
+        do pop(x, src)
+        do push(x, dst)
+        drop x := 0
+        m += 1
+    end
+end
+
+/* Reverse the elements of a stack */
+proc reverse(var s: stack)
+    if !empty(s)
+        var x := 0
+        var n_move := size(s) - 1
+
+        do pop(x, s)
+        do reverse(s)
+        // Place x at the bottom of the stack
+        // by moving all elements to a temporary stack
+        var ss = nil
+        do move_stack(s, ss, n_move)
+        do push(x, s)
+        do move_stack(ss, s, n_move)
+        drop ss := nil
+
+        drop n_move := size(s) - 1
+        drop x := 0
+    fi !empty(s)
+end
+
+proc main
+    var s: stack
+
+    var x := 0
+    x += 1
+    do push(x, s)
+    x += 2
+    do push(x, s)
+    x += 3
+    do push(x, s)
+    x += 4
+    do push(x, s)
+    x += 5
+    do push(x, s)
+    drop x := 0
+
+    do show(s)
+    do reverse(s)
+end

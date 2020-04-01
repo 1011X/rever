@@ -1,0 +1,189 @@
+// see https://cr.yp.to/chacha/chacha-20080128.pdf
+
+proc rotate_left(var x: int, r: int)
+    var rm := r mod 32
+    var temp_hi := x & ((2^rm - 1) * 2^(32-rm))
+    var temp_lo := x & (2^(32-rm) - 1)
+    x -= temp_hi | temp_lo
+    x += (temp_hi / 2^(32-rm)) | (temp_lo * 2^rm)
+    drop temp_lo := (x & (((2^(32-rm)) - 1) * 2^rm)) / 2^rm
+    drop temp_hi := (x & (2^rm - 1)) * 2^(32-rm)
+    drop rm := r mod 32
+end
+
+// This and the following procedure differ from Salsa
+proc quarterround(var seq: int[4])
+    seq[0] += seq[1]
+    seq[3] := seq[0]
+    //do rotate_left(seq[3], 16)
+    seq[3] :< 16
+    seq[2] += seq[3]
+    seq[1] := seq[2]
+    //do rotate_left(seq[1], 12)
+    seq[1] :< 12
+    seq[0] += seq[1]
+    seq[3] := seq[0]
+    //do rotate_left(seq[3], 8)
+    seq[3] :< 8
+    seq[2] += seq[3]
+    seq[1] := seq[2]
+    //do rotate_left(seq[1], 7)
+    seq[1] :< 7
+end
+
+proc doubleround(var seq: int[16])
+  // would be nice if we could get rid of the temporary array, somehow
+  var tmp_seq := [0, 0, 0, 0]
+  // first column
+  tmp_seq[0] <> seq[0]
+  tmp_seq[1] <> seq[4]
+  tmp_seq[2] <> seq[8]
+  tmp_seq[3] <> seq[12]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[0]
+  tmp_seq[1] <> seq[4]
+  tmp_seq[2] <> seq[8]
+  tmp_seq[3] <> seq[12]
+  // second column
+  tmp_seq[0] <> seq[1]
+  tmp_seq[1] <> seq[5]
+  tmp_seq[2] <> seq[9]
+  tmp_seq[3] <> seq[13]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[1]
+  tmp_seq[1] <> seq[5]
+  tmp_seq[2] <> seq[9]
+  tmp_seq[3] <> seq[13]
+  // third column
+  tmp_seq[0] <> seq[2]
+  tmp_seq[1] <> seq[6]
+  tmp_seq[2] <> seq[10]
+  tmp_seq[3] <> seq[14]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[2]
+  tmp_seq[1] <> seq[6]
+  tmp_seq[2] <> seq[10]
+  tmp_seq[3] <> seq[14]
+  // fourth column
+  tmp_seq[0] <> seq[3]
+  tmp_seq[1] <> seq[7]
+  tmp_seq[2] <> seq[11]
+  tmp_seq[3] <> seq[15]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[3]
+  tmp_seq[1] <> seq[7]
+  tmp_seq[2] <> seq[11]
+  tmp_seq[3] <> seq[15]
+  // first diagonal
+  tmp_seq[0] <> seq[0]
+  tmp_seq[1] <> seq[5]
+  tmp_seq[2] <> seq[10]
+  tmp_seq[3] <> seq[15]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[0]
+  tmp_seq[1] <> seq[5]
+  tmp_seq[2] <> seq[10]
+  tmp_seq[3] <> seq[15]
+  // second diagonal
+  tmp_seq[0] <> seq[1]
+  tmp_seq[1] <> seq[6]
+  tmp_seq[2] <> seq[11]
+  tmp_seq[3] <> seq[12]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[1]
+  tmp_seq[1] <> seq[6]
+  tmp_seq[2] <> seq[11]
+  tmp_seq[3] <> seq[12]
+  // third diagonal
+  tmp_seq[0] <> seq[2]
+  tmp_seq[1] <> seq[7]
+  tmp_seq[2] <> seq[8]
+  tmp_seq[3] <> seq[13]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[2]
+  tmp_seq[1] <> seq[7]
+  tmp_seq[2] <> seq[8]
+  tmp_seq[3] <> seq[13]
+  // fourth diagonal
+  tmp_seq[0] <> seq[3]
+  tmp_seq[1] <> seq[4]
+  tmp_seq[2] <> seq[9]
+  tmp_seq[3] <> seq[14]
+  do quarterround(tmp_seq)
+  tmp_seq[0] <> seq[3]
+  tmp_seq[1] <> seq[4]
+  tmp_seq[2] <> seq[9]
+  tmp_seq[3] <> seq[14]
+  drop tmp_seq := [0, 0, 0, 0]
+end
+
+proc Chacha20(in: int[16], var out: int[16])
+  from var i := 0 until 16
+    out[i] += in[i]
+    i += 1
+  end
+  from var i := 0 until 10
+    do doubleround(out)
+    i += 1
+  end
+  from var i := 0 until 16
+    out[i] += in[i]
+    i += 1
+  end
+end
+
+proc Chacha20_setup_seq(k0: int[4], k1: int[4], filler: int[4], n: int[4], var seq: int[16])
+  seq[0] += filler[0]
+  from var i := 0 until 4
+    seq[i+1] += k0[i]
+    i += 1
+  end
+  seq[5] += filler[1]
+  from var i := 0 until 4
+    seq[i+6] += n[i]
+    i += 1
+  end
+  seq[10] += filler[2]
+  from var i := 0 until 4
+    seq[i+11] += k1[i]
+    i += 1
+  end
+  seq[15] += filler[3]
+end
+
+proc Chacha20_k32(k0: int[4], k1: int[4], n: int[4], var out: int[16])
+  var sigma := [1634760805, 857760878, 2036477234, 1797285236]
+  var seq := [0; 16]
+  do Chacha20_setup_seq(k0, k1, n, sigma, seq)
+  do Chacha20(seq, out)
+  undo Chacha20_setup_seq(k0, k1, n, sigma, seq)
+  drop seq := [0; 16] 
+  drop sigma := [1634760805, 857760878, 2036477234, 1797285236]
+end
+
+proc Chacha20_k16(k0: int[4], n: int[4], var out: int[16])
+  var tau := [1634760805, 824206446, 2036477238, 1797285236]
+  var seq := [0; 16]
+  do Chacha20_setup_seq(k0, k0, n, tau, seq)
+  do Chacha20(seq, out)
+  undo Chacha20_setup_seq(k0, k0, n, tau, seq)
+  drop seq := [0; 16]
+  drop tau := [1634760805, 824206446, 2036477238, 1797285236]
+end
+
+// So, the two procedures above are the minimum for Salsa20/Chacha20 encryption. 
+// The paper splits 'n' into a 64-bit nonce and a 64-bit byte sequence 
+// number (a byte ID from 0 to 2^64-1). Maximum message length is 2^70, 
+// possibly due to some crypto-related reason.
+
+
+proc main
+  var seq := [1, 0, 0, 0]
+  var k0 := [67305985, 134678021, 202050057, 269422093]
+  var k1 := [-859059511, -791687475, -724315439, -656943403]
+  var n := [1751606885, 1818978921, 1886350957, 1953722993]
+  var out_s := [0; 16]
+  var out_d := [0; 16]
+
+  do Chacha20_k16(k0, n, out_s)
+end

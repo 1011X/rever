@@ -1,0 +1,42 @@
+/*
+ * Calculating the square root of an integer.
+ * Adapted version of example from "Janus: a time-reversible language" by
+ * C. Lutz and H. Derby.
+ */
+
+// Calculates floor(sqrt(num))
+proc root(var num: int, root: int)
+    var bit := 1
+    from bit = 1 until bit * bit > num  // find exponential ball park
+        do doublebit: bit
+    end
+
+    from (bit * bit) > num
+        undo doublebit: bit
+        if (root + bit) * (root + bit) <= num
+            root += bit
+        fi root / bit mod 2 != 0
+    until bit = 1
+    end
+    
+    drop bit := 1
+    num -= root * root
+end
+
+proc doublebit(var bit: int)
+    var z := bit
+    bit += z
+    drop z := bit / 2
+end
+
+proc main
+    var num := 66
+    var root := 0
+    do root: num, root
+    drop root := 8
+    drop num := 2
+    /*
+    root += 25
+    uncall root(num, root)
+    */
+end

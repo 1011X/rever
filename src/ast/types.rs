@@ -6,11 +6,12 @@ pub enum Type {
 	Bool,
 	Uint, Int,
     Char, String,
-	//Pointer(Box<Type>),
 	//Array(Box<Type>, usize),
 	//Fn(Vec<Type>, Box<Type>),
 	Proc(Vec<(bool, Type)>),
-	//Composite(String),
+	//Alternate(Vec<Type>),
+	//Composite(Vec<Type>),
+	//Alias(
 }
 
 impl Parse for Type {
@@ -30,7 +31,7 @@ impl Parse for Type {
 				Ok(Type::String)
 			}
 			
-			_ => Err("valid type")
+			_ => Err("a valid type")
 		}
 	}
 }

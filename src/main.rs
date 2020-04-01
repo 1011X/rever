@@ -1,3 +1,25 @@
+/*
+Stuff to consider adding:
++ Annotations?
+  + Could be used like hashtags where an items gets "tagged".
+  + `#final fn f(): ...`
++ Use `.` for "alternatives"
+  + E.g. module paths, tagged unions, etc.
++ Use indexing, like `a[0]`, for "composites".
+  + E.g. struct fields, array elements, etc.
++ Should "objects" have a prototype like in Javascript?
++ Should "objects" be more like a set of procedures/functions that data structs
+  implement?
++ Should everything just be "tuples" and "enums" that implement "interfaces"?
++ Should i just go to sleep already???
+
+TODO:
++ Evaluation
++ stdlib & prelude
++ more examples from Janus
+
+*/
+
 use std::env;
 use std::io;
 use std::io::prelude::*;
@@ -55,10 +77,7 @@ fn main() {
 						let main = ast.remove(pos);
 						
 						// create root module
-						let root_mod = Module {
-							name: String::from("root"),
-							items: ast,
-						};
+						let root_mod = Module::new("root", ast);
 						
 						if let Item::Proc(pr) = main {
 							println!("Running...");

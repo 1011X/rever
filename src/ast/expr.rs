@@ -209,7 +209,7 @@ impl Expr {
 	
 	fn parse_base(tokens: &mut Tokens) -> ParseResult<Self> {
 		// check if there's an open parenthesis
-		Ok(if tokens.peek() == Some(&Token::LParen) {
+		if tokens.peek() == Some(&Token::LParen) {
 			tokens.next();
 			
 			let expr = Expr::parse(tokens)?;
@@ -219,11 +219,11 @@ impl Expr {
 				return Err("`)` after subexpression");
 			}
 			
-			Expr::Group(Box::new(expr))
+			Ok(Expr::Group(Box::new(expr)))
 		} else {
 			// otherwise, treat it as a Term.
-			Expr::Term(Term::parse(tokens)?)
-		})
+			Ok(Expr::Term(Term::parse(tokens)?))
+		}
 	}
 	
 	pub fn eval(&self, t: &Scope) -> EvalResult {

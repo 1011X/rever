@@ -13,6 +13,12 @@ pub struct Module {
 	pub items: Vec<Item>,
 }
 
+impl Module {
+	pub fn new<T: ToString>(name: T, items: Vec<Item>) -> Module {
+		Module { name: name.to_string(), items }
+	}
+}
+
 impl Parse for Module {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// `mod` keyword

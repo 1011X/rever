@@ -1,5 +1,5 @@
 use crate::ast::Item;
-use crate::tokenize::Tokens;
+use crate::tokenize::{Token, Tokens};
 
 pub type ParseResult<T> = Result<T, &'static str>;
 

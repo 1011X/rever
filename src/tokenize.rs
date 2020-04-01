@@ -223,6 +223,8 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 				}
 				_ => Token::Minus
 			}
+			'*' => Token::Star,
+			'/' => Token::FSlash,
 			'^' => Token::Caret,
 			
 			'≠' => Token::Neq,

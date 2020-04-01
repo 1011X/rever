@@ -214,12 +214,14 @@ impl Parse for Statement {
 				// the optional `from` in `end from`
 				if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
 				
+				if main_block.is_empty() && back_block.is_empty() {
+					return Err("a non-empty do-block or back-block in loop");
+				}
+				
 				Ok(Statement::From(assert, main_block, back_block, test))
 			}
 			
 			// var-drop
-			// TODO is `var name` and `drop name` part of a bigger pattern?
-			// Tune to crate::interpret::ast::LValue to find out!
 			Some(Token::Var) => {
 				tokens.next();
 				
@@ -410,6 +412,7 @@ impl Parse for Statement {
 impl Statement {
 	pub fn eval(&self, t: &mut Scope, m: &Module) -> EvalResult {
 		use self::Statement::*;
+		
 		match self {
 			Skip => {}
 			Var(id, _, init, block, dest) => {

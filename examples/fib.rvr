@@ -1,0 +1,24 @@
+# Fibnoacci example
+# Calculates a fibonacci pair using recursion
+
+proc fib(x1: int, x2: int, n: int)
+	if n = 0
+		x1 += 1
+		x2 += 1
+	else
+		n -= 1
+		do fib: x1, x2, n
+		x1 += x2
+		x1 <> x2
+	fi x1 = x2
+end
+
+proc main
+	var x1 := 0
+	var x2 := 0
+	var n := 4
+	do fib: x1, x2, n
+	drop n := 0
+	drop x2 := 5
+	drop x1 := 8
+end
