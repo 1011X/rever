@@ -1,19 +1,15 @@
-// TODO: Perhaps modules should be orthogonal to files?
-// Items for a module *could* be defined in an entirely separate file by giving
-// a path for, say, a procedure name, instead of just an identifier.
-// Think about the "layer" concept of organization: separating code into
-// "features" and appending new code at the end, so that stuff at the start of
-// the file is used as a base and stuff at the bottom builds off of that.
-
 use super::*;
 
-#[derive(Debug, Clone)]
+/// A named module holding multiple items.
+///
+/// An AST node that takes a name and zero or more items.
 pub struct Module {
 	pub name: String,
 	pub items: Vec<Item>,
 }
 
 impl Module {
+	/// Constructs a new module with the given name and items.
 	pub fn new<T: ToString>(name: T, items: Vec<Item>) -> Module {
 		Module { name: name.to_string(), items }
 	}
@@ -55,7 +51,18 @@ impl Parse for Module {
 			}
 		}
 		
-		// TODO check for optional `mod` after `end`
+		// the optional `mod` in `end mod`
+		if tokens.peek() == Some(&Token::Mod) {
+			tokens.next();
+			
+			// the optional name of procedure after `end mod`
+			if tokens.peek() == Some(&Token::Ident(name.clone())) {
+				tokens.next();
+			}
+		}
+		
+		// the likely newline afterwards
+		if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
 		
 		Ok(Module { name, items })
 	}

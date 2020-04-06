@@ -1,7 +1,7 @@
 Rever
 =====
 
-Rever is a reversible programming language. It features ["copy-in copy-out"] semantics, a minimal Pascal-like syntax, and procedures & functions.
+Rever is a reversible programming language. It features ["copy-in copy-out"] semantics, a minimal Pascal-like syntax, and a distinction between procedures and functions.
 
 Examples of other such reversible languages include [Janus](https://en.wikipedia.org/wiki/Janus_(time-reversible_computing_programming_language)) and [rFun](http://topps.diku.dk/pirc/?id=rfun).
 
@@ -37,21 +37,21 @@ A Rever file consists of *items*, which include procedures, functions, types, mo
 
 We'll start by learning the simplest statements first, and then work our way up.
 
-### Tutorial
+### Simple statements
 
 The most trivial statement is `skip`. It does absolutely nothing. However, you'll sometimes need it since some parts of the language don't accept an empty block, or when you want to be explicit that nothing should be done in some cases.
 
 Next come the modifying assignments. These include increment (`+=`), decrement (`-=`), and xor-assign (`:=`). They each do what their names say.
 
 	sum += 4
-	name.len -= 1 + sum
+	name.len -= sum + 1
 	hash[0] := 3
 
 There's also swap (`<>`), which takes 2 variables and swaps their values.
 
 	nums[i] <> nums[last]
 
-Now we get into the interesting stuff: procedure calls. You can either call a procedure (`do`) to run it forwards, or uncall a procedure (`undo`) to run it backwards. They both have 3 forms that you can use depending on the number of parameters the procedure has or whether you want a multiline call.
+Now we get into the interesting stuff: procedure calls. You can either call a procedure (`do`) to run it forwards, or uncall a procedure (`undo`) to run it backwards. `undo` will recursively reverse and invert all statements in a procedure before the call. They both have 3 forms that you can use depending on the number of parameters the procedure has or whether you prefer a multiline call.
 
 	do subtask
 	do print: "hello world!"
@@ -62,7 +62,24 @@ Now we get into the interesting stuff: procedure calls. You can either call a pr
 
 (Note: procedures are always called with "in-out" parameters, which means that when the procedure finishes, the final value of the parameters will be copied back to the caller.)
 
-<!-- TODO: var-drop section -->
+### Compound statements
+
+You may have heard of "variables". In Rever, a variable is declared by giving it a name and initial value, then a scope for which it's "live", and then a value to deinitialize it. Because of this structure, variables must be dropped in reverse order to how they were declared.
+
+	var i := 1
+		var j := f(i) + 1
+			i += 2
+			j -= 1
+		drop j := f(i - 2)
+	drop i := 1
+	
+	# same as above
+	var i := 1
+	var j := f(i) + 1
+	i += 2
+	j -= 1
+	drop j := f(i - 2)
+	drop i := 1
 
 If-else branches can have at most 4 parts: the test, the code block to run if it passes, an optional else-block, and an optional assertion. Only the assertion and test are swapped when running backwards. The value of the assertion *must* match the value of the test at the end of the branch. If the assertion is not given, it's assumed to be the same as the test. Note that this is *not always* what you may want.
 
@@ -103,7 +120,7 @@ The back-block gives the flexibility of running the test before actually executi
 
 ### Note about assertions
 
-Assertions should allow a statement running in reverse to determine which branch to take for conditionals or what the starting condition is in loops.
+Assertions should allow a statement running in reverse to determine what value a variable should have at the end of its life, which branch to take for conditionals, or what the starting condition is in loops.
 
 In conditionals, they should reflect what changes the first code block made to the variables. If the variables being tested aren't changed in either branch of code, then you can safely have the assertion be the same as the test. If variables in the test *are* being changed, the assertion *cannot* be the same as the test, and must reliably choose which branch should execute when going in reverse.
 
@@ -115,21 +132,17 @@ Procedures and Functions
 
 Rever has both procedures and functions.
 
-**Procedures** run a series of statements, optionally taking a list of arguments. Parameters are called in a "move-in move-out" fashion, similar to ["copy-in copy-out"]. This means that, if a procedure marks one of its parameters as mutable, then the value of the variable given to that parameter by the caller could change after the procedure is called. Procedures also can't return values and therefore can't be used in expressions.
+**Procedures** run a series of statements, optionally taking a list of arguments. For all intents and purposes, parameters have ["copy-in copy-out"] semantics. This means that, if a procedure marks one of its parameters as mutable with `var`, then the value of the variable given to that parameter by the caller could change after the procedure is called. Procedures also can't return values and therefore can't be used in expressions.
 
 **Functions** evaluate a list of immutable arguments and return a value. This means that a function can be used in expressions. Unlike procedures, functions cannot have side-effects; variables outside of their scope are not accessible.
-
-When a procedure is called using `undo`, it is reversed by inverting its statements and then reversing their order. Any increments become decrements (and vice versa), conditionals and loops are inverted, and so on. Only statements are inverted, not expressions.
-
-In functions, the special keyword `return` can be used as the name for the value that will be returned. The initial value of `return` will be either its specified default value (if any) or a zero-initialized value (subject to change on actual implementation).
 
 ### Why not just have procedures?
 
 The answer is that procedures and functions have some properties that are mutually incompatible if we want to maintain the property of reversibility. Consider mutable parameters: if functions had them, we wouldn't be able to guarantee  anymore because functions are sometimes run more than once in order to verify a state (e.g. using the same function in the `if` and `fi` sections of a branch). This could result in code that only runs in one direction but not another, or side-effects that show up twice.
 
 
-Features under consideration
-----------------------------
+Features under construction
+---------------------------
 
 It can become a bit tedious (and error-prone!) to repeat expressions multiple times in different places. That's why some alternate control structures are being considered for some special-case code. These consist of `for`, and `match`.
 
@@ -200,6 +213,40 @@ for i in list     # for finite lists
     do something
 end
 ```
+
+### Inline variable declaration
+
+It can become very tedious to always be the one to initialize variables, only to have it passed to a procedure. Consider the following:
+
+	proc print_file(path)
+		var bytes := 80
+		var file := nil
+		var buf := nil
+		
+		do load: path, file
+		do take: file, buf, bytes
+		do print: buf, bytes
+		undo load: path, file
+		
+		drop buf := nil
+		drop file := nil
+		drop bytes := 80
+	end
+
+This could be better written much more succinctly like this:
+
+	proc print_file(path)
+		var bytes := 80
+		
+		do load: path, var file
+		do take: file, var buf, bytes
+		do print: drop buf, bytes
+		undo load: path, drop file
+		
+		drop bytes := 80
+	end
+
+More specifically, the parameter marked with `var` will take the value that the procedure being called expects. For example, if a procedure starts with `from i = 0` and `i` is a `var` parameter, then `i` will be initialized with the value of 0.
 
 ["copy-in copy-out"]: https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_copy-restore
 

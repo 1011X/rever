@@ -4,6 +4,13 @@ use super::*;
 enum Dir { Fore, Back }
 
 #[derive(Debug, Clone)]
+pub struct Param {
+	pub name: String,
+	pub mutable: bool,
+	pub typ: Type,
+}
+
+#[derive(Debug, Clone)]
 pub struct Procedure {
 	/// Name of the function.
 	pub name: String,
@@ -21,7 +28,7 @@ impl Parse for Procedure {
 		}
 		
 		// get procedure name
-		let name = match tokens.next() {
+		let proc_name = match tokens.next() {
 			Some(Token::Ident(n)) => n,
 			_ => return Err("procedure name")
 		};
@@ -41,30 +48,52 @@ impl Parse for Procedure {
 						tokens.next();
 						break;
 					}
-					// try parsing as Param
-					Some(_) => {
-						params.push(Param::parse(tokens)?);
+					
+					None => return Err("`,` or `)`"),
+					
+					// parse as parameter
+					_ => {
+						// check mutability
+						let mut mutable = false;
+						
+						if tokens.peek() == Some(&Token::Var) {
+							mutable = true;
+							tokens.next();
+						}
+						
+						// get parameter name
+						let param_name = match tokens.next() {
+							Some(Token::Ident(n)) => n,
+							_ => return Err("a parameter name")
+						};
+						
+						// ':'
+						if tokens.next() != Some(Token::Colon) {
+							return Err("`:` after parameter name");
+						}
+						
+						// get type
+						let typ = Type::parse(tokens)?;
+						
+						for Param { name, .. } in &params[0..params.len() - 1] {
+							if *name == param_name {
+								eprintln!(
+									"Some parameter names in `proc {}` overlap: {:?}",
+									proc_name, name
+								);
+								return Err("parameter name to be unique");
+							}
+						}
+						
+						// push to list of parameters
+						params.push(Param { mutable, name: param_name, typ });
 						
 						match tokens.next() {
 							Some(Token::RParen) => break,
 							Some(Token::Comma) => {}
-							_ => return Err("`,`")
+							_ => return Err("`,` or `)`")
 						}
 					}
-					None => return Err("`,` or `)`")
-				}
-			}
-		}
-		
-		// Verify that all parameter names are unique.
-		/* Dev note: this is O((n^2 - n) / 2) but is actually better than the
-		usual O(n log n + 2n) solution (copy, sort, then compare neighbors)
-		because we expect a small number of parameters.
-		Ideal is 9 parameters or less. */
-		for (i, Param { name: first, .. }) in params.iter().enumerate() {
-			for Param { name: second, .. } in &params[i + 1..] {
-				if first == second {
-					return Err("parameter name to be unique")
 				}
 			}
 		}
@@ -84,12 +113,11 @@ impl Parse for Procedure {
 					tokens.next();
 					break;
 				}
+				
+				None => return Err("a statement or `end`"),
+				
 				// statement
-				Some(_) => {
-					let stmt = Statement::parse(tokens)?;
-					code.push(stmt);
-				}
-				None => return Err("a statement or `end`")
+				_ => code.push(Statement::parse(tokens)?),
 			}
 		}
 		
@@ -98,7 +126,7 @@ impl Parse for Procedure {
 			tokens.next();
 			
 			// the optional name of procedure after `end proc`
-			if tokens.peek() == Some(&Token::Ident(name.clone())) {
+			if tokens.peek() == Some(&Token::Ident(proc_name.clone())) {
 				tokens.next();
 			}
 		}
@@ -106,7 +134,7 @@ impl Parse for Procedure {
 		// the likely newline afterwards
 		if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
 		
-		Ok(Procedure { name, params, code })
+		Ok(Procedure { name: proc_name, params, code })
 	}
 }
 
@@ -116,11 +144,10 @@ impl Procedure {
 	// the end to verify everything is there.
 	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> Vec<Value> {
 		// verify number of arguments and their types
-		assert_eq!(
-			args.iter().map(|arg| arg.get_type()).collect::<Vec<_>>(),
-			self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
-		);
-		//for (arg, param) in args.iter
+		assert_eq!(args.len(), self.params.len());
+		for (arg, param) in args.iter().zip(&self.params) {
+			assert_eq!(arg.get_type(), param.typ);
+		}
 		
 		// store args in scope stack
 		let mut vars: Vec<(String, Value)> = self.params.iter()
@@ -140,10 +167,10 @@ impl Procedure {
 		}
 		
 		// verify number of arguments and their types again
-		assert_eq!(
-			vars.iter().map(|(_, val)| val.get_type()).collect::<Vec<_>>(),
-			self.params.iter().map(|param| &param.typ).cloned().collect::<Vec<_>>()
-		);
+		assert_eq!(vars.len(), self.params.len());
+		for (var, param) in vars.iter().zip(&self.params) {
+			assert_eq!(var.1.get_type(), param.typ);
+		}
 			
 		// store arg values back in parameters
 		vars.into_iter()

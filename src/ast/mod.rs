@@ -21,24 +21,22 @@ use crate::parse::{Parse, ParseResult};
 use crate::interpret::{EvalResult, Scope, Value};
 
 mod expr;
-//mod function;
+mod function;
 mod item;
 mod literal;
 mod lvalue;
 mod module;
-mod param;
 mod procedure;
 mod statement;
 mod term;
 mod types;
 
 pub use self::expr::Expr;
-//pub use self::function::Function;
+pub use self::function::Function;
 pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::LValue;
 pub use self::module::Module;
-pub use self::param::Param;
 pub use self::procedure::Procedure;
 pub use self::statement::Statement;
 pub use self::term::Term;

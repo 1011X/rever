@@ -4,7 +4,9 @@ use crate::ast::{Literal, Type};
 pub enum Value {
 	Nil,
     Bool(bool),
+    //Byte(u8),
     Int(i64),
+    Uint(u64),
     //Char(char),
     String(String),
     //Proc(String),
@@ -16,6 +18,7 @@ impl Value {
         	Value::Nil => Type::Unit,
             Value::Bool(_) => Type::Bool,
             Value::Int(_) => Type::Int,
+            Value::Uint(_) => Type::Uint,
             //Value::Signed(_) => Type::I32,
             //Value::Char(_) => Type::Char,
             Value::String(_) => Type::String,

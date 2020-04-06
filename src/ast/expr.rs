@@ -21,35 +21,29 @@ TODO:
 use super::*;
 
 #[derive(Debug, Clone)]
+pub enum BinOp {
+	// precedence 4
+	Exp,
+	// precedence 5
+	Mul, Div, Mod, And,
+	// precedence 6
+	Add, Sub, Or,
+	// precedence 7
+	Eq, Ne, Lt, Gt, Le, Ge,
+}
+
+#[derive(Debug, Clone)]
 pub enum Expr {
 	// precedence 1
 	Term(Term),
 	Group(Box<Expr>),
+	Cast(Box<Expr>, Type),
 	
 	// precedence 3
 	Not(Box<Expr>),
 	
-	// precedence 4
-	Exp(Box<Expr>, Box<Expr>),
-	
-	// precedence 5
-	Mul(Box<Expr>, Box<Expr>),
-	Div(Box<Expr>, Box<Expr>),
-	Mod(Box<Expr>, Box<Expr>),
-	And(Box<Expr>, Box<Expr>),
-	
-	// precedence 6
-	Add(Box<Expr>, Box<Expr>),
-	Sub(Box<Expr>, Box<Expr>),
-	Or(Box<Expr>, Box<Expr>),
-	
-	// precedence 7
-	Eq(Box<Expr>, Box<Expr>),
-	Neq(Box<Expr>, Box<Expr>),
-	Lt(Box<Expr>, Box<Expr>),
-	Gt(Box<Expr>, Box<Expr>),
-	Lte(Box<Expr>, Box<Expr>),
-	Gte(Box<Expr>, Box<Expr>),
+	// binary op, precendeces 4-7
+	BinOp(BinOp, Box<Expr>, Box<Expr>),
 }
 
 impl Parse for Expr {
@@ -61,22 +55,20 @@ impl Parse for Expr {
 	// prim -> ( expr )
 	//      -> factor
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-	    enum Op { Eq, Neq, Lt, Gt, Lte, Gte, /* In */}
-		
 		// <term>
 		let first = Expr::parse_expr(tokens)?;
-		let mut exprs: Vec<(Op, Expr)> = Vec::new();
+		let mut exprs: Vec<(BinOp, Expr)> = Vec::new();
 		
 		// { ('=' | '!=' | '<' | '>' | '<=' | '>=') <expr> }
 		loop {
 			let op = match tokens.peek() {
-				Some(Token::Eq)  => Op::Eq,
-				Some(Token::Neq) => Op::Neq,
-				Some(Token::Lt)  => Op::Lt,
-				Some(Token::Gt)  => Op::Gt,
-				Some(Token::Lte) => Op::Lte,
-				Some(Token::Gte) => Op::Gte,
-				//Some(Token::In)  => Op::In,
+				Some(Token::Eq)  => BinOp::Eq,
+				Some(Token::Neq) => BinOp::Ne,
+				Some(Token::Lt)  => BinOp::Lt,
+				Some(Token::Gt)  => BinOp::Gt,
+				Some(Token::Lte) => BinOp::Le,
+				Some(Token::Gte) => BinOp::Ge,
+				//Some(Token::In) => BinOp::In,
 			    _ => break
 			};
 			tokens.next();
@@ -89,35 +81,24 @@ impl Parse for Expr {
 		    return Ok(first);
 		}
 		
-		let res = exprs.into_iter()
-		.fold(first, |acc, (op, base)| match op {
-			Op::Eq  => Expr::Eq(Box::new(acc), Box::new(base)),
-			Op::Neq => Expr::Neq(Box::new(acc), Box::new(base)),
-			Op::Lt  => Expr::Lt(Box::new(acc), Box::new(base)),
-			Op::Gt  => Expr::Gt(Box::new(acc), Box::new(base)),
-			Op::Lte => Expr::Lte(Box::new(acc), Box::new(base)),
-			Op::Gte => Expr::Gte(Box::new(acc), Box::new(base)),
-			//Op::In  => Expr::In(Box::new(acc), Box::new(base)),
-		});
-		
-		Ok(res)
+		Ok(exprs.into_iter().fold(first, |acc, (op, base)|
+			Expr::BinOp(op, Box::new(acc), Box::new(base))
+		))
 	}
 }
 
 impl Expr {
 	pub fn parse_expr(tokens: &mut Tokens) -> ParseResult<Self> {
-	    enum Op { Add, Sub, Or }
-		
 		// <term>
 		let first = Expr::parse_term(tokens)?;
-		let mut terms: Vec<(Op, Expr)> = Vec::new();
+		let mut terms: Vec<(BinOp, Expr)> = Vec::new();
 		
 		// { ('+' | '-' | 'or') <term> }
 		loop {
 			let op = match tokens.peek() {
-				Some(Token::Plus)  => Op::Add,
-				Some(Token::Minus) => Op::Sub,
-				Some(Token::Or)    => Op::Or,
+				Some(Token::Plus)  => BinOp::Add,
+				Some(Token::Minus) => BinOp::Sub,
+				Some(Token::Or)    => BinOp::Or,
 			    _ => break
 			};
 			tokens.next();
@@ -130,30 +111,23 @@ impl Expr {
 		    return Ok(first);
 		}
 		
-		let res = terms.into_iter()
-		.fold(first, |acc, (op, base)| match op {
-			Op::Add => Expr::Add(Box::new(acc), Box::new(base)),
-			Op::Sub => Expr::Sub(Box::new(acc), Box::new(base)),
-			Op::Or  => Expr::Or(Box::new(acc), Box::new(base)),
-		});
-		
-		Ok(res)
+		Ok(terms.into_iter().fold(first, |acc, (op, base)|
+			Expr::BinOp(op, Box::new(acc), Box::new(base))
+		))
 	}
 	
 	fn parse_term(tokens: &mut Tokens) -> ParseResult<Self> {
-	    enum Op { Mul, Div, Mod, And }
-		
 		// <fact>
 		let first = Expr::parse_exp(tokens)?;
-		let mut facts: Vec<(Op, Expr)> = Vec::new();
+		let mut facts: Vec<(BinOp, Expr)> = Vec::new();
 		
 		// { ('*' | '/' | 'mod' | 'and') <fact> }
 		loop {
 			let op = match tokens.peek() {
-				Some(Token::Star)   => Op::Mul,
-				Some(Token::FSlash) => Op::Div,
-				Some(Token::Mod)    => Op::Mod,
-				Some(Token::And)    => Op::And,
+				Some(Token::Star)   => BinOp::Mul,
+				Some(Token::FSlash) => BinOp::Div,
+				Some(Token::Mod)    => BinOp::Mod,
+				Some(Token::And)    => BinOp::And,
 			    _ => break
 			};
 			tokens.next();
@@ -166,15 +140,9 @@ impl Expr {
 		    return Ok(first);
 		}
 		
-		let res = facts.into_iter()
-		.fold(first, |acc, (op, base)| match op {
-			Op::Mul => Expr::Mul(Box::new(acc), Box::new(base)),
-			Op::Div => Expr::Div(Box::new(acc), Box::new(base)),
-			Op::Mod => Expr::Mod(Box::new(acc), Box::new(base)),
-			Op::And => Expr::And(Box::new(acc), Box::new(base)),
-		});
-		
-		Ok(res)
+		Ok(facts.into_iter().fold(first, |acc, (op, base)|
+			Expr::BinOp(op, Box::new(acc), Box::new(base))
+		))
 	}
 	
 	fn parse_exp(tokens: &mut Tokens) -> ParseResult<Self> {
@@ -199,12 +167,11 @@ impl Expr {
 		}
 		
 		let last = exps.pop().unwrap();
-		let res = exps.into_iter()
-		.rfold(last, |acc, base|
-		    Expr::Exp(Box::new(base), Box::new(acc))
-	    );
+		let res = exps.into_iter().rfold(last, |acc, base|
+			Expr::BinOp(BinOp::Exp, Box::new(base), Box::new(acc))
+		);
 		
-		Ok(Expr::Exp(Box::new(first), Box::new(res)))
+		Ok(Expr::BinOp(BinOp::Exp, Box::new(first), Box::new(res)))
 	}
 	
 	fn parse_base(tokens: &mut Tokens) -> ParseResult<Self> {
@@ -231,6 +198,12 @@ impl Expr {
 			// 1
 			Expr::Term(term) => Ok(term.eval(t)),
 			Expr::Group(e) => Ok(e.eval(t)?),
+			Expr::Cast(e, typ) => match (typ, e.eval(t)?) {
+				(Type::Unit, _) => Ok(Value::Nil),
+				(Type::Int, Value::Uint(v)) => Ok(Value::Int(v as i64)),
+				(Type::Uint, Value::Int(v)) => Ok(Value::Uint(v as u64)),
+				_ => unimplemented!()
+			}
 			
 			// 3
 			Expr::Not(e) => match e.eval(t)? {
@@ -239,64 +212,72 @@ impl Expr {
 				_ => Err("tried NOTting non-boolean expression")
 			}
 			
-			// 4
-			Expr::Exp(base, exp) => match (base.eval(t)?, exp.eval(t)?) {
-				(Value::Int(b), Value::Int(e)) => Ok(Value::from(b.pow(e as u32))),
-				_ => Err("tried to get power of non-integer values")
-			}
-			
-			// 5
-			Expr::Mul(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l * r)),
-				_ => Err("tried multiplying non-integer values")
-			}
-			Expr::Div(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l / r)),
-				_ => Err("tried dividing non-integer values")
-			}
-			Expr::Mod(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from((l % r + r) % r)),
-				_ => Err("tried getting remainder of non-integer values")
-			}
-			Expr::And(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Bool(l), Value::Bool(r)) => Ok(Value::from(l && r)),
-				_ => Err("tried ANDing non-boolean values")
-			}
-			
-			// 6
-			Expr::Add(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l + r)),
-				_ => Err("tried adding non-integer values")
-			}
-			Expr::Sub(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l - r)),
-				_ => Err("tried subtracting non-integer values")
-			}
-			Expr::Or(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Bool(l), Value::Bool(r)) => Ok(Value::from(l || r)),
-				_ => Err("tried ORing non-boolean expressions")
-			}
-			
-			// 7
-			Expr::Eq(l, r) => Ok(Value::from(l.eval(t)? == r.eval(t)?)),
-			Expr::Neq(l, r) => Ok(Value::from(l.eval(t)? != r.eval(t)?)),
-			
-			Expr::Lt(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l < r)),
-				_ => Err("tried comparing non-integer values")
-			}
-			Expr::Lte(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l <= r)),
-				_ => Err("tried comparing non-integer values")
-			}
-			
-			Expr::Gt(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l > r)),
-				_ => Err("tried comparing non-integer values")
-			}
-			Expr::Gte(l, r) => match (l.eval(t)?, r.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => Ok(Value::from(l >= r)),
-				_ => Err("tried comparing non-integer values")
+			// 4 - 7
+			Expr::BinOp(op, left, right) => {
+				let left = left.eval(t)?;
+				let right = right.eval(t)?;
+				
+				match (op, left, right) {
+					// 4
+					(BinOp::Exp, Value::Int(b), Value::Int(e)) =>
+						Ok(Value::from(b.pow(e as u32))),
+					(BinOp::Exp, _, _) =>
+						Err("tried to get power of non-integer values"),
+					
+					// 5
+					(BinOp::Mul, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l * r)),
+					(BinOp::Mul, _, _) =>
+						Err("tried multiplying non-integer values"),
+					(BinOp::Div, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l / r)),
+					(BinOp::Div, _, _) =>
+						Err("tried dividing non-integer values"),
+					(BinOp::Mod, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from((l % r + r) % r)),
+					(BinOp::Mod, _, _) =>
+						Err("tried getting remainder of non-integer values"),
+					(BinOp::And, Value::Bool(l), Value::Bool(r)) =>
+						Ok(Value::from(l && r)),
+					(BinOp::And, _, _) =>
+						Err("tried ANDing non-boolean values"),
+					
+					// 6
+					(BinOp::Add, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l + r)),
+					(BinOp::Add, _, _) =>
+						Err("tried adding non-integer values"),
+					(BinOp::Sub, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l - r)),
+					(BinOp::Sub, _, _) =>
+						Err("tried subtracting non-integer values"),
+					(BinOp::Or, Value::Bool(l), Value::Bool(r)) =>
+						Ok(Value::from(l || r)),
+					(BinOp::Or, _, _) =>
+						Err("tried ORing non-boolean values"),
+					
+					// 7
+					(BinOp::Eq, l, r) =>
+						Ok(Value::from(l == r)),
+					(BinOp::Ne, l, r) =>
+						Ok(Value::from(l != r)),
+					(BinOp::Lt, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l < r)),
+					(BinOp::Lt, _, _) =>
+						Err("tried comparing non-integer values"),
+					(BinOp::Gt, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l > r)),
+					(BinOp::Gt, _, _) =>
+						Err("tried comparing non-integer values"),
+					(BinOp::Le, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l <= r)),
+					(BinOp::Le, _, _) =>
+						Err("tried comparing non-integer values"),
+					(BinOp::Ge, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l >= r)),
+					(BinOp::Ge, _, _) =>
+						Err("tried comparing non-integer values"),
+				}
 			}
 		}
 	}
