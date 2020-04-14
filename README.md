@@ -101,6 +101,44 @@ If-else branches can have at most 4 parts: the test, the code block to run if it
 
 If any variables being checked could change while in the branch, you *will* have to write an assertion.
 
+You can also have continuous `else if` sections (with the caveat of maybe having to remember which assert goes with which condition later on), as such:
+
+	if a = 0
+		do smth0
+	else if a = 1
+		do smth1
+	else if a = 2
+	...
+	else if a = 10
+		do smth10
+	else
+		do smth
+	fi a = 10
+	fi ...
+	fi a = 2
+	fi a = 1
+	fi a = 0
+	
+	# this is the same as above
+	if a = 0
+		do smth0
+	else
+		if a = 1
+			do smth1
+		else
+			if a = 2
+			...
+			else
+				if a = 10
+					do smth10
+				else
+					do smth
+				fi a = 10
+			...
+			fi a = 2
+		fi a = 1
+	fi a = 0
+
 Loops are a bit more complicated. They have an assertion at the beginning, a do-block or a back-block (or both), and a test. The initial assertion can only be true at the start, and *must* be false while looping. The do-block is then executed. After that, the test is evaluated to see if the loop should stop. If the test is true, we exit the loop. Otherwise, the back-block is executed, the assertion is checked to be false, and it loops back again to running the do-block. Like conditionals, only the test and assertion are swapped when going in reverse.
 
 	# i goes from 0 to 5 (exclusive)
@@ -132,29 +170,47 @@ Procedures and Functions
 
 Rever has both procedures and functions.
 
-**Procedures** run a series of statements, optionally taking a list of arguments. For all intents and purposes, parameters have ["copy-in copy-out"] semantics. This means that, if a procedure marks one of its parameters as mutable with `var`, then the value of the variable given to that parameter by the caller could change after the procedure is called. Procedures also can't return values and therefore can't be used in expressions.
+**Procedures** run a series of statements, optionally taking a list of arguments. Parameters have ["copy-in copy-out"] semantics which means that if a procedure marks one of its parameters as mutable with `var`, then the value of the variable given to that parameter by the caller could change after the procedure is called. They can also have side-effects.
 
-**Functions** evaluate a list of immutable arguments and return a value. This means that a function can be used in expressions. Unlike procedures, functions cannot have side-effects; variables outside of their scope are not accessible.
+**Functions** evaluate a list of immutable arguments and return a value. This means that a function can return a value and can therefore be used in expressions. Unlike procedures, functions cannot have side-effects; any variables or globals outside of their scope are not accessible.
 
-### Why not just have procedures?
+Use procedures if you want to:
++ have side-effects.
++ handle mutable state.
++ write code in a more imperative style.
 
-The answer is that procedures and functions have some properties that are mutually incompatible if we want to maintain the property of reversibility. Consider mutable parameters: if functions had them, we wouldn't be able to guarantee  anymore because functions are sometimes run more than once in order to verify a state (e.g. using the same function in the `if` and `fi` sections of a branch). This could result in code that only runs in one direction but not another, or side-effects that show up twice.
+Use functions if you want to:
++ return a value.
++ not have side-effects.
++ write code in a more expressive style.
+
+### Why not just have only one or the other?
+
+The answer is actually a bit complicated.
+
+Janus could get away with only having procedures (and keeping expressions to specific places) because that was the minimum necessary to get it to work. But once the tests become more complicated or you add custom data structures, writing expression can quickly become unwieldy. Which is how the idea for functions came about.
+
+Procedures follow a *statement-oriented* style, while functions follow an *expression-oriented* style. Statements are reversible, while expressions are one-way and therefore reductive.
+
+If expressions are reductive by nature, how can we possibly make them reversible? First we must understand that anything that an irreversible computer can do, a reversible computer can do as well. The only issue is that reversible computers will generate a lot of extraneous data that allows a calculation to be undone. This data is not really useful to the programmer, hence why it's often called *garbage*.
+
+Functions need to return a single value to be used in expressions, but according to reversible logic, functions *must* return the same number of arguments for it to stand a chance at being reversible. (Yeah that's not the only requirement; it must also be [injective].) How can a function be reversible *and* return only one value?
+
+This problem may seem insurmountable, but it's actually not! Turns out, if all values except the return value are kept the same (immutable), then it becomes trivially reversible the same way all expressions already are: you calculate the result, copy it, then uncalculate it. Hoorah, no garbage!
+
+As a result, procedures and functions were both kept since their different properties allow the programmer to choose one or the other based on which tool is best for the task at hand. Procedures can handle mutable state and side-effects (while keeping garbage to a minimum), and functions can return values and allow writing code in a more terse and *expressive* way.
 
 
 Features under construction
 ---------------------------
 
-It can become a bit tedious (and error-prone!) to repeat expressions multiple times in different places. That's why some alternate control structures are being considered for some special-case code. These consist of `for`, and `match`.
+It can become a bit tedious (and error-prone!) to repeat expressions multiple times in different places. That's why some alternate control structures are being considered for some special-case code.
 
 ### Chained comparisons
 
 *A la* Python:
 
 ```
-if a = 0
-    do something
-fi b > c
-
 if start <= x <= end
     do something
 fi
@@ -249,4 +305,4 @@ This could be better written much more succinctly like this:
 More specifically, the parameter marked with `var` will take the value that the procedure being called expects. For example, if a procedure starts with `from i = 0` and `i` is a `var` parameter, then `i` will be initialized with the value of 0.
 
 ["copy-in copy-out"]: https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_copy-restore
-
+[injective]: https://en.wikipedia.org/wiki/Injective_function
