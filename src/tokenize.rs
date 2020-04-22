@@ -71,6 +71,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 				match token.as_str() {
 					// keywords
 					"and"   => Token::And,
+					"as"    => Token::As,
 					"do"    => Token::Do,
 					"drop"  => Token::Drop,
 					"else"  => Token::Else,
@@ -91,7 +92,6 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					"var"   => Token::Var,
 					
 					// reserved
-					"as"    => Token::As,
 					"for"   => Token::For,
 					"in"    => Token::In,
 					"loop"  => Token::Loop,

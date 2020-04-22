@@ -11,7 +11,7 @@ Expressions in Rever have 5 levels of precendence. From strongest to weakest:
 Ideas:
 + Chained relations, a la Python?
 + In `if` statements, conjunctions is `,` and disjunction is `;` (from Prolog).
-  + No short-circuiting, like Pascal.
+  + No short-circuiting; like Pascal.
   + Short-circuiting can be achieved using `and` and `or`.
 
 TODO:
@@ -147,7 +147,7 @@ impl Expr {
 	
 	fn parse_exp(tokens: &mut Tokens) -> ParseResult<Self> {
 		// <exp>
-		let first = Expr::parse_base(tokens)?;
+		let first = Expr::parse_atom(tokens)?;
 		let mut exps = Vec::new();
 		
 		// { ('^') <exp> }
@@ -158,7 +158,7 @@ impl Expr {
 			};
 			tokens.next();
 		    
-		    let exp = Expr::parse_base(tokens)?;
+		    let exp = Expr::parse_atom(tokens)?;
 		    exps.push(exp);
 		}
 		
@@ -174,7 +174,7 @@ impl Expr {
 		Ok(Expr::BinOp(BinOp::Exp, Box::new(first), Box::new(res)))
 	}
 	
-	fn parse_base(tokens: &mut Tokens) -> ParseResult<Self> {
+	fn parse_atom(tokens: &mut Tokens) -> ParseResult<Self> {
 		// check if there's an open parenthesis
 		if tokens.peek() == Some(&Token::LParen) {
 			tokens.next();
@@ -209,7 +209,7 @@ impl Expr {
 			Expr::Not(e) => match e.eval(t)? {
 				Value::Bool(true) => Ok(Value::Bool(false)),
 				Value::Bool(false) => Ok(Value::Bool(true)),
-				_ => Err("tried NOTting non-boolean expression")
+				_ => Err("tried NOTting non-boolean value")
 			}
 			
 			// 4 - 7

@@ -5,7 +5,6 @@ pub enum Statement {
 	Skip,
 	
 	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
-	//Let(String, Option<Type>, Expr),
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	
@@ -295,7 +294,7 @@ impl Parse for Statement {
 				
 				// ensure there's a newline afterwards
 				if tokens.next() != Some(Token::Newline) {
-					return Err("newline after if predicate");
+					return Err("newline after `if` predicate");
 				}
 				
 				// parse the main block
@@ -416,7 +415,8 @@ impl Statement {
 		match self {
 			Skip => {}
 			Var(id, _, init, block, dest) => {
-				t.push((id.clone(), init.eval(t)?));
+				let init = init.eval(t)?;
+				t.push((id.clone(), init));
 				
 				for stmt in block {
 					stmt.eval(t, m)?;

@@ -7,21 +7,27 @@ pub enum Type {
 	Uint, Int,
     Char, String,
 	//Array(Box<Type>, usize),
-	//Fn(Vec<Type>, Box<Type>),
-	Proc(Vec<(bool, Type)>),
+	Fn(Vec<Type>, Box<Type>),
+	//Proc(Vec<(bool, Type)>),
 	//Alternate(Vec<Type>),
 	//Composite(Vec<Type>),
-	//Alias(
 }
 
 impl Parse for Type {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		match tokens.peek() {
+			Some(Token::Ident(t)) if t == "unit" => {
+				tokens.next();
+				Ok(Type::Unit)
+			}
 			Some(Token::Ident(t)) if t == "bool" => {
 				tokens.next();
 				Ok(Type::Bool)
 			}
-			//Some(Token::Ident(t)) if t == "uint" => Ok(Type::Uint),
+			Some(Token::Ident(t)) if t == "uint" => {
+				tokens.next();
+				Ok(Type::UInt)
+			}
 			Some(Token::Ident(t)) if t == "int" => {
 				tokens.next();
 				Ok(Type::Int)
@@ -29,6 +35,34 @@ impl Parse for Type {
 			Some(Token::Ident(t)) if t == "str" => {
 				tokens.next();
 				Ok(Type::String)
+			}
+			Some(Token::Fn) => {
+				tokens.next();
+				
+				if tokens.next() != Some(Token::LParen) {
+					return Err("`(` for `fn` type");
+				}
+				
+				let mut params = Vec::new();
+				
+				while tokens.peek() != Some(&Token::RParen) {
+					params.push(Type::parse(tokens)?);
+					
+					match tokens.peek() {
+						Some(Token::RParen) => {}
+						Some(Token::Comma) => { tokens.next(); }
+						_ => return Err("`)` or `,` in fn param list")
+					}
+				}
+				tokens.next();
+				
+				if tokens.next() != Some(Token::Colon) {
+					return Err("`:` to specify `fn` return type");
+				}
+				
+				let ret = Type::parse(tokens)?;
+				
+				Ok(Type::Fn(params, Box::new(ret)))
 			}
 			
 			_ => Err("a valid type")
@@ -42,18 +76,7 @@ mod tests {
     use crate::tokenize::tokenize;
     
     #[test]
-    fn boolean() {
-    	assert_eq!(
-    		Type::parse(&tokenize("bool").unwrap()).unwrap(),
-    		(Type::Bool, &[][..])
-		);
-	}
-	
-    #[test]
-    fn int() {
-    	assert_eq!(
-    		Type::parse(&tokenize("uint").unwrap()).unwrap(),
-    		(Type::Uint, &[][..])
-		);
+    fn test() {
+    	unimplemented!();
 	}
 }

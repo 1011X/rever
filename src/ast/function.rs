@@ -4,6 +4,7 @@ use super::*;
 pub struct Function {
     pub name: String,
     pub params: Vec<(String, Type)>,
+    pub ret: Type,
     pub body: Expr,
 }
 
@@ -78,14 +79,26 @@ impl Parse for Function {
 			}
 		}
 		
+		// get return type
+		if tokens.next() != Some(Token::Colon) {
+			return Err("`:` after function parameter list");
+		}
+		
+		let ret = Type::parse(tokens)?;
+		
 		// check for newline
 		if tokens.next() != Some(Token::Newline) {
-			return Err("newline after parameter list");
+			return Err("newline after return type");
 		}
 		
 		// code block section
 		// TODO check result of Expr::parse
 		let body = Expr::parse(tokens)?;
+		
+		// check for newline
+		if tokens.next() != Some(Token::Newline) {
+			return Err("newline after function body");
+		}
 		
 		// check for `end`
 		if tokens.next() != Some(Token::End) {
@@ -105,6 +118,6 @@ impl Parse for Function {
 		// the likely newline afterwards
 		if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
 		
-		Ok(Function { name: fn_name, params, body })
+		Ok(Function { name: fn_name, params, body, ret })
 	}
 }

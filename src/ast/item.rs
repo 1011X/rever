@@ -1,3 +1,5 @@
+use std::fmt;
+
 use super::*;
 
 pub enum Item {
@@ -48,5 +50,16 @@ impl From<fn()> for Item {
 			assert!(b.is_empty(), "more than 0 arguments given");
 			f();
 		}))
+	}
+}
+
+impl fmt::Debug for Item {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Item::Mod(m) => m.fmt(f),
+			Item::Proc(p) => p.fmt(f),
+			Item::Fn(func) => func.fmt(f),
+			Item::InternalProc(_) => f.write_str("<internal proc>"),
+		}
 	}
 }

@@ -75,7 +75,7 @@ impl Parse for Procedure {
 						// get type
 						let typ = Type::parse(tokens)?;
 						
-						for Param { name, .. } in &params[0..params.len() - 1] {
+						for Param { name, .. } in &params {
 							if *name == param_name {
 								eprintln!(
 									"Some parameter names in `proc {}` overlap: {:?}",

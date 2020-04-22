@@ -3,6 +3,7 @@ use super::*;
 /// A named module holding multiple items.
 ///
 /// An AST node that takes a name and zero or more items.
+#[derive(Debug)]
 pub struct Module {
 	pub name: String,
 	pub items: Vec<Item>,
