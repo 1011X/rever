@@ -4,7 +4,7 @@ use super::*;
 pub enum Type {
 	Unit,
 	Bool,
-	Uint, Int,
+	UInt, Int,
     Char, String,
 	//Array(Box<Type>, usize),
 	Fn(Vec<Type>, Box<Type>),

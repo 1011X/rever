@@ -35,3 +35,16 @@ proc print_file(path: int)
 	drop file := nil
 	drop bytes := 80
 end
+
+fn succ(x: int): int
+	let y = x + 1
+	y
+end
+
+proc divmod(n: int, var x: int, var div: int)
+    from div = 0
+        x -= n
+        div += 1
+    until x < n
+    end
+end

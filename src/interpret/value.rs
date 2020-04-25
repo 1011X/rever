@@ -18,7 +18,7 @@ impl Value {
         	Value::Nil => Type::Unit,
             Value::Bool(_) => Type::Bool,
             Value::Int(_) => Type::Int,
-            Value::Uint(_) => Type::Uint,
+            Value::Uint(_) => Type::UInt,
             //Value::Signed(_) => Type::I32,
             //Value::Char(_) => Type::Char,
             Value::String(_) => Type::String,

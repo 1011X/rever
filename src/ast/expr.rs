@@ -27,7 +27,7 @@ pub enum BinOp {
 	// precedence 5
 	Mul, Div, Mod, And,
 	// precedence 6
-	Add, Sub, Or,
+	Add, Sub, Or, Xor,
 	// precedence 7
 	Eq, Ne, Lt, Gt, Le, Ge,
 }
@@ -44,17 +44,86 @@ pub enum Expr {
 	
 	// binary op, precendeces 4-7
 	BinOp(BinOp, Box<Expr>, Box<Expr>),
+	
+	// secret precendece 8
+	If(Box<Expr>, Box<Expr>, Box<Expr>),
+	
+	// secret precedence 9
+	Let(String, Option<Type>, Box<Expr>, Box<Expr>),
 }
 
 impl Parse for Expr {
-	// Note to future self: This is how the parser should be structured:
-	// bxpr -> expr {(=|≠|<|>|≤|≥|in) expr}
-	// expr -> term {(+|-|or) term}
-	// term -> exp {(*|/|mod|and) exp}
-	// exp  -> prim {^ prim}
-	// prim -> ( expr )
-	//      -> factor
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+		if tokens.peek() == Some(&Token::If) {
+			tokens.next();
+			
+			let test = Box::new(Expr::parse_rel(tokens)?);
+			
+			// ensure there's a newline afterwards
+			if tokens.next() != Some(Token::Then) {
+				return Err("`then` after `if` predicate");
+			}
+			
+			// parse the main block
+			let main_expr = Box::new(Expr::parse(tokens)?);
+			
+			// check for `else`
+			if tokens.next() != Some(Token::Else) {
+				return Err("`else` in `if` expression");
+			}
+			
+			// parse else section
+			let else_block = Box::new(Expr::parse(tokens)?);
+			
+			Ok(Expr::If(test, main_expr, else_block))
+		} else if tokens.peek() == Some(&Token::Let) {
+			tokens.next();
+			
+			let name = match tokens.next() {
+				Some(Token::Ident(name)) => name,
+				_ => return Err("name for let-binding")
+			};
+			
+			// get optional type as `: type`
+			let typ = if tokens.peek() == Some(&Token::Colon) {
+				tokens.next();
+				Some(Type::parse(tokens)?)
+			} else {
+				None
+			};
+			
+			// check for '='
+			if tokens.next() != Some(Token::Eq) {
+				return Err("`=` after let-binding name");
+			};
+			
+			// val is artificially limited here on purpose. it doesn't make much
+			// sence to allow `let` inside a `let` binding value, for example.
+			let val = Expr::parse_rel(tokens)?;
+			
+			// check for newline
+			if tokens.next() != Some(Token::Newline) {
+				return Err("`in` after `let` binding");
+			}
+			
+			let scope = Expr::parse(tokens)?;
+			
+			Ok(Expr::Let(name, typ, Box::new(val), Box::new(scope)))
+		} else {
+			Expr::parse_rel(tokens)
+		}
+	}
+}
+
+// rel  -> expr {(=|≠|<|>|≤|≥|in) expr}
+// expr -> term {(+|-|or) term}
+// term -> exp {(*|/|mod|and) exp}
+// exp  -> atom {^ atom}
+// atom -> ( expr )
+//      -> expr 'as' type
+//      -> factor
+impl Expr {
+	fn parse_rel(tokens: &mut Tokens) -> ParseResult<Self> {
 		// <term>
 		let first = Expr::parse_expr(tokens)?;
 		let mut exprs: Vec<(BinOp, Expr)> = Vec::new();
@@ -85,20 +154,19 @@ impl Parse for Expr {
 			Expr::BinOp(op, Box::new(acc), Box::new(base))
 		))
 	}
-}
-
-impl Expr {
+	
 	pub fn parse_expr(tokens: &mut Tokens) -> ParseResult<Self> {
 		// <term>
 		let first = Expr::parse_term(tokens)?;
 		let mut terms: Vec<(BinOp, Expr)> = Vec::new();
 		
-		// { ('+' | '-' | 'or') <term> }
+		// { ('+' | '-' | 'or' | ':') <term> }
 		loop {
 			let op = match tokens.peek() {
 				Some(Token::Plus)  => BinOp::Add,
 				Some(Token::Minus) => BinOp::Sub,
 				Some(Token::Or)    => BinOp::Or,
+				Some(Token::Colon) => BinOp::Xor,
 			    _ => break
 			};
 			tokens.next();
@@ -201,7 +269,7 @@ impl Expr {
 			Expr::Cast(e, typ) => match (typ, e.eval(t)?) {
 				(Type::Unit, _) => Ok(Value::Nil),
 				(Type::Int, Value::Uint(v)) => Ok(Value::Int(v as i64)),
-				(Type::Uint, Value::Int(v)) => Ok(Value::Uint(v as u64)),
+				(Type::UInt, Value::Int(v)) => Ok(Value::Uint(v as u64)),
 				_ => unimplemented!()
 			}
 			
@@ -255,6 +323,12 @@ impl Expr {
 						Ok(Value::from(l || r)),
 					(BinOp::Or, _, _) =>
 						Err("tried ORing non-boolean values"),
+					(BinOp::Xor, Value::Bool(l), Value::Bool(r)) =>
+						Ok(Value::from(l ^ r)),
+					(BinOp::Xor, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l ^ r)),
+					(BinOp::Xor, _, _) =>
+						Err("tried XORing non-boolean or non-integer values"),
 					
 					// 7
 					(BinOp::Eq, l, r) =>
@@ -278,6 +352,21 @@ impl Expr {
 					(BinOp::Ge, _, _) =>
 						Err("tried comparing non-integer values"),
 				}
+			}
+			
+			Expr::If(test, expr, else_expr) => {
+				if test.eval(t)? == Value::Bool(true) {
+					expr.eval(t)
+				} else {
+					else_expr.eval(t)
+				}
+			}
+			
+			Expr::Let(name, _, val, scope) => {
+				let val = val.eval(t)?;
+				let mut t_copy = t.clone();
+				t_copy.push((name.clone(), val));
+				scope.eval(&t_copy)
 			}
 		}
 	}

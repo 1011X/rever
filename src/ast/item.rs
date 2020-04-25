@@ -9,7 +9,7 @@ pub enum Item {
 	Proc(Procedure),
 	Fn(Function),
 	//Type(Type),
-	InternalProc(Box<dyn Fn(Box<[Value]>)>)
+	InternalProc(fn(Box<[Value]>))
 }
 
 impl Parse for Item {
@@ -42,15 +42,6 @@ impl From<Procedure> for Item {
 
 impl From<Function> for Item {
 	fn from(f: Function) -> Item { Item::Fn(f) }
-}
-
-impl From<fn()> for Item {
-	fn from(f: fn()) -> Item {
-		Item::InternalProc(Box::new(move |b| {
-			assert!(b.is_empty(), "more than 0 arguments given");
-			f();
-		}))
-	}
 }
 
 impl fmt::Debug for Item {
