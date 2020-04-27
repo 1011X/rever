@@ -25,16 +25,15 @@ impl RevStdout {
 		}
 	}
 	
-	pub fn unwrite(&mut self, buf: &[u8]) {
-		assert!(self.history.ends_with(buf));
-		let new_len = self.history.len() - buf.len();
+	pub fn unwrite(&mut self, buf: &[u8], bytes_read: usize) {
+		assert!(self.history.ends_with(&buf[..bytes_read]));
+		let new_len = self.history.len() - bytes_read;
 		self.history.truncate(new_len);
 	}
 	
 	/// When this function is called, all data will be lost, and we won't be
 	/// able to go any further in reverse if something goes wrong.
-	// + Should stdout be written to immediately? or on program close? or have a 
-	//   flush procedure that can be called?
+	// Should stdout be written to immediately? or be flushable?
 	pub fn reset(&mut self) {
 		self.history.clear();
 	}
@@ -42,12 +41,58 @@ impl RevStdout {
 
 impl Write for RevStdout {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-		self.history.copy_from_slice(buf);
-		self.stdout.write(buf)
+		let bytes_read = self.stdout.write(buf)?;
+		self.history.copy_from_slice(&buf[..bytes_read]);
+		Ok(bytes_read)
 	}
 	
 	fn flush(&mut self) -> io::Result<()> {
 		self.stdout.flush()
+	}
+}
+
+/*
+/** A handle to a reversible standard error stream.
+
+To allow retrieving data from stderr (e.g. when backtracking), a backup buffer
+is kept of all the data that was passed.
+*/
+#[derive(Debug)]
+pub struct RevStderr {
+	stderr: io::Stderr,
+	history: Vec<u8>,
+}
+
+impl RevStderr {
+	pub fn new() -> Self {
+		RevStderr {
+			stderr: io::stderr(),
+			history: Vec::new(),
+		}
+	}
+	
+	pub fn unwrite(&mut self, buf: &[u8], bytes_read: usize) {
+		assert!(self.history.ends_with(&buf[..bytes_read]));
+		let new_len = self.history.len() - bytes_read;
+		self.history.truncate(new_len);
+	}
+	
+	/// When this function is called, all data will be lost, and we won't be
+	/// able to go any further in reverse if something goes wrong.
+	pub fn reset(&mut self) {
+		self.history.clear();
+	}
+}
+
+impl Write for RevStderr {
+	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+		let bytes_read = self.stderr.write(buf)?;
+		self.history.copy_from_slice(&buf[..bytes_read]);
+		Ok(bytes_read)
+	}
+	
+	fn flush(&mut self) -> io::Result<()> {
+		self.stderr.flush()
 	}
 }
 
@@ -62,33 +107,39 @@ again.
 #[derive(Debug)]
 pub struct RevStdin {
 	stdin: io::Stdin,
-	queue: Vec<u8>,
+	buffer: Vec<u8>,
 }
 
 impl RevStdin {
 	pub fn new() -> Self {
 		RevStdin {
 			stdin: io::stdin(),
-			queue: Vec::new(),
+			buffer: Vec::new(),
 		}
 	}
 	
-	pub fn unread(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-		unimplemented!()
+	// We unread by prepending to the internal buffer.
+	pub fn unread(&mut self, buf: &mut [u8], bytes_read: usize) {
+		let mut new_buf = buf[..bytes_read].to_vec();
+		new_buf.append(&mut self.buffer);
+		self.buffer = new_buf;
 	}
 	
 	/// When this function is called, all data will be lost. TODO finish
 	pub fn reset(&mut self) {
-		self.queue.clear();
+		self.buffer.clear();
 	}
 }
 
 impl Read for RevStdin {
 	fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-		if self.queue.is_empty() {
+		if self.buffer.is_empty() {
 			self.stdin.read(buf)
 		} else {
-			self.queue.as_slice().read(buf)
+			let bytes_read = self.buffer.as_slice().read(buf)?;
+			self.buffer.drain(..bytes_read);
+			Ok(bytes_read)
 		}
 	}
 }
+*/

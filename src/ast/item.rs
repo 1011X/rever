@@ -1,5 +1,3 @@
-use std::fmt;
-
 use super::*;
 
 pub enum Item {
@@ -44,8 +42,8 @@ impl From<Function> for Item {
 	fn from(f: Function) -> Item { Item::Fn(f) }
 }
 
-impl fmt::Debug for Item {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Debug for Item {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
 		match self {
 			Item::Mod(m) => m.fmt(f),
 			Item::Proc(p) => p.fmt(f),
