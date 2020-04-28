@@ -370,6 +370,10 @@ impl Expr {
 			}
 		}
 	}
+	
+	pub fn get_type(&self) -> Option<Type> {
+		unimplemented!()
+	}
 }
 
 impl From<Term> for Expr {

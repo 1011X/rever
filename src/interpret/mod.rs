@@ -1,4 +1,5 @@
 use std::path::Path;
+//use std::io::prelude::*;
 
 use crate::ast::{Item, Module, Procedure};
 use crate::parse;
@@ -31,8 +32,6 @@ pub fn interpret_file<P: AsRef<Path>>(path: P) {
 	
 	match parse::parse_items(&mut tokens) {
 		Ok(mut ast) => {
-			println!("AST successfully created.");
-			
 			// look for main function
 			let main_pos = ast.iter()
 				.position(|item| matches!(
@@ -45,10 +44,13 @@ pub fn interpret_file<P: AsRef<Path>>(path: P) {
 				let main = ast.remove(pos);
 				
 				// create root module
-				let root_mod = Module::new("root", ast);
+				let mut root_mod = Module::new("root", ast);
+				
+				root_mod.items.push(
+					Item::InternProc("puts", intrinsic::puts, intrinsic::unputs)
+				);
 				
 				if let Item::Proc(pr) = main {
-					println!("Running...");
 					pr.call(Vec::new(), &root_mod);
 				} else {
 					unreachable!();
@@ -63,5 +65,38 @@ pub fn interpret_file<P: AsRef<Path>>(path: P) {
 			eprintln!("Expected {}.", e);
 			eprintln!("Tokens: {:#?}", remaining_tokens);
 		}
+	}
+}
+
+pub mod intrinsic {
+	use super::Value;
+	use std::io::prelude::*;
+	
+	pub fn puts(args: Box<[Value]>) -> Box<[Value]> {
+		assert!(args.len() == 1);
+		
+		let mut rstdout = super::io::RevStdout::new();
+		let string = match &args[0] {
+			Value::String(s) => s.as_bytes(),
+			_ => panic!("not a string")
+		};
+		
+		rstdout.write(string);
+		
+		args
+	}
+	
+	pub fn unputs(args: Box<[Value]>) -> Box<[Value]> {
+		assert!(args.len() == 1);
+		
+		let mut rstdout = super::io::RevStdout::new();
+		let string = match &args[0] {
+			Value::String(s) => s.as_bytes(),
+			_ => panic!("not a string")
+		};
+		
+		rstdout.unwrite(string, string.len());
+		
+		args
 	}
 }

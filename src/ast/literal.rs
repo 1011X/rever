@@ -63,6 +63,15 @@ impl Literal {
 			Literal::String(s) => Value::String(s.clone()),
 		}
 	}
+	
+	pub fn get_type(&self) -> Type {
+		match self {
+			Literal::Nil       => Type::Unit,
+			Literal::Bool(_)   => Type::Bool,
+			Literal::Int(_)    => Type::Int,
+			Literal::String(_) => Type::String,
+		}
+	}
 }
 
 // FIXME

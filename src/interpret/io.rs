@@ -42,7 +42,7 @@ impl RevStdout {
 impl Write for RevStdout {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 		let bytes_read = self.stdout.write(buf)?;
-		self.history.copy_from_slice(&buf[..bytes_read]);
+		self.history.extend_from_slice(&buf[..bytes_read]);
 		Ok(bytes_read)
 	}
 	
@@ -87,7 +87,7 @@ impl RevStderr {
 impl Write for RevStderr {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 		let bytes_read = self.stderr.write(buf)?;
-		self.history.copy_from_slice(&buf[..bytes_read]);
+		self.history.extend_from_slice(&buf[..bytes_read]);
 		Ok(bytes_read)
 	}
 	

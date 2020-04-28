@@ -509,6 +509,11 @@ impl Statement {
 							pr.call(vals, m);
 							break;
 						}
+					} else if let Item::InternProc(name, pr, _) = item {
+						if *name == *callee_name {
+							pr(vals.into_boxed_slice());
+							break;
+						}
 					}
 				}
 			}
@@ -521,6 +526,11 @@ impl Statement {
 					if let Item::Proc(pr) = item {
 						if pr.name == *callee_name {
 							pr.uncall(vals, m);
+							break;
+						}
+					} else if let Item::InternProc(name, _, pr) = item {
+						if *name == *callee_name {
+							pr(vals.into_boxed_slice());
 							break;
 						}
 					}
@@ -544,6 +554,7 @@ impl Statement {
 					_ => return Err("tried to do something illegal")
 				}
 			}
+			
 			From(assert, do_block, loop_block, test) => {
 				assert_eq!(assert.eval(t)?, Value::Bool(true));
 				loop {

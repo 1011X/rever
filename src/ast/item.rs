@@ -7,7 +7,11 @@ pub enum Item {
 	Proc(Procedure),
 	Fn(Function),
 	//Type(Type),
-	InternalProc(fn(Box<[Value]>))
+	InternProc(
+		&'static str,
+		fn(Box<[Value]>) -> Box<[Value]>,
+		fn(Box<[Value]>) -> Box<[Value]>
+	)
 }
 
 impl Parse for Item {
@@ -48,7 +52,7 @@ impl std::fmt::Debug for Item {
 			Item::Mod(m) => m.fmt(f),
 			Item::Proc(p) => p.fmt(f),
 			Item::Fn(func) => func.fmt(f),
-			Item::InternalProc(_) => f.write_str("<internal proc>"),
+			Item::InternProc(..) => f.write_str("<internal procedure>"),
 		}
 	}
 }
