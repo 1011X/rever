@@ -3,7 +3,7 @@ Rever
 
 Rever is a reversible programming language. It features ["copy-in copy-out"] semantics, a minimal Pascal-like syntax, and a distinction between procedures and functions.
 
-Examples of other such reversible languages include [Janus](https://en.wikipedia.org/wiki/Janus_(time-reversible_computing_programming_language)) and [rFun](http://topps.diku.dk/pirc/?id=rfun).
+It is inspired by Prolog, Pascal, Python, Rust, and Janus. Examples of other such reversible languages include [Janus](https://en.wikipedia.org/wiki/Janus_(time-reversible_computing_programming_language)) and [rFun](http://topps.diku.dk/pirc/?id=rfun).
 
 <!-- [Bob](https://link.springer.com/chapter/10.1007/978-3-642-29517-1_3). -->
 
@@ -11,7 +11,7 @@ Examples of other such reversible languages include [Janus](https://en.wikipedia
 Installation
 ------------
 
-First, install [Rust](https://www.rust-lang.org/tools/install). Then, download the ZIP file for this project, unzip it, `cd` into the directory, and run:
+First, [install Rust](https://www.rust-lang.org/tools/install). Then, download the ZIP file for this project, unzip it, `cd` into the directory, and run:
 
     cargo install --path .
 
@@ -35,8 +35,6 @@ Rever prefers to use newlines and keywords (e.g. `end`, `fi`) rather than braces
 
 A Rever file consists of *items*, which include procedures, functions, types, modules, etc. They are much like those in Rust.
 
-We'll start by learning the simplest statements first, and then work our way up.
-
 ### Simple statements
 
 The most trivial statement is `skip`. It does absolutely nothing. However, you'll sometimes need it since some parts of the language don't accept an empty block, or when you want to be explicit that nothing should be done in some cases.
@@ -53,12 +51,14 @@ There's also swap (`<>`), which takes 2 variables and swaps their values.
 
 Now we get into the interesting stuff: procedure calls. You can either call a procedure (`do`) to run it forwards, or uncall a procedure (`undo`) to run it backwards. `undo` will recursively reverse and invert all statements in a procedure before the call. They both have 3 forms that you can use depending on the number of parameters the procedure has or whether you prefer a multiline call.
 
-	do subtask
-	do print: "hello world!"
-	do something(
-		f(x) + 3,
-		name
-	)
+```
+do subtask
+do print: "hello world!"
+do something(
+	f(x) + 3,
+	name
+)
+```
 
 (Note: procedures are always called with "in-out" parameters, which means that when the procedure finishes, the final value of the parameters will be copied back to the caller.)
 
@@ -66,93 +66,102 @@ Now we get into the interesting stuff: procedure calls. You can either call a pr
 
 You may have heard of "variables". In Rever, a variable is declared by giving it a name and initial value, then a scope for which it's "live", and then a value to deinitialize it. Because of this structure, variables must be dropped in reverse order to how they were declared.
 
-	var i := 1
-		var j := f(i) + 1
-			i += 2
-			j -= 1
-		drop j := f(i - 2)
-	drop i := 1
-	
-	# same as above
-	var i := 1
+```
+var i := 1
 	var j := f(i) + 1
-	i += 2
-	j -= 1
+		i += 2
+		j -= 1
 	drop j := f(i - 2)
-	drop i := 1
+drop i := 3
+
+# same as above
+var i := 1
+var j := f(i) + 1
+i += 2
+j -= 1
+drop j := f(i - 2)
+drop i := 3
+```
 
 If-else branches can have at most 4 parts: the test, the code block to run if it passes, an optional else-block, and an optional assertion. Only the assertion and test are swapped when running backwards. The value of the assertion *must* match the value of the test at the end of the branch. If the assertion is not given, it's assumed to be the same as the test. Note that this is *not always* what you may want.
 
-	if a = 0
-		b += 1
-	fi
-	
-	# same as above
-	if a = 0
-		b += 1
-	fi a = 0
-	
-	# omitting assertion wouldn't work here
-	if a = b
-		a += b
-	else
-		a -= b
-	fi a = 2*b
+```
+if a = 0
+	b += 1
+fi
+
+# same as above
+if a = 0
+	b += 1
+fi a = 0
+
+# omitting assertion wouldn't work here
+if a = b
+	a += b
+else
+	a -= b
+fi a = 2*b
+```
 
 If any variables being checked could change while in the branch, you *will* have to write an assertion.
 
 You can also have continuous `else if` sections (with the caveat of maybe having to remember which assert goes with which condition later on), as such:
 
-	if a = 0
-		do smth0
-	else if a = 1
+```
+if a = 0
+	do smth0
+else if a = 1
+	do smth1
+else if a = 2
+...
+else if a = 10
+	do smth10
+else
+	do smth
+fi a = 10
+fi ...
+fi a = 2
+fi a = 1
+fi a = 0
+
+# this is the same as above
+if a = 0
+	do smth0
+else
+	if a = 1
 		do smth1
-	else if a = 2
-	...
-	else if a = 10
-		do smth10
 	else
-		do smth
-	fi a = 10
-	fi ...
-	fi a = 2
-	fi a = 1
-	fi a = 0
-	
-	# this is the same as above
-	if a = 0
-		do smth0
-	else
-		if a = 1
-			do smth1
+		if a = 2
+		...
 		else
-			if a = 2
-			...
+			if a = 10
+				do smth10
 			else
-				if a = 10
-					do smth10
-				else
-					do smth
-				fi a = 10
-			...
-			fi a = 2
-		fi a = 1
-	fi a = 0
+				do smth
+			fi a = 10
+		...
+		fi a = 2
+	fi a = 1
+fi a = 0
+```
 
 Loops are a bit more complicated. They have an assertion at the beginning, a do-block or a back-block (or both), and a test. The initial assertion can only be true at the start, and *must* be false while looping. The do-block is then executed. After that, the test is evaluated to see if the loop should stop. If the test is true, we exit the loop. Otherwise, the back-block is executed, the assertion is checked to be false, and it loops back again to running the do-block. Like conditionals, only the test and assertion are swapped when going in reverse.
 
-	# i goes from 0 to 5 (exclusive)
-	from i = 0
-		do println: "hi"
-		i += 1
-	until i = 5 end
+```
+# i goes from 0 to 5 (exclusive)
+from i = 0
+	do println: "hi"
+	i += 1
+until i = 5
+loop
 
-	# i goes from 0 to 5 (inclusive)
-	from i = 0
-		do println: "hi"
-	until i = 5
-		i += 1
-	end
+# i goes from 0 to 5 (inclusive)
+from i = 0
+	do println: "hi"
+until i = 5
+	i += 1
+loop
+```
 
 The back-block gives the flexibility of running the test before actually executing code, or to have code that runs only after the test fails.
 
@@ -168,37 +177,23 @@ In loops, the assertion can be the end value of the iterating variable, or a pre
 Procedures and Functions
 ------------------------
 
-Rever has both procedures and functions.
+Following in Rever's dualist philosophy, it has both procedures and functions.
 
 **Procedures** run a series of statements, optionally taking a list of arguments. Parameters have ["copy-in copy-out"] semantics which means that if a procedure marks one of its parameters as mutable with `var`, then the value of the variable given to that parameter by the caller could change after the procedure is called. They can also have side-effects.
 
 **Functions** evaluate a list of immutable arguments and return a value. This means that a function can return a value and can therefore be used in expressions. Unlike procedures, functions cannot have side-effects; any variables or globals outside of their scope are not accessible.
 
-Use procedures if you want to:
-+ have side-effects.
-+ handle mutable state.
-+ write code in a more imperative style.
+Use procedures if you want:
++ side-effects,
++ mutable state,
++ a more imperative/control-flow style,
++ or more control over memory use.
 
-Use functions if you want to:
-+ return a value.
-+ not have side-effects.
-+ write code in a more expressive style.
-
-### Why not just have only one or the other?
-
-The answer is actually a bit complicated.
-
-Janus could get away with only having procedures (and keeping expressions to specific places) because that was the minimum necessary to get it to work. But once the tests become more complicated or you add custom data structures, writing expression can quickly become unwieldy. Which is how the idea for functions came about.
-
-Procedures follow a *statement-oriented* style, while functions follow an *expression-oriented* style. Statements are reversible, while expressions are one-way and therefore reductive.
-
-If expressions are reductive by nature, how can we possibly make them reversible? First we must understand that anything that an irreversible computer can do, a reversible computer can do as well. The only issue is that reversible computers will generate a lot of extraneous data that allows a calculation to be undone. This data is not really useful to the programmer, hence why it's often called *garbage*.
-
-Functions need to return a single value to be used in expressions, but according to reversible logic, functions *must* return the same number of arguments for it to stand a chance at being reversible. (Yeah that's not the only requirement; it must also be [injective].) How can a function be reversible *and* return only one value?
-
-This problem may seem insurmountable, but it's actually not! Turns out, if all values except the return value are kept the same (immutable), then it becomes trivially reversible the same way all expressions already are: you calculate the result, copy it, then uncalculate it. Hoorah, no garbage!
-
-As a result, procedures and functions were both kept since their different properties allow the programmer to choose one or the other based on which tool is best for the task at hand. Procedures can handle mutable state and side-effects (while keeping garbage to a minimum), and functions can return values and allow writing code in a more terse and *expressive* way.
+Use functions if you want:
++ a return value,
++ no side-effects,
++ a more functional/data-flow style,
++ or more ease of development.
 
 
 Features under construction
@@ -233,28 +228,30 @@ This would be the same as `a = b && c > d || a != d` in C-like languages. `and` 
 A pattern-matching statement like `match` would be useful when a variable is being checked for multiple values.
 
 Instead of
+
 ```
-if a = b
-    do something1
-else if a = c
-    do something2
-else if a = d
-    # ...
+if a = 0
+	do something1
+else if a = 1
+	do something2
+else if a = 2
+	# ...
 fi
 fi
 fi
 ```
 
 you can write something like this (syntax subject to change):
+
 ```
 match a
-    b -> 1
-    c -> 2
-    d -> 3
-    # ...
-    _ -> 0
+	0 -> do something1
+	1 -> do something2
+	2 -> # ...
+	_ -> skip
 end
 ```
+
 
 ### `for` loops
 

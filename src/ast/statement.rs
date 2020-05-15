@@ -196,25 +196,19 @@ impl Parse for Statement {
 				let mut back_block = Vec::new();
 				loop {
 					match tokens.peek() {
-						Some(Token::End) => {
+						Some(Token::Loop) => {
 							tokens.next();
 							break;
 						}
 						Some(_) =>
 							back_block.push(Statement::parse(tokens)?),
 						None =>
-							return Err("a statement or `end`")
+							return Err("a statement or `loop`")
 					}
 				}
 				
-				// the optional `from` in `end from`
-				if tokens.peek() == Some(&Token::From) { tokens.next(); }
-				
-				// the optional `from` in `end from`
-				if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
-				
 				if main_block.is_empty() && back_block.is_empty() {
-					return Err("a non-empty do-block or back-block in loop");
+					return Err("a non-empty do-block or back-block in from-loop");
 				}
 				
 				Ok(Statement::From(assert, main_block, back_block, test))
