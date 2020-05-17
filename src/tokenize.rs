@@ -21,7 +21,8 @@ pub enum Token {
 	
 	// multi-purpose
 	Plus, At, Colon, Comma, Period, Semicolon, Minus,
-	Star, FSlash, Bang, Caret, Range, Scope,
+	Star, FSlash, Bang, Caret, Range, Scope, Hash,
+	RightArrow,
 	
 	Newline,
 	
@@ -82,6 +83,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					"from"  => Token::From,
 					"if"    => Token::If,
 					"let"   => Token::Let,
+					"loop"  => Token::Loop,
 					"mod"   => Token::Mod,
 					"not"   => Token::Not,
 					"or"    => Token::Or,
@@ -94,7 +96,6 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					// reserved
 					"for"   => Token::For,
 					"in"    => Token::In,
-					"loop"  => Token::Loop,
 					"match" => Token::Match,
 					"then"  => Token::Then,
 
@@ -137,9 +138,11 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 							Some('"')  => '"',
 							Some('”')  => '”',
 							Some('»')  => '»',
+							Some('«')  => '«',
 							
 							Some('n')  => '\n',
 							Some('t')  => '\t',
+							Some('r')  => '\r',
 							Some('0')  => '\0',
 							
 							Some(_) =>
@@ -172,12 +175,6 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					chars.next();
 					Token::Lte
 				}
-				/*
-				Some(':') => {
-					chars.next();
-					Token::Rol
-				}
-				*/
 				_ => Token::Lt
 			}
 			'>' => match chars.peek() {
@@ -207,14 +204,22 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					chars.next();
 					Token::Assign
 				}
+				Some('>') => {
+					chars.next();
+					Token::Ror
+				}
+				Some('<') => {
+					chars.next();
+					Token::Rol
+				}
+				/*
 				Some(':') => {
 					chars.next();
 					Token::Scope
 				}
-				/*
-				Some('>') => {
+				Some('-') => {
 					chars.next();
-					Token::Ror
+					unimplemented!()
 				}
 				*/
 				_ => Token::Colon
@@ -233,27 +238,36 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					chars.next();
 					Token::SubAssign
 				}
+				Some('>') => {
+					chars.next();
+					Token::RightArrow
+				}
 				_ => Token::Minus
 			}
 			'*' => Token::Star,
 			'/' => Token::FSlash,
 			'^' => Token::Caret,
+			'#' => Token::Hash,
 			
+			// unicode options
 			'≠' => Token::Neq,
 			'≤' => Token::Lte,
 			'≥' => Token::Gte,
+			'→' => Token::RightArrow,
+			'↔' => Token::Swap,
 
 			// space
-			' ' | '\t' => continue,
+			' ' | '\t' | '\r' => continue,
 			
 			// track newlines
 			'\n' => Token::Newline,
 
 			// comment
-			'#' => {
+			'~' => {
 				while chars.peek() != Some(&'\n') || chars.peek() == None {
 					chars.next();
 				}
+				chars.next(); // consume newline
 				continue;
 			}
 			

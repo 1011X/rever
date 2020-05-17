@@ -17,8 +17,8 @@ pub enum Statement {
 	//Not(LValue),
 	//Neg(LValue),
 	
-	//RotLeft(LValue, Expr),
-	//RotRight(LValue, Expr),
+	RotLeft(LValue, Expr),
+	RotRight(LValue, Expr),
 	
 	Xor(LValue, Expr),
 	Add(LValue, Expr),
@@ -376,6 +376,19 @@ impl Parse for Statement {
 						    Ok(Statement::Sub(lval, expr))
 						}
 						
+						Some(Token::Rol) => {
+							tokens.next();
+							
+						    let expr = Expr::parse(tokens)?;
+						    Ok(Statement::RotLeft(lval, expr))
+						}
+						Some(Token::Ror) => {
+							tokens.next();
+							
+						    let expr = Expr::parse(tokens)?;
+						    Ok(Statement::RotRight(lval, expr))
+						}
+						
 						Some(Token::Swap) => {
 							tokens.next();
 							
@@ -458,7 +471,26 @@ impl Statement {
 						.expect("variable name not found");
 					t[pos].1 = Value::Int(l.wrapping_sub(r));
 				}
-				_ => return Err("tried to do something illegal"),
+				_ => return Err("tried to do something illegal")
+			}
+			
+			RotLeft(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => {
+					let pos = t.iter()
+						.rposition(|var| var.0 == lval.id)
+						.expect("variable name not found");
+					t[pos].1 = Value::Int(l.rotate_left(r as u32));
+				}
+				_ => return Err("tried to do something illegal")
+			}
+			RotRight(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => {
+					let pos = t.iter()
+						.rposition(|var| var.0 == lval.id)
+						.expect("variable name not found");
+					t[pos].1 = Value::Int(l.rotate_right(r as u32));
+				}
+				_ => return Err("tried to do something illegal")
 			}
 			
 			Swap(left, right) => {
