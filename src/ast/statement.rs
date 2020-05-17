@@ -17,8 +17,8 @@ pub enum Statement {
 	//Not(LValue),
 	//Neg(LValue),
 	
-	//RotLeft(LValue, Expr),
-	//RotRight(LValue, Expr),
+	RotLeft(LValue, Expr),
+	RotRight(LValue, Expr),
 	
 	Xor(LValue, Expr),
 	Add(LValue, Expr),
@@ -196,25 +196,19 @@ impl Parse for Statement {
 				let mut back_block = Vec::new();
 				loop {
 					match tokens.peek() {
-						Some(Token::End) => {
+						Some(Token::Loop) => {
 							tokens.next();
 							break;
 						}
 						Some(_) =>
 							back_block.push(Statement::parse(tokens)?),
 						None =>
-							return Err("a statement or `end`")
+							return Err("a statement or `loop`")
 					}
 				}
 				
-				// the optional `from` in `end from`
-				if tokens.peek() == Some(&Token::From) { tokens.next(); }
-				
-				// the optional `from` in `end from`
-				if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
-				
 				if main_block.is_empty() && back_block.is_empty() {
-					return Err("a non-empty do-block or back-block in loop");
+					return Err("a non-empty do-block or back-block in from-loop");
 				}
 				
 				Ok(Statement::From(assert, main_block, back_block, test))
@@ -382,6 +376,19 @@ impl Parse for Statement {
 						    Ok(Statement::Sub(lval, expr))
 						}
 						
+						Some(Token::Rol) => {
+							tokens.next();
+							
+						    let expr = Expr::parse(tokens)?;
+						    Ok(Statement::RotLeft(lval, expr))
+						}
+						Some(Token::Ror) => {
+							tokens.next();
+							
+						    let expr = Expr::parse(tokens)?;
+						    Ok(Statement::RotRight(lval, expr))
+						}
+						
 						Some(Token::Swap) => {
 							tokens.next();
 							
@@ -464,7 +471,26 @@ impl Statement {
 						.expect("variable name not found");
 					t[pos].1 = Value::Int(l.wrapping_sub(r));
 				}
-				_ => return Err("tried to do something illegal"),
+				_ => return Err("tried to do something illegal")
+			}
+			
+			RotLeft(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => {
+					let pos = t.iter()
+						.rposition(|var| var.0 == lval.id)
+						.expect("variable name not found");
+					t[pos].1 = Value::Int(l.rotate_left(r as u32));
+				}
+				_ => return Err("tried to do something illegal")
+			}
+			RotRight(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+				(Value::Int(l), Value::Int(r)) => {
+					let pos = t.iter()
+						.rposition(|var| var.0 == lval.id)
+						.expect("variable name not found");
+					t[pos].1 = Value::Int(l.rotate_right(r as u32));
+				}
+				_ => return Err("tried to do something illegal")
 			}
 			
 			Swap(left, right) => {
@@ -509,6 +535,11 @@ impl Statement {
 							pr.call(vals, m);
 							break;
 						}
+					} else if let Item::InternProc(name, pr, _) = item {
+						if *name == *callee_name {
+							pr(vals.into_boxed_slice());
+							break;
+						}
 					}
 				}
 			}
@@ -521,6 +552,11 @@ impl Statement {
 					if let Item::Proc(pr) = item {
 						if pr.name == *callee_name {
 							pr.uncall(vals, m);
+							break;
+						}
+					} else if let Item::InternProc(name, _, pr) = item {
+						if *name == *callee_name {
+							pr(vals.into_boxed_slice());
 							break;
 						}
 					}
@@ -544,6 +580,7 @@ impl Statement {
 					_ => return Err("tried to do something illegal")
 				}
 			}
+			
 			From(assert, do_block, loop_block, test) => {
 				assert_eq!(assert.eval(t)?, Value::Bool(true));
 				loop {

@@ -4,7 +4,7 @@ pub enum Token {
 	And, Do, Drop, Else, End, Fi, From, If, Mod, Not, Or, Proc, Skip, Then,
 	Undo, Until, Var,
 	// unused
-	Fn, Let, Loop, Match, As, For, In, //Goto, ComeFrom,
+	Alias, Fn, Let, Loop, Match, As, For, In, //Goto, ComeFrom,
 	
 	// brackets
 	LParen, RParen, LBracket, RBracket, LBrace, RBrace,
@@ -21,7 +21,8 @@ pub enum Token {
 	
 	// multi-purpose
 	Plus, At, Colon, Comma, Period, Semicolon, Minus,
-	Star, FSlash, Bang, Caret,
+	Star, FSlash, Bang, Caret, Range, Scope, Hash,
+	RightArrow,
 	
 	Newline,
 	
@@ -70,6 +71,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 				
 				match token.as_str() {
 					// keywords
+					"alias" => Token::Alias,
 					"and"   => Token::And,
 					"as"    => Token::As,
 					"do"    => Token::Do,
@@ -81,12 +83,12 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					"from"  => Token::From,
 					"if"    => Token::If,
 					"let"   => Token::Let,
+					"loop"  => Token::Loop,
 					"mod"   => Token::Mod,
 					"not"   => Token::Not,
 					"or"    => Token::Or,
 					"proc"  => Token::Proc,
 					"skip"  => Token::Skip,
-					"then"  => Token::Then,
 					"undo"  => Token::Undo,
 					"until" => Token::Until,
 					"var"   => Token::Var,
@@ -94,8 +96,8 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					// reserved
 					"for"   => Token::For,
 					"in"    => Token::In,
-					"loop"  => Token::Loop,
 					"match" => Token::Match,
+					"then"  => Token::Then,
 
 					_ => Token::Ident(token)
 				}
@@ -118,11 +120,12 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 			}
 			
 			// handle strings
-			'"' | '“' | '«' => {
+			'"' | '“' | '«' | '»' => {
 				let mut string = String::new();
 				let dual = match c {
 					'"' => '"',
 					'“' => '”',
+					'»' => '«',
 					'«' => '»',
 					_ => unreachable!()
 				};
@@ -135,9 +138,11 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 							Some('"')  => '"',
 							Some('”')  => '”',
 							Some('»')  => '»',
+							Some('«')  => '«',
 							
 							Some('n')  => '\n',
 							Some('t')  => '\t',
+							Some('r')  => '\r',
 							Some('0')  => '\0',
 							
 							Some(_) =>
@@ -170,12 +175,6 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					chars.next();
 					Token::Lte
 				}
-				/*
-				Some(':') => {
-					chars.next();
-					Token::Rol
-				}
-				*/
 				_ => Token::Lt
 			}
 			'>' => match chars.peek() {
@@ -193,16 +192,34 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 			'{' => Token::LBrace,
 			'}' => Token::RBrace,
 			',' => Token::Comma,
-			'.' => Token::Period,
+			'.' => match chars.peek() {
+				Some('.') => {
+					chars.next();
+					Token::Range
+				}
+				_ => Token::Period
+			}
 			':' => match chars.peek() {
 				Some('=') => {
 					chars.next();
 					Token::Assign
 				}
-				/*
 				Some('>') => {
 					chars.next();
 					Token::Ror
+				}
+				Some('<') => {
+					chars.next();
+					Token::Rol
+				}
+				/*
+				Some(':') => {
+					chars.next();
+					Token::Scope
+				}
+				Some('-') => {
+					chars.next();
+					unimplemented!()
 				}
 				*/
 				_ => Token::Colon
@@ -221,27 +238,36 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					chars.next();
 					Token::SubAssign
 				}
+				Some('>') => {
+					chars.next();
+					Token::RightArrow
+				}
 				_ => Token::Minus
 			}
 			'*' => Token::Star,
 			'/' => Token::FSlash,
 			'^' => Token::Caret,
+			'#' => Token::Hash,
 			
+			// unicode options
 			'≠' => Token::Neq,
 			'≤' => Token::Lte,
 			'≥' => Token::Gte,
+			'→' => Token::RightArrow,
+			'↔' => Token::Swap,
 
 			// space
-			' ' | '\t' => continue,
+			' ' | '\t' | '\r' => continue,
 			
 			// track newlines
 			'\n' => Token::Newline,
 
 			// comment
-			'#' => {
+			'~' => {
 				while chars.peek() != Some(&'\n') || chars.peek() == None {
 					chars.next();
 				}
+				chars.next(); // consume newline
 				continue;
 			}
 			
@@ -252,9 +278,37 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 	if tokens.last() == Some(&Token::Newline) {
 		tokens.pop();
 	}
+	
 	tokens.dedup_by(|a, b| *a == Token::Newline && *b == Token::Newline);
 	tokens.shrink_to_fit();
 	Ok(tokens)
+}
+
+use std::path::Path;
+pub fn tokenize_file<P: AsRef<Path>>(path: P) -> std::io::Result<Tokens> {
+	use std::fs::read_to_string as open;
+	
+	let source = open(path)?;
+	
+	Ok(tokenize(&source)
+		.expect("Lexer error")
+		.into_iter()
+		.peekable())
+}
+
+struct TokenStream {
+	stream: std::vec::IntoIter<Token>,
+	peek: Option<Token>,
+}
+
+impl TokenStream {
+	fn from_vec(v: Vec<Token>) -> TokenStream {
+		TokenStream {
+			stream: v.into_iter(),
+			peek: None,
+		}
+	}
+	fn expect(&mut self, token: Token) {}
 }
 
 #[cfg(test)]

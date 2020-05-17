@@ -48,8 +48,7 @@ impl Parse for LValue {
     				
     				if let Some(Token::Ident(name)) = tokens.next() {
     					ops.push(Deref::Field(name));
-    				}
-    				else {
+    				} else {
     					return Err("field name after variable");
     				}
     			}
