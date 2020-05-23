@@ -12,7 +12,7 @@ pub struct Param {
 
 #[derive(Debug, Clone)]
 pub struct Procedure {
-	/// Name of the function.
+	/// Name of the procedure.
 	pub name: String,
 	/// List of parameters for the procedure.
 	pub params: Vec<Param>,

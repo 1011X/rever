@@ -4,16 +4,6 @@ use super::*;
 pub enum Statement {
 	Skip,
 	
-	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
-	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
-	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
-	
-	//Match(String, Vec<_, Vec<Statement>>),
-	//FromVar(String, Expr, Vec<Statement>, Vec<Statement>, Expr),
-	
-	Do(String, Vec<Expr>),
-	Undo(String, Vec<Expr>),
-	
 	//Not(LValue),
 	//Neg(LValue),
 	
@@ -27,29 +17,39 @@ pub enum Statement {
 	Swap(LValue, LValue),
 	//CSwap(Factor, LValue, LValue),
 	
+	Do(String, Vec<Expr>),
+	Undo(String, Vec<Expr>),
+	
+	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
+	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
+	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
+	
+	//Match(String, Vec<_, Vec<Statement>>),
+	//FromVar(String, Expr, Vec<Statement>, Vec<Statement>, Expr),
 }
 
 impl Statement {
 	pub fn invert(self) -> Self {
 		use self::Statement::*;
 		match self {
-			Var(name, typ, init, scope, dest) =>
-				Var(name, typ, dest, scope, init),
+			Skip => self,
 			
-			//RotLeft(l, v) => RotRight(l, v),
-			//RotRight(l, v) => RotLeft(l, v),
+			RotLeft(l, v) => RotRight(l, v),
+			RotRight(l, v) => RotLeft(l, v),
 			Add(l, v) => Sub(l, v),
 			Sub(l, v) => Add(l, v),
+			Xor(..) => self,
+			Swap(..) => self,
 			
 			Do(p, args) => Undo(p, args),
 			Undo(p, args) => Do(p, args),
 			
+			Var(name, typ, init, scope, dest) =>
+				Var(name, typ, dest, scope, init),
 			If(test, block, else_block, assert) =>
 				If(assert, block, else_block, test),
 			From(assert, do_block, loop_block, test) =>
 				From(test, do_block, loop_block, assert),
-			
-			_ => self
 		}
 	}
 }
