@@ -24,16 +24,13 @@ TODO:
 #![allow(dead_code)]
 
 use std::env;
-//use std::path::Path;
 
-//use crate::ast::{Item, Module, Procedure};
-//use crate::parse;
-//use crate::tokenize::tokenize;
+use crate::ast::parse_file_module;
 
 pub mod ast;
 //pub mod compile;
+pub mod hir;
 pub mod interpret;
-pub mod parse;
 pub mod tokenize;
 
 fn main() {
@@ -62,7 +59,7 @@ fn main() {
 				.into_iter()
 				.peekable();
 			
-			match parse::parse_items(&mut tokens) {
+			match parse_file_module(&mut tokens) {
 				Ok(ast) => {
 					println!("AST: {:#?}", ast);
 				}

@@ -1,8 +1,8 @@
 use std::path::Path;
 //use std::io::prelude::*;
 
-use crate::ast::{Item, Module, Procedure};
-use crate::parse;
+use crate::ast;
+use crate::hir::{Item, Module, Procedure};
 use crate::tokenize::tokenize;
 
 mod io;
@@ -30,30 +30,22 @@ pub fn interpret_file<P: AsRef<Path>>(path: P) {
 		.into_iter()
 		.peekable();
 	
-	match parse::parse_items(&mut tokens) {
-		Ok(mut ast) => {
-			// look for main function
-			let main_pos = ast.iter()
-				.position(|item| matches!(
-					item,
-					Item::Proc(p) if p.name == "main"
-				));
+	match ast::parse_file_module(&mut tokens) {
+		Ok(ast) => {
+			// create root module
+			let mut root = Module::from(ast);
+				
+			root.0.insert(
+				String::from("puts"),
+				Item::InternProc(intrinsic::puts, intrinsic::unputs)
+			);
 			
 			// run main procedure, if any
-			if let Some(pos) = main_pos {
-				let main = ast.remove(pos);
-				
-				// create root module
-				let mut root_mod = Module::new("root", ast);
-				
-				root_mod.items.push(
-					Item::InternProc("puts", intrinsic::puts, intrinsic::unputs)
-				);
-				
+			if let Some(main) = root.0.get("main") {
 				if let Item::Proc(pr) = main {
-					pr.call(Vec::new(), &root_mod);
+					pr.call(Vec::new(), &root);
 				} else {
-					unreachable!();
+					eprintln!("found `main`, but it's not a procedure");
 				}
 			} else {
 				eprintln!("No main procedure found.");

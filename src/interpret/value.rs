@@ -1,4 +1,4 @@
-use crate::ast::{Literal, Type};
+use crate::hir::{Literal, Type};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {

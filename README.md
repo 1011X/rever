@@ -27,9 +27,11 @@ Irreversible actions are kept to a minimum. Reversible computers can still do al
 
 Please keep in mind that although Rever makes every attempt to keep garbage to a minimum, it cannot guarantee that the code you write will not be garbage. In order to reduce any uncertainty regarding this, we recommend assuming that any and all code is garbage.
 
+To get a better grasp of how a reversible language works, try the [Janus playground]!
+
 
 What's Rever like?
--------------------
+------------------
 
 Rever prefers to use newlines and keywords (e.g. `end`, `fi`) rather than braces to denote blocks. It may have significant *newlines*, but don't worry, it doesn't distinguish between spaces and tabs.
 
@@ -313,3 +315,4 @@ More specifically, the parameter marked with `var` will take the value that the 
 [install Rust]: https://www.rust-lang.org/tools/install
 [Janus]: https://en.wikipedia.org/wiki/Janus_(time-reversible_computing_programming_language)
 [rFun]: http://topps.diku.dk/pirc/?id=rfun
+[Janus playground]: http://topps.diku.dk/pirc/janus-playground/

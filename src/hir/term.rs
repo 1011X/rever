@@ -6,18 +6,14 @@ pub enum Term {
 	LVal(LValue),
 }
 
-impl Parse for Term {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-	    if let Ok(lit) = Literal::parse(tokens) {
-	        Ok(Term::Lit(lit))
-        } else {
-		    let lval = LValue::parse(tokens)?;
-		    Ok(Term::LVal(lval))
+impl Term {
+	pub fn eval(&self, t: &Scope) -> Value {
+	    match self {
+	        Term::Lit(lit) => lit.eval(),
+	        Term::LVal(lval) => lval.eval(t),
 	    }
 	}
-}
-
-impl Term {
+	
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
 			Term::Lit(lit) => Some(lit.get_type()),

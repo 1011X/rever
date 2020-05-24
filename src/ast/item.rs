@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone, Debug)]
 pub enum Item {
 	//Use(),
 	//Static(bool, String, Type, ConstExpr),
@@ -7,11 +8,6 @@ pub enum Item {
 	Proc(Procedure),
 	Fn(Function),
 	//Type(Type),
-	InternProc(
-		&'static str,
-		fn(Box<[Value]>) -> Box<[Value]>,
-		fn(Box<[Value]>) -> Box<[Value]>
-	)
 }
 
 impl Parse for Item {
@@ -44,15 +40,4 @@ impl From<Procedure> for Item {
 
 impl From<Function> for Item {
 	fn from(f: Function) -> Item { Item::Fn(f) }
-}
-
-impl std::fmt::Debug for Item {
-	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-		match self {
-			Item::Mod(m) => m.fmt(f),
-			Item::Proc(p) => p.fmt(f),
-			Item::Fn(func) => func.fmt(f),
-			Item::InternProc(..) => f.write_str("<internal procedure>"),
-		}
-	}
 }

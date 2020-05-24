@@ -8,7 +8,7 @@ pub enum Type {
     Char, String,
 	//Array(Box<Type>, usize),
 	Fn(Vec<Type>, Box<Type>),
-	//Proc(Vec<(bool, Type)>),
+	Proc(Vec<(bool, Type)>),
 	//Alternate(Vec<Type>),
 	//Composite(Vec<Type>),
 }
@@ -63,6 +63,35 @@ impl Parse for Type {
 				let ret = Type::parse(tokens)?;
 				
 				Ok(Type::Fn(params, Box::new(ret)))
+			}
+			Some(Token::Proc) => {
+				tokens.next();
+				
+				if tokens.next() != Some(Token::LParen) {
+					return Err("`(` for `proc` type");
+				}
+				
+				let mut params = Vec::new();
+				
+				while tokens.peek() != Some(&Token::RParen) {
+					let mut var = false;
+					
+					if let Some(Token::Var) = tokens.peek() {
+						var = true;
+						tokens.next();
+					}
+					
+					params.push((var, Type::parse(tokens)?));
+					
+					match tokens.peek() {
+						Some(Token::RParen) => {}
+						Some(Token::Comma) => { tokens.next(); }
+						_ => return Err("`)` or `,` in proc param list")
+					}
+				}
+				tokens.next();
+				
+				Ok(Type::Proc(params))
 			}
 			
 			_ => Err("a valid type")
