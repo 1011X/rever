@@ -11,9 +11,6 @@ pub enum Token {
 	
 	// relational
 	Neq, Lt, Gt, Lte, Gte, Eq,
-	// TODO: choose symbols for bit rotation in statements and expressions.
-	// tentative options:  :<  >:  <:  :>  |<  >|  <|  |>
-	Shl, Shr,
 	Rol, Ror,
 	
 	// statements
@@ -324,7 +321,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, TokenError> {
 
 struct TokenStream {
 	stream: std::vec::IntoIter<Token>,
-	peek: Option<Token>,
+	peeked: Option<Token>,
 }
 
 impl TokenStream {
@@ -334,19 +331,13 @@ impl TokenStream {
 			peek: None,
 		}
 	}
-	fn expect(&mut self, token: Token) {}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
 	
-	#[test]
-	fn keywords() {
-		assert_eq!(tokenize("do").unwrap(), vec![Token::Do]);
-		assert_eq!(tokenize("  do  \t").unwrap(), vec![Token::Do]);
-		assert_eq!(tokenize("does").unwrap(), vec![
-			Token::Ident(String::from("does"))
-		]);
+	fn expect(&mut self, token: Token) {}
+	
+	fn peek(&mut self) -> Option<&Token> {
+		if self.peeked.is_none() {
+			self.peeked = stream.next();
+		}
+		self.peeked.as_ref()
 	}
 }

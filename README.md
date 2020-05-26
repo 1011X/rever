@@ -308,6 +308,12 @@ end
 
 More specifically, the parameter marked with `var` will take the value that the procedure being called expects. For example, if a procedure starts with `from i = 0` and `i` is a `var` parameter, then `i` will be initialized with the value of 0.
 
+
+Thank you
+---------
+
+Like many of my personal projects, Rever is a labor of love. If you like it or would like to see it grow, consider becoming a monthly contributor on [my Patreon] page, or make a one-time donation at [my Ko-fi] account.
+
 ["copy-in copy-out"]: https://en.wikipedia.org/wiki/Evaluation_strategy#Call_by_copy-restore
 [injective]: https://en.wikipedia.org/wiki/Injective_function
 [Reversible computing]: https://en.wikipedia.org/wiki/Reversible_computing
@@ -316,3 +322,5 @@ More specifically, the parameter marked with `var` will take the value that the 
 [Janus]: https://en.wikipedia.org/wiki/Janus_(time-reversible_computing_programming_language)
 [rFun]: http://topps.diku.dk/pirc/?id=rfun
 [Janus playground]: http://topps.diku.dk/pirc/janus-playground/
+[my Patreon]: https://www.patreon.com/1011X
+[my Ko-fi]: https://ko-fi.com/tenelevenx
