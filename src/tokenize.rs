@@ -1,19 +1,16 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
 	// keywords
-	And, Do, Drop, Else, End, Fi, From, If, Mod, Not, Or, Proc, Skip, Then,
+	And, Do, Drop, Else, End, Fi, From, If, Let, Mod, Not, Or, Proc, Skip, Then,
 	Undo, Until, Var,
-	// unused
-	Alias, Fn, Let, Loop, Match, As, For, In, //Goto, ComeFrom,
+	// reserved
+	Alias, As, Fn, For, In, Loop, Match, Tag, //Goto, ComeFrom,
 	
 	// brackets
 	LParen, RParen, LBracket, RBracket, LBrace, RBrace,
 	
 	// relational
 	Neq, Lt, Gt, Lte, Gte, Eq,
-	// TODO: choose symbols for bit rotation in statements and expressions.
-	// tentative options:  :<  >:  <:  :>  |<  >|  <|  |>
-	Shl, Shr,
 	Rol, Ror,
 	
 	// statements
@@ -44,9 +41,16 @@ order of ops:
 7. = != < > <= >=
 */
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TokenError {
+	Eof,
+	InvalidEscChar,
+	UnknownChar,
+}
+
 pub type Tokens = std::iter::Peekable<std::vec::IntoIter<Token>>;
 
-pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
+pub fn tokenize(s: &str) -> Result<Vec<Token>, TokenError> {
 	let mut tokens = Vec::with_capacity(s.len());
 	let mut chars = s.chars().peekable();
 	
@@ -71,7 +75,6 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 				
 				match token.as_str() {
 					// keywords
-					"alias" => Token::Alias,
 					"and"   => Token::And,
 					"as"    => Token::As,
 					"do"    => Token::Do,
@@ -94,11 +97,14 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 					"var"   => Token::Var,
 					
 					// reserved
+					"alias" => Token::Alias,
 					"for"   => Token::For,
 					"in"    => Token::In,
 					"match" => Token::Match,
+					"tag"   => Token::Tag,
 					"then"  => Token::Then,
-
+					
+					// identifier
 					_ => Token::Ident(token)
 				}
 			}
@@ -146,12 +152,12 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 							Some('0')  => '\0',
 							
 							Some(_) =>
-								return Err("unknown escape character"),
+								return Err(TokenError::InvalidEscChar),
 							None =>
-								return Err("eof @ escaped character"),
+								return Err(TokenError::Eof),
 						}),
 						Some(c) => string.push(c),
-						None => return Err("eof @ string"),
+						None => return Err(TokenError::Eof),
 					}
 				}
 				
@@ -263,15 +269,42 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 			'\n' => Token::Newline,
 
 			// comment
-			'~' => {
-				while chars.peek() != Some(&'\n') || chars.peek() == None {
+			'~' => match chars.peek() {
+				None => continue,
+				Some('[') => {
 					chars.next();
+					loop {
+						if let Some(']') = chars.next() {
+							if let Some('~') = chars.peek() {
+								chars.next();
+								break;
+							}
+						}
+					}
+					continue;
 				}
-				chars.next(); // consume newline
-				continue;
+				Some('{') => {
+					chars.next();
+					loop {
+						if let Some('}') = chars.next() {
+							if let Some('~') = chars.peek() {
+								chars.next();
+								break;
+							}
+						}
+					}
+					continue;
+				}
+				Some(_) => {
+					chars.next();
+					while chars.peek() != Some(&'\n') || chars.peek() == None {
+						chars.next();
+					}
+					continue;
+				}
 			}
 			
-			_ => return Err("unrecognized symbol")
+			_ => return Err(TokenError::UnknownChar)
 		});
 	}
 	
@@ -284,21 +317,11 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, &'static str> {
 	Ok(tokens)
 }
 
-use std::path::Path;
-pub fn tokenize_file<P: AsRef<Path>>(path: P) -> std::io::Result<Tokens> {
-	use std::fs::read_to_string as open;
-	
-	let source = open(path)?;
-	
-	Ok(tokenize(&source)
-		.expect("Lexer error")
-		.into_iter()
-		.peekable())
-}
+
 
 struct TokenStream {
 	stream: std::vec::IntoIter<Token>,
-	peek: Option<Token>,
+	peeked: Option<Token>,
 }
 
 impl TokenStream {
@@ -308,19 +331,13 @@ impl TokenStream {
 			peek: None,
 		}
 	}
-	fn expect(&mut self, token: Token) {}
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
 	
-	#[test]
-	fn keywords() {
-		assert_eq!(tokenize("do").unwrap(), vec![Token::Do]);
-		assert_eq!(tokenize("  do  \t").unwrap(), vec![Token::Do]);
-		assert_eq!(tokenize("does").unwrap(), vec![
-			Token::Ident(String::from("does"))
-		]);
+	fn expect(&mut self, token: Token) {}
+	
+	fn peek(&mut self) -> Option<&Token> {
+		if self.peeked.is_none() {
+			self.peeked = stream.next();
+		}
+		self.peeked.as_ref()
 	}
 }

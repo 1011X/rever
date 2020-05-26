@@ -5,8 +5,6 @@ Stuff to consider adding:
   + `#final fn f(): ...`
 + Use `.` for "alternatives"
   + E.g. module paths, tagged unions, etc.
-+ Use indexing, like `a[0]`, for "composites".
-  + E.g. struct fields, array elements, etc.
 + Should "objects" have a prototype like in Javascript?
 + Should "objects" be more like a set of procedures/functions that data structs
   implement?
@@ -16,7 +14,6 @@ Stuff to consider adding:
 TODO:
 + Evaluation
 + stdlib & prelude
-+ more examples from Janus
 
 */
 
@@ -24,16 +21,13 @@ TODO:
 #![allow(dead_code)]
 
 use std::env;
-//use std::path::Path;
 
-//use crate::ast::{Item, Module, Procedure};
-//use crate::parse;
-//use crate::tokenize::tokenize;
+use crate::ast::parse_file_module;
 
 pub mod ast;
 //pub mod compile;
+pub mod hir;
 pub mod interpret;
-pub mod parse;
 pub mod tokenize;
 
 fn main() {
@@ -45,34 +39,8 @@ fn main() {
 		None => {
 			print!(">>> ");
 			unimplemented!();
-		}
-		
-		Some(cmd) if cmd == "do" => {
-			unimplemented!()
-		}
-		
-		Some(cmd) if cmd == "ast" => {
-			use std::fs::read_to_string as open;
 			
-			let path = args.next().expect("Must provide a path.");
 			
-			let source = open(path).expect("Could not read file");
-			let mut tokens = tokenize::tokenize(&source)
-				.expect("Could not tokenize")
-				.into_iter()
-				.peekable();
-			
-			match parse::parse_items(&mut tokens) {
-				Ok(ast) => {
-					println!("AST: {:#?}", ast);
-				}
-				Err(e) => {
-					let remaining_tokens = tokens.clone()
-						.collect::<Box<[_]>>();
-					eprintln!("Expected {}.", e);
-					eprintln!("Tokens: {:#?}", remaining_tokens);
-				}
-			}
 		}
 		
 		// interpret stdin
@@ -89,7 +57,28 @@ fn main() {
 		
 		// interpret file
 		Some(file) => {
-			interpret::interpret_file(file);
+			use std::fs::read_to_string as open;
+			
+			let path = args.next().expect("Must provide a path.");
+			
+			let source = open(path).expect("Could not read file");
+			
+			let mut tokens = tokenize::tokenize(&source)
+				.expect("Could not tokenize")
+				.into_iter()
+				.peekable();
+			
+			match parse_file_module(&mut tokens) {
+				Ok(ast) => {
+					println!("AST: {:#?}", ast);
+				}
+				Err(e) => {
+					let remaining_tokens = tokens.clone()
+						.collect::<Box<[_]>>();
+					eprintln!("Expected {}.", e);
+					eprintln!("Tokens: {:#?}", remaining_tokens);
+				}
+			}
 		}
 	} 
 }
