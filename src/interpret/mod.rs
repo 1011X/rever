@@ -1,9 +1,7 @@
-use std::path::Path;
 //use std::io::prelude::*;
 
 use crate::ast;
-use crate::hir::{Item, Module, Procedure};
-use crate::tokenize::tokenize;
+use crate::hir::{Item, Module};
 
 mod io;
 mod value;
@@ -21,42 +19,24 @@ pub type Scope = Vec<(String, Value)>;
 pub type Stack = Vec<StackFrame>;
 
 
-pub fn interpret_file<P: AsRef<Path>>(path: P) {
-	use std::fs::read_to_string as open;
+pub fn interpret_file(items: Vec<ast::Item>) {
+	// create root module
+	let mut root = Module::from(items);
+		
+	root.0.insert(
+		String::from("puts"),
+		Item::InternProc(intrinsic::puts, intrinsic::unputs)
+	);
 	
-	let source = open(path).expect("Could not read file");
-	let mut tokens = tokenize(&source)
-		.expect("Lexer error")
-		.into_iter()
-		.peekable();
-	
-	match ast::parse_file_module(&mut tokens) {
-		Ok(ast) => {
-			// create root module
-			let mut root = Module::from(ast);
-				
-			root.0.insert(
-				String::from("puts"),
-				Item::InternProc(intrinsic::puts, intrinsic::unputs)
-			);
-			
-			// run main procedure, if any
-			if let Some(main) = root.0.get("main") {
-				if let Item::Proc(pr) = main {
-					pr.call(Vec::new(), &root);
-				} else {
-					eprintln!("found `main`, but it's not a procedure");
-				}
-			} else {
-				eprintln!("No main procedure found.");
-			}
+	// run main procedure, if any
+	if let Some(main) = root.0.get("main") {
+		if let Item::Proc(pr) = main {
+			pr.call(Vec::new(), &root);
+		} else {
+			eprintln!("found `main`, but it's not a procedure");
 		}
-		Err(e) => {
-			let remaining_tokens = tokens.clone()
-				.collect::<Box<[_]>>();
-			eprintln!("Expected {}.", e);
-			eprintln!("Tokens: {:#?}", remaining_tokens);
-		}
+	} else {
+		eprintln!("No main procedure found.");
 	}
 }
 

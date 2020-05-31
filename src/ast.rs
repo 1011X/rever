@@ -17,7 +17,6 @@ List of state given to program:
 
 */
 use crate::tokenize::{Token, Tokens};
-//use crate::interpret::{EvalResult, Scope, Value};
 
 mod expr;
 mod function;
@@ -36,8 +35,7 @@ pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::LValue;
 pub use self::module::Module;
-pub use self::procedure::Procedure;
-pub use self::procedure::Param;
+pub use self::procedure::{Param, Procedure};
 pub use self::statement::Statement;
 pub use self::term::Term;
 pub use self::types::Type;

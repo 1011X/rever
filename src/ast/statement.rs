@@ -20,7 +20,7 @@ pub enum Statement {
 	Do(String, Vec<Expr>),
 	Undo(String, Vec<Expr>),
 	
-	Var(String, Option<Type>, Expr, Vec<Statement>, Option<Expr>),
+	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	//Match(String, Vec<_, Vec<Statement>>),
@@ -138,9 +138,8 @@ impl Parse for Statement {
 				let assert = Expr::parse(tokens)?;
 				
 				// ensure there's a newline afterwards
-				if tokens.next() != Some(Token::Newline) {
-					return Err("newline after from expression");
-				}
+				tokens.expect(&Token::Newline)
+					.ok_or("newline after from expression")?;
 				
 				// parse the main loop block
 				let mut main_block = Vec::new();
@@ -162,9 +161,8 @@ impl Parse for Statement {
 				let test = Expr::parse(tokens)?;
 				
 				// ensure there's a newline afterwards
-				if tokens.next() != Some(Token::Newline) {
-					return Err("newline after until expression");
-				}
+				tokens.expect(&Token::Newline)
+					.ok_or("newline after until expression")?;
 				
 				// parse reverse loop block
 				let mut back_block = Vec::new();
@@ -174,10 +172,8 @@ impl Parse for Statement {
 							tokens.next();
 							break;
 						}
-						Some(_) =>
-							back_block.push(Statement::parse(tokens)?),
-						None =>
-							return Err("a statement or `loop`")
+						Some(_) => back_block.push(Statement::parse(tokens)?),
+						None => return Err("a statement or `loop`"),
 					}
 				}
 				
@@ -208,17 +204,15 @@ impl Parse for Statement {
 				}
 				
 				// check for assignment op
-				if tokens.next() != Some(Token::Assign) {
-					return Err("`:=`");
-				}
+				tokens.expect(&Token::Assign)
+					.ok_or("`:=` after variable name")?;
 				
 				// get initialization expression
 				let init = Expr::parse(tokens)?;
 				
 				// get newline
-				if tokens.next() != Some(Token::Newline) {
-					return Err("newline after variable declaration");
-				}
+				tokens.expect(&Token::Newline)
+					.ok_or("newline after variable declaration")?;
 				
 				// get list of statements for which this variable is valid
 				let mut block = Vec::new();
@@ -237,18 +231,17 @@ impl Parse for Statement {
 				}
 				
 				// get deinit name
-				match tokens.next() {
-					Some(Token::Ident(n)) if *n == name => {}
-					_ => return Err("same variable name as before")
-				}
+				tokens.expect(&Token::Ident(name.to_string()))
+					.ok_or("same variable name as before")?;
 				
 				// check for assignment op
-				if tokens.next() != Some(Token::Assign) {
-					return Err("`:=`");
-				}
-				
-				// get deinit expression
-				let drop = Expr::parse(tokens)?;
+				let drop =
+					if tokens.peek() == Some(&Token::Assign) {
+						tokens.next();
+						Expr::parse(tokens)?
+					} else {
+						init.clone()
+					};
 				
 				Ok(Statement::Var(name, typ, init, block, drop))
 			}
@@ -260,10 +253,9 @@ impl Parse for Statement {
 				// parse if condition
 				let cond = Expr::parse(tokens)?;
 				
-				// ensure there's a newline afterwards
-				if tokens.next() != Some(Token::Newline) {
-					return Err("newline after `if` predicate");
-				}
+				// expect newline
+				tokens.expect(&Token::Newline)
+					.ok_or("newline after `if` predicate")?;
 				
 				// parse the main block
 				let mut main_block = Vec::new();
@@ -315,9 +307,9 @@ impl Parse for Statement {
 					}
 				}
 				
-				if tokens.next() != Some(Token::Fi) {
-					return Err("`fi` to finish `if` statement");
-				}
+				// expect ending `fi`
+				tokens.expect(&Token::Fi)
+					.ok_or("`fi` to finish `if` statement")?;
 				
 				// parse the `fi` assertion if any, else use initial condition
 				let assert = match tokens.peek() {
@@ -381,9 +373,8 @@ impl Parse for Statement {
 		};
 				
 		// consume newline afterwards, if any
-		if tokens.peek() == Some(&Token::Newline) {
-			tokens.next();
-		}
+		tokens.expect(&Token::Newline)
+			.ok_or("newline after statement")?;
 		
 		res
 	}

@@ -60,17 +60,15 @@ impl Parse for Expr {
 			let test = Box::new(Expr::parse_rel(tokens)?);
 			
 			// ensure there's a newline afterwards
-			if tokens.next() != Some(Token::Then) {
-				return Err("`then` after `if` predicate");
-			}
+			tokens.expect(&Token::Then)
+				.ok_or("`then` after `if` predicate")?;
 			
 			// parse the main block
 			let main_expr = Box::new(Expr::parse(tokens)?);
 			
 			// check for `else`
-			if tokens.next() != Some(Token::Else) {
-				return Err("`else` in `if` expression");
-			}
+			tokens.expect(&Token::Else)
+				.ok_or("`else` in `if` expression")?;
 			
 			// parse else section
 			let else_block = Box::new(Expr::parse(tokens)?);
@@ -92,19 +90,17 @@ impl Parse for Expr {
 				None
 			};
 			
-			// check for '='
-			if tokens.next() != Some(Token::Eq) {
-				return Err("`=` after let-binding name");
-			};
+			// expect '='
+			tokens.expect(&Token::Eq)
+				.ok_or("`=` after let-binding name")?;
 			
 			// val is artificially limited here on purpose. it doesn't make much
 			// sence to allow `let` inside a `let` binding value, for example.
 			let val = Expr::parse_rel(tokens)?;
 			
 			// check for newline
-			if tokens.next() != Some(Token::Newline) {
-				return Err("`in` after `let` binding");
-			}
+			tokens.expect(&Token::Newline)
+				.ok_or("`in` after `let` binding")?;
 			
 			let scope = Expr::parse(tokens)?;
 			
@@ -262,7 +258,10 @@ impl Expr {
 	}
 	
 	pub fn get_type(&self) -> Option<Type> {
-		unimplemented!()
+		match self {
+			Expr::Cast(_, t) => Some(t.clone()),
+			_ => unimplemented!()
+		}
 	}
 }
 

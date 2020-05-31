@@ -17,9 +17,9 @@ pub enum Token {
 	Swap, Assign, AddAssign, SubAssign,
 	
 	// multi-purpose
-	Plus, At, Colon, Comma, Period, Semicolon, Minus,
+	Plus, Colon, Comma, Period, Semicolon, Minus,
 	Star, FSlash, Bang, Caret, Range, Scope, Hash,
-	RightArrow,
+	RightArrow, QMark,
 	
 	Newline,
 	
@@ -48,9 +48,9 @@ pub enum TokenError {
 	UnknownChar,
 }
 
-pub type Tokens = std::iter::Peekable<std::vec::IntoIter<Token>>;
+pub type Tokens = TokenStream;
 
-pub fn tokenize(s: &str) -> Result<Vec<Token>, TokenError> {
+pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 	let mut tokens = Vec::with_capacity(s.len());
 	let mut chars = s.chars().peekable();
 	
@@ -218,11 +218,11 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, TokenError> {
 					chars.next();
 					Token::Rol
 				}
-				/*
 				Some(':') => {
 					chars.next();
 					Token::Scope
 				}
+				/*
 				Some('-') => {
 					chars.next();
 					unimplemented!()
@@ -254,6 +254,7 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, TokenError> {
 			'/' => Token::FSlash,
 			'^' => Token::Caret,
 			'#' => Token::Hash,
+			'?' => Token::QMark,
 			
 			// unicode options
 			'≠' => Token::Neq,
@@ -308,36 +309,62 @@ pub fn tokenize(s: &str) -> Result<Vec<Token>, TokenError> {
 		});
 	}
 	
-	if tokens.last() == Some(&Token::Newline) {
+	while tokens.last() == Some(&Token::Newline) {
 		tokens.pop();
+	}
+	
+	while tokens.first() == Some(&Token::Newline) {
+		tokens.remove(0);
 	}
 	
 	tokens.dedup_by(|a, b| *a == Token::Newline && *b == Token::Newline);
 	tokens.shrink_to_fit();
-	Ok(tokens)
+	Ok(TokenStream::new(tokens))
 }
 
 
-
-struct TokenStream {
-	stream: std::vec::IntoIter<Token>,
-	peeked: Option<Token>,
+#[derive(Clone, Debug)]
+pub struct TokenStream {
+	stream: Vec<Token>,
 }
 
 impl TokenStream {
-	fn from_vec(v: Vec<Token>) -> TokenStream {
+	fn new(tokens: Vec<Token>) -> Self {
 		TokenStream {
-			stream: v.into_iter(),
-			peek: None,
+			stream: tokens,
 		}
 	}
 	
-	fn expect(&mut self, token: Token) {}
+	pub fn as_inner(self) -> Box<[Token]> {
+		self.stream.into_boxed_slice()
+	}
 	
-	fn peek(&mut self) -> Option<&Token> {
-		if self.peeked.is_none() {
-			self.peeked = stream.next();
+	pub fn peek(&mut self) -> Option<&Token> {
+		self.stream.first()
+	}
+	
+	pub fn next(&mut self) -> Option<Token> {
+		if self.stream.is_empty() {
+			None
+		} else {
+			Some(self.stream.remove(0))
 		}
-		self.peeked.as_ref()
+	}
+	
+	pub fn expect(&mut self, tok: &Token) -> Option<Token> {
+		if self.peek() == Some(tok) {
+			self.next()
+		} else {
+			None
+		}
+	}
+	
+	pub fn len(&self) -> usize {
+		self.stream.len()
+	}
+	
+	pub fn is_empty(&self) -> bool {
+		self.stream.is_empty()
 	}
 }
+

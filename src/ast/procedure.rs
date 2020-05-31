@@ -23,9 +23,7 @@ pub struct Procedure {
 impl Parse for Procedure {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// keyword `proc`
-		if tokens.next() != Some(Token::Proc) {
-			return Err("`proc`");
-		}
+		tokens.expect(&Token::Proc).ok_or("`proc`")?;
 		
 		// get procedure name
 		let proc_name = match tokens.next() {
@@ -67,10 +65,9 @@ impl Parse for Procedure {
 							_ => return Err("a parameter name")
 						};
 						
-						// ':'
-						if tokens.next() != Some(Token::Colon) {
-							return Err("`:` after parameter name");
-						}
+						// expect ':'
+						tokens.expect(&Token::Colon)
+							.ok_or("`:` after parameter name")?;
 						
 						// get type
 						let typ = Type::parse(tokens)?;
@@ -99,13 +96,11 @@ impl Parse for Procedure {
 		}
 		
 		// check for newline
-		if tokens.next() != Some(Token::Newline) {
-			return Err("newline after parameter list");
-		}
+		tokens.expect(&Token::Newline)
+			.ok_or("newline after parameter list")?;
 		
 		// code block section
 		let mut code = Vec::new();
-		
 		loop {
 			match tokens.peek() {
 				// ending 'end'

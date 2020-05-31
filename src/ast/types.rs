@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
+	Never,
 	Unit,
 	Bool,
 	UInt, Int,
@@ -15,33 +16,36 @@ pub enum Type {
 
 impl Parse for Type {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		match tokens.peek() {
-			Some(Token::Ident(t)) if t == "unit" => {
+		match tokens.peek().ok_or("a type")? {
+			Token::Ident(t) if t == "never" => {
+				tokens.next();
+				Ok(Type::Never)
+			}
+			Token::Ident(t) if t == "unit" => {
 				tokens.next();
 				Ok(Type::Unit)
 			}
-			Some(Token::Ident(t)) if t == "bool" => {
+			Token::Ident(t) if t == "bool" => {
 				tokens.next();
 				Ok(Type::Bool)
 			}
-			Some(Token::Ident(t)) if t == "uint" => {
+			Token::Ident(t) if t == "uint" => {
 				tokens.next();
 				Ok(Type::UInt)
 			}
-			Some(Token::Ident(t)) if t == "int" => {
+			Token::Ident(t) if t == "int" => {
 				tokens.next();
 				Ok(Type::Int)
 			}
-			Some(Token::Ident(t)) if t == "str" => {
+			Token::Ident(t) if t == "str" => {
 				tokens.next();
 				Ok(Type::String)
 			}
-			Some(Token::Fn) => {
+			Token::Fn => {
 				tokens.next();
 				
-				if tokens.next() != Some(Token::LParen) {
-					return Err("`(` for `fn` type");
-				}
+				tokens.expect(&Token::LParen)
+					.ok_or("`(` for `fn` type")?;
 				
 				let mut params = Vec::new();
 				
@@ -56,20 +60,18 @@ impl Parse for Type {
 				}
 				tokens.next();
 				
-				if tokens.next() != Some(Token::Colon) {
-					return Err("`:` to specify `fn` return type");
-				}
+				tokens.expect(&Token::Colon)
+					.ok_or("`:` to specify `fn` return type")?;
 				
 				let ret = Type::parse(tokens)?;
 				
 				Ok(Type::Fn(params, Box::new(ret)))
 			}
-			Some(Token::Proc) => {
+			Token::Proc => {
 				tokens.next();
 				
-				if tokens.next() != Some(Token::LParen) {
-					return Err("`(` for `proc` type");
-				}
+				tokens.expect(&Token::LParen)
+					.ok_or("`(` for `proc` type")?;
 				
 				let mut params = Vec::new();
 				
@@ -96,16 +98,5 @@ impl Parse for Type {
 			
 			_ => Err("a valid type")
 		}
-	}
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::tokenize::tokenize;
-    
-    #[test]
-    fn test() {
-    	unimplemented!();
 	}
 }

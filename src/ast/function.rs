@@ -11,9 +11,8 @@ pub struct Function {
 impl Parse for Function {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// keyword `fn`
-		if tokens.next() != Some(Token::Fn) {
-			return Err("`fn`");
-		}
+		tokens.expect(&Token::Fn)
+			.ok_or("`fn`")?;
 		
 		// get function name
 		let fn_name = match tokens.next() {
@@ -25,9 +24,8 @@ impl Parse for Function {
 		let mut params = Vec::new();
 		
 		// starting '('
-		if tokens.next() != Some(Token::LParen) {
-			return Err("`(` before parameter list");
-		}
+		tokens.expect(&Token::LParen)
+			.ok_or("`(` before parameter list")?;
 		
 		loop {
 			// TODO add case for newline for multiline param declaration?
@@ -49,9 +47,8 @@ impl Parse for Function {
 					};
 					
 					// ':'
-					if tokens.next() != Some(Token::Colon) {
-						return Err("`:` after parameter name");
-					}
+					tokens.expect(&Token::Colon)
+						.ok_or("`:` after parameter name")?;
 					
 					// get type
 					let typ = Type::parse(tokens)?;
@@ -80,30 +77,26 @@ impl Parse for Function {
 		}
 		
 		// get return type
-		if tokens.next() != Some(Token::Colon) {
-			return Err("`:` after function parameter list");
-		}
+		tokens.expect(&Token::Colon)
+			.ok_or("`:` after function parameter list")?;
 		
 		let ret = Type::parse(tokens)?;
 		
 		// check for newline
-		if tokens.next() != Some(Token::Newline) {
-			return Err("newline after return type");
-		}
+		tokens.expect(&Token::Newline)
+			.ok_or("newline after return type")?;
 		
 		// code block section
 		// TODO check result of Expr::parse
 		let body = Expr::parse(tokens)?;
 		
 		// check for newline
-		if tokens.next() != Some(Token::Newline) {
-			return Err("newline after function body");
-		}
+		tokens.expect(&Token::Newline)
+			.ok_or("newline after function body")?;
 		
 		// check for `end`
-		if tokens.next() != Some(Token::End) {
-			return Err("`end`");
-		}
+		tokens.expect(&Token::End)
+			.ok_or("`end` after function body")?;
 		
 		// the optional `fn` in `end fn`
 		if tokens.peek() == Some(&Token::Fn) {

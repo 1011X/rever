@@ -1,25 +1,14 @@
 /*!
-AST representation of Rever.
+A High-level Intermediate Representation (HIR) of Rever constructs.
 */
 
-/*
-TODO: what does a complete program even look like?
-
-List of state given to program:
-* return code
-* cli args
-* env vars
-* heap/memory store
-
-"Devices" to handle:
-* filesystem
-* stdio
-
-*/
+// TODO: hir should maybe not depend on interpret?
+// And if it *must*, then perhaps merge them.
 use crate::interpret::{EvalResult, Scope, Value};
 use crate::ast;
 
 mod expr;
+mod function;
 mod item;
 mod literal;
 mod lvalue;
@@ -30,6 +19,7 @@ mod term;
 mod types;
 
 pub use self::expr::Expr;
+pub use self::function::Function;
 pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::LValue;

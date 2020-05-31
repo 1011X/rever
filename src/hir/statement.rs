@@ -41,19 +41,20 @@ impl Statement {
 			Do(p, args) => Undo(p, args),
 			Undo(p, args) => Do(p, args),
 			
-			Var(name, typ, init, scope, dest) =>
-				Var(name, typ, dest, scope, init),
-			If(test, block, else_block, assert) =>
-				If(assert, block, else_block, test),
-			From(assert, do_block, loop_block, test) =>
-				From(test, do_block, loop_block, assert),
+			Var(n, t, init, s, dest) =>
+				Var(n, t, dest, s, init),
+			If(test, b, eb, assert) =>
+				If(assert, b, eb, test),
+			From(assert, b, lb, test) =>
+				From(test, b, lb, assert),
 		}
 	}
 }
 
-impl From<crate::ast::Statement> for Statement {
-	fn from(v: crate::ast::Statement) -> Self {
+impl From<ast::Statement> for Statement {
+	fn from(v: ast::Statement) -> Self {
 		use crate::ast::Statement as Stmt;
+		
 		match v {
 			Stmt::Skip => Statement::Skip,
 			Stmt::RotLeft(lval, expr) => Statement::RotLeft(lval.into(), expr.into()),
@@ -63,27 +64,35 @@ impl From<crate::ast::Statement> for Statement {
 			Stmt::Xor(lval, expr) => Statement::Xor(lval.into(), expr.into()),
 			Stmt::Swap(l, r) => Statement::Swap(l.into(), r.into()),
 			
-			_ => unimplemented!()
-			/*
-			Stmt::Do(p, args) => Statement::Do(p, args.into_iter().map(Expr::from).collect()),
-			Stmt::Undo(p, args) => Statement::Undo(p, args.into_iter().map(Expr::from).collect()),
-			Stmt::Var(n, t, s, b, e) =>
-				Statement::Var(n, t.into(), s.into(), b.into_iter().map(Expr::from).collect(), e.into()),
+			Stmt::Do(p, args) =>
+				Statement::Do(p, args.into_iter().map(Expr::from).collect()),
+			Stmt::Undo(p, args) =>
+				Statement::Undo(p, args.into_iter().map(Expr::from).collect()),
+			
+			Stmt::Var(n, t, s, b, e) => {
+				let init: Expr = s.into();
+				Statement::Var(
+					n,
+					t.map(Type::from).unwrap_or(init.get_type()),
+					init,
+					b.into_iter().map(Statement::from).collect(),
+					e.into()
+				)
+			}
 			Stmt::If(e, b, eb, a) =>
 				Statement::If(
 					e.into(),
-					b.into_iter().map(Expr::from).collect(),
-					eb.into_iter().map(Expr::from).collect(),
+					b.into_iter().map(Statement::from).collect(),
+					eb.into_iter().map(Statement::from).collect(),
 					a.into()
 				),
 			Stmt::From(a, d, l, e) =>
 				Statement::From(
 					a.into(),
-					d.into_iter().map(Expr::from).collect(),
-					l.into_iter().map(Expr::from).collect(),
+					d.into_iter().map(Statement::from).collect(),
+					l.into_iter().map(Statement::from).collect(),
 					e.into()
 				),
-			*/
 		}
 	}
 }

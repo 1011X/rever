@@ -33,7 +33,7 @@ impl From<Literal> for Value {
             Literal::Nil => Value::Nil,
             Literal::Bool(b) => Value::Bool(b),
             Literal::Int(n) => Value::Int(n),
-            //Literal::Signed(n) => Value::Signed(n),
+            Literal::UInt(n) => Value::Uint(n),
             Literal::String(s) => Value::String(s.clone()),
         }
     }

@@ -19,25 +19,19 @@ impl Module {
 impl Parse for Module {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// `mod` keyword
-		if tokens.next() != Some(Token::Mod) {
-			return Err("`mod`");
-		}
+		tokens.expect(&Token::Mod).ok_or("`mod`")?;
 		
 		// get name
 		let name = match tokens.next() {
 			Some(Token::Ident(name)) => name,
-			//t => return Err(("module name", t)),
 			_ => return Err("module name"),
 		};
 		
 		// get newline
-		if tokens.next() != Some(Token::Newline) {
-			return Err("newline after module name");
-		}
+		tokens.expect(&Token::Newline).ok_or("newline after module name")?;
 		
 		// parse as many items as possible
 	    let mut items = Vec::new();
-	    
 		loop {
 			match tokens.peek() {
 				Some(Token::End) => {

@@ -5,8 +5,8 @@ authors = ["1011X <1011XXXXX@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-clap = "2.33.0"
-#logos = ""
+#clap = "2.33.0"
+#logos = "0.11.4"
 #rustyline = ""
 #rodeo = ""
 #codespan = ""

@@ -21,37 +21,79 @@ TODO:
 #![allow(dead_code)]
 
 use std::env;
+use std::io;
+use std::io::prelude::*;
 
-use crate::ast::parse_file_module;
+use crate::ast::Parse;
+//use crate::interpret;
 
-pub mod ast;
-//pub mod compile;
-pub mod hir;
-pub mod interpret;
-pub mod tokenize;
+mod tokenize;
+mod ast;
+mod hir;
+//mod compile;
+mod interpret;
+mod repl;
 
-fn main() {
+fn main() -> io::Result<()> {
 	let mut args = env::args().skip(1);
-	let subcmd = args.next();
 	
-	match subcmd {
+	match args.next() {
 		// start REPL
 		None => {
-			print!(">>> ");
-			unimplemented!();
+			let stdin = io::stdin();
+			let mut input = String::new();
+			let mut stdout = io::stdout();
+			let mut scope = repl::Scope::new();
 			
+			println!("Rever 0.0.1");
+			println!("Type \"show x\" to display the variable x.");
 			
+			loop {
+				print!("< ");
+				stdout.flush()?;
+				stdin.read_line(&mut input)?;
+				
+				let mut tokens = tokenize::tokenize(&input)
+					.expect("Could not tokenize");
+				let line = repl::ReplLine::parse(&mut tokens);
+				
+				if let Err(e) = line {
+					eprintln!("! Invalid input: expected {}.", e);
+					input.clear();
+					continue;
+				}
+				let line = line.unwrap();
+				
+				if let Ok(result) = scope.eval_line(line) {
+					if let Some(result) = result {
+						println!("> {:?}", result);
+					}
+					input.clear();
+				} else {
+					break;
+				}
+			}
 		}
 		
 		// interpret stdin
 		/*
 		Some(arg) if arg == "-" => {
 			let mut source = String::new();
-			io::stdin().read_to_string(&mut source).expect("File error");
+			io::stdin().read_to_string(&mut source)?;
 			
-			let tokens = tokenize(&source).expect("Could not tokenize");
+			let mut tokens = tokenize::tokenize(&source)
+				.expect("Could not tokenize");
 			
-			println!("{:#?}", tokens);
+			match parse_file_module(&mut tokens) {
+				Ok(ast) => {
+					println!("AST: {:#?}", ast);
+				}
+				Err(e) => {
+					let remaining_tokens = tokens.as_inner();
+					eprintln!("Expected {}.", e);
+					eprintln!("Tokens: {:#?}", remaining_tokens);
+				}
+			}
 		}
 		*/
 		
@@ -59,26 +101,23 @@ fn main() {
 		Some(file) => {
 			use std::fs::read_to_string as open;
 			
-			let path = args.next().expect("Must provide a path.");
-			
-			let source = open(path).expect("Could not read file");
-			
+			let source = open(file)?;
 			let mut tokens = tokenize::tokenize(&source)
-				.expect("Could not tokenize")
-				.into_iter()
-				.peekable();
+				.expect("Lexer error");
 			
-			match parse_file_module(&mut tokens) {
-				Ok(ast) => {
-					println!("AST: {:#?}", ast);
-				}
+			let ast = match ast::parse_file_module(&mut tokens) {
+				Ok(ast) => ast,
 				Err(e) => {
-					let remaining_tokens = tokens.clone()
-						.collect::<Box<[_]>>();
+					let remaining_tokens = tokens.as_inner();
 					eprintln!("Expected {}.", e);
 					eprintln!("Tokens: {:#?}", remaining_tokens);
+					return Ok(())
 				}
-			}
+			};
+			
+			interpret::interpret_file(ast.into());
 		}
-	} 
+	}
+	
+	Ok(())
 }

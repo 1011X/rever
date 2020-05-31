@@ -20,7 +20,7 @@ impl Parse for Term {
 impl Term {
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
-			Term::Lit(lit) => Some(lit.get_type()),
+			Term::Lit(lit) => lit.get_type(),
 			Term::LVal(_)  => None,
 		}
 	}

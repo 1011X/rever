@@ -52,9 +52,13 @@ pub enum Expr {
 	Let(String, Option<Type>, Box<Expr>, Box<Expr>),
 }
 
-impl From<crate::ast::Expr> for Expr {
-	fn from(v: crate::ast::Expr) -> Self {
-		unimplemented!()
+impl From<ast::Expr> for Expr {
+	fn from(v: ast::Expr) -> Self {
+		match v {
+			ast::Expr::Term(term) => Expr::Term(term.into()),
+			ast::Expr::Group(expr) => Expr::Group(expr.into()),
+			_ => todo!()
+		}
 	}
 }
 
@@ -176,7 +180,7 @@ impl Expr {
 		}
 	}
 	
-	pub fn get_type(&self) -> Option<Type> {
+	pub fn get_type(&self) -> Type {
 		unimplemented!()
 	}
 }

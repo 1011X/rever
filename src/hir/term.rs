@@ -29,3 +29,12 @@ impl From<Literal> for Term {
 impl From<LValue> for Term {
     fn from(lval: LValue) -> Self { Term::LVal(lval) }
 }
+
+impl From<ast::Term> for Term {
+	fn from(v: ast::Term) -> Self {
+		match v {
+			ast::Term::Lit(lit) => Term::Lit(lit.into()),
+			ast::Term::LVal(lval) => Term::LVal(lval.into()),
+		}
+	}
+}

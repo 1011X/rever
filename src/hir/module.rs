@@ -8,34 +8,25 @@ use std::collections::HashMap;
 #[derive(Clone, Debug)]
 pub struct Module(pub HashMap<String, Item>);
 
-impl From<ast::Module> for Module {
-	fn from(m: ast::Module) -> Self {
+impl From<Vec<ast::Item>> for Module {
+	fn from(items: Vec<ast::Item>) -> Self {
 		let mut map = HashMap::new();
-		for item in m.items {
+		for item in items {
 			match item {
-				ast::Item::Proc(p) => map.insert(p.name.clone(), Item::Proc(p.into())),
-				ast::Item::Mod(m) => map.insert(m.name.clone(), Item::Mod(m.into())),
-				//ast::Item::Fn(f) => map.insert(f.name, Item::Fn(f.into())),
-				_ => unimplemented!()
+				ast::Item::Proc(p) =>
+					map.insert(p.name.clone(), Item::Proc(p.into())),
+				ast::Item::Mod(m) =>
+					map.insert(m.name.clone(), Item::Mod(m.into())),
+				ast::Item::Fn(f) =>
+					map.insert(f.name.clone(), Item::Fn(f.into())),
 			};
 		}
 		Module(map)
 	}
 }
 
-impl From<Vec<ast::Item>> for Module {
-	fn from(items: Vec<ast::Item>) -> Self {
-		let mut map = HashMap::new();
-		for item in items {
-			match item {
-				ast::Item::Proc(p) => map.insert(p.name.clone(), Item::Proc(p.into())),
-				ast::Item::Mod(m) => map.insert(m.name.clone(), Item::Mod(m.into())),
-				//ast::Item::Fn(f) => map.insert(f.name, Item::Fn(f.into())),
-				_ => unimplemented!()
-			};
-		}
-		Module(map)
-	}
+impl From<ast::Module> for Module {
+	fn from(m: ast::Module) -> Self { m.items.into() }
 }
 
 impl Module {
