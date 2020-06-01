@@ -33,4 +33,8 @@ impl Module {
 	pub fn add_internal_procedure(&mut self, name: String, fore: Proc, back: Proc) {
 		self.0.insert(name, Item::InternProc(fore, back));
 	}
+	
+	pub fn add_item(&mut self, name: String, item: Item) -> Option<Item> {
+		self.0.insert(name, item)
+	}
 }

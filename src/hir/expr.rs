@@ -56,7 +56,7 @@ impl From<ast::Expr> for Expr {
 	fn from(v: ast::Expr) -> Self {
 		match v {
 			ast::Expr::Term(term) => Expr::Term(term.into()),
-			ast::Expr::Group(expr) => Expr::Group(expr.into()),
+			ast::Expr::Group(expr) => Expr::Group(Box::new((*expr).into())),
 			_ => todo!()
 		}
 	}

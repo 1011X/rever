@@ -8,16 +8,14 @@ use crate::interpret;
 
 pub struct Scope {
 	vars:  Vec<(String, interpret::Value)>,
-	procs: HashMap<String, hir::Procedure>,
-	fns:   HashMap<String, hir::Function>,
+	items: HashMap<String, hir::Item>,
 }
 
 impl Scope {
 	pub fn new() -> Self {
 		Self {
 			vars: Vec::new(),
-			procs: HashMap::new(),
-			fns: HashMap::new(),
+			items: HashMap::new(),
 		}
 	}
 	
@@ -63,7 +61,17 @@ impl Scope {
 					Some(i) => Ok(Some(self.vars.remove(i).1)),
 				}
 			}
-			_ => todo!()
+			ReplLine::Item(item) => {
+				self.items.insert(item.get_name().to_string(), item.into());
+				Ok(None)
+			}
+			ReplLine::Stmt(stmt) => {
+				let stmt: hir::Statement = stmt.into();
+				let module = hir::Module(self.items.clone());
+				
+				stmt.eval(&mut self.vars, &module).unwrap();
+				Ok(None)
+			}
 		}
 	}
 }

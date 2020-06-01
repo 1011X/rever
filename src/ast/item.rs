@@ -30,6 +30,16 @@ impl Parse for Item {
 	}
 }
 
+impl Item {
+	pub fn get_name(&self) -> &str {
+		match self {
+			Item::Mod(m) => &m.name,
+			Item::Proc(p) => &p.name,
+			Item::Fn(f) => &f.name,
+		}
+	}
+}
+
 impl From<Module> for Item {
 	fn from(m: Module) -> Item { Item::Mod(m) }
 }

@@ -22,10 +22,8 @@ impl From<Function> for Item {
 	fn from(p: Function) -> Item { Item::Fn(p) }
 }
 
-/*
-// ast::Item cannot be translated to hir::Item directly bc hir items only store
-// their substance, and therefore direct translation would erase their identity.
 impl From<ast::Item> for Item {
+	// keep in mind this will lose track of the name of the item.
 	fn from(v: ast::Item) -> Self {
 		match v {
 			ast::Item::Mod(m) => Item::Mod(m.into()),
@@ -34,7 +32,6 @@ impl From<ast::Item> for Item {
 		}
 	}
 }
-*/
 
 impl std::fmt::Debug for Item {
 	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
