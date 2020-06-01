@@ -46,7 +46,7 @@ fn main() -> io::Result<()> {
 			let mut scope = repl::Scope::new();
 			
 			println!("Rever 0.0.1");
-			println!("Type \"show x\" to display the variable x.");
+			println!("Type \"show x\" to display the value of x.");
 			
 			loop {
 				print!("< ");
@@ -64,10 +64,7 @@ fn main() -> io::Result<()> {
 				}
 				let line = line.unwrap();
 				
-				if let Ok(result) = scope.eval_line(line) {
-					if let Some(result) = result {
-						println!("> {:?}", result);
-					}
+				if scope.eval_line(line).is_ok() {
 					input.clear();
 				} else {
 					break;

@@ -38,17 +38,18 @@ impl Scope {
 		val
 	}
 	
-	pub fn eval_line(&mut self, line: ReplLine) -> Result<Option<interpret::Value>, ()> {
+	pub fn eval_line(&mut self, line: ReplLine) -> Result<(), ()> {
 		match line {
-			ReplLine::Skip => Ok(None),
+			ReplLine::Skip => {}
 			ReplLine::Show(var) => {
-				Ok(self.get(&var).cloned())
+				if let Some(val) = self.get(&var) {
+					println!("> {:?}", val);
+				}
 			}
 			ReplLine::Var(name, expr) => {
 				let expr: hir::Expr = expr.clone().into();
 				let val = expr.eval(&mut self.vars).unwrap();
 				self.vars.push((name.clone(), val));
-				Ok(None)
 			}
 			ReplLine::Drop(name) => {
 				let val = self.vars.iter()
@@ -57,22 +58,22 @@ impl Scope {
 					.map(|(i,_)| i);
 				
 				match val {
-					None => Err(()),
-					Some(i) => Ok(Some(self.vars.remove(i).1)),
+					None => return Err(()),
+					Some(i) => println!("> {:?}", self.vars.remove(i).1),
 				}
 			}
+			// TODO return Err for item and stmt when not enough input.
 			ReplLine::Item(item) => {
 				self.items.insert(item.get_name().to_string(), item.into());
-				Ok(None)
 			}
 			ReplLine::Stmt(stmt) => {
 				let stmt: hir::Statement = stmt.into();
 				let module = hir::Module(self.items.clone());
 				
 				stmt.eval(&mut self.vars, &module).unwrap();
-				Ok(None)
 			}
 		}
+		Ok(())
 	}
 }
 
