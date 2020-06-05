@@ -117,7 +117,7 @@ impl Statement {
 				assert_eq!(final_val, dest.eval(t)?);
 			}
 			
-			Xor(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+			Xor(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
 				(Value::Int(l), Value::Int(r)) => {
 					let pos = t.iter()
 						.rposition(|var| var.0 == lval.id)
@@ -127,7 +127,7 @@ impl Statement {
 				_ => return Err("tried to do something illegal")
 			}
 			
-			Add(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+			Add(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
 				(Value::Int(l), Value::Int(r)) => {
 					let pos = t.iter()
 						.rposition(|var| var.0 == lval.id)
@@ -136,7 +136,7 @@ impl Statement {
 				}
 				_ => return Err("tried to do something illegal")
 			}
-			Sub(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+			Sub(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
 				(Value::Int(l), Value::Int(r)) => {
 					let pos = t.iter()
 						.rposition(|var| var.0 == lval.id)
@@ -146,7 +146,7 @@ impl Statement {
 				_ => return Err("tried to do something illegal")
 			}
 			
-			RotLeft(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+			RotLeft(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
 				(Value::Int(l), Value::Int(r)) => {
 					let pos = t.iter()
 						.rposition(|var| var.0 == lval.id)
@@ -155,7 +155,7 @@ impl Statement {
 				}
 				_ => return Err("tried to do something illegal")
 			}
-			RotRight(lval, expr) => match (lval.eval(t), expr.eval(t)?) {
+			RotRight(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
 				(Value::Int(l), Value::Int(r)) => {
 					let pos = t.iter()
 						.rposition(|var| var.0 == lval.id)

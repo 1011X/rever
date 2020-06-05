@@ -40,10 +40,11 @@ pub enum Expr {
 	Cast(Box<Expr>, Type),
 	
 	// precedence 3
+	Neg(Box<Expr>),
 	Not(Box<Expr>),
 	
 	// binary op, precendeces 4-7
-	BinOp(BinOp, Box<Expr>, Box<Expr>),
+	BinOp(Box<Expr>, BinOp, Box<Expr>),
 	
 	// secret precendece 8
 	If(Box<Expr>, Box<Expr>, Box<Expr>),
@@ -147,7 +148,7 @@ impl Expr {
 		}
 		
 		Ok(exprs.into_iter().fold(first, |acc, (op, base)|
-			Expr::BinOp(op, Box::new(acc), Box::new(base))
+			Expr::BinOp(Box::new(acc), op, Box::new(base))
 		))
 	}
 	
@@ -176,7 +177,7 @@ impl Expr {
 		}
 		
 		Ok(terms.into_iter().fold(first, |acc, (op, base)|
-			Expr::BinOp(op, Box::new(acc), Box::new(base))
+			Expr::BinOp(Box::new(acc), op, Box::new(base))
 		))
 	}
 	
@@ -205,7 +206,7 @@ impl Expr {
 		}
 		
 		Ok(facts.into_iter().fold(first, |acc, (op, base)|
-			Expr::BinOp(op, Box::new(acc), Box::new(base))
+			Expr::BinOp(Box::new(acc), op, Box::new(base))
 		))
 	}
 	
@@ -232,35 +233,42 @@ impl Expr {
 		
 		let last = exps.pop().unwrap();
 		let res = exps.into_iter().rfold(last, |acc, base|
-			Expr::BinOp(BinOp::Exp, Box::new(base), Box::new(acc))
+			Expr::BinOp(Box::new(base), BinOp::Exp, Box::new(acc))
 		);
 		
-		Ok(Expr::BinOp(BinOp::Exp, Box::new(first), Box::new(res)))
+		Ok(Expr::BinOp(Box::new(first), BinOp::Exp, Box::new(res)))
 	}
 	
 	fn parse_atom(tokens: &mut Tokens) -> ParseResult<Self> {
 		// check if there's an open parenthesis
-		if tokens.peek() == Some(&Token::LParen) {
-			tokens.next();
-			
-			let expr = Expr::parse(tokens)?;
-			
-			// make sure there's a closing parenthesis
-			if tokens.next() != Some(Token::RParen) {
-				return Err("`)` after subexpression");
-			}
-			
-			Ok(Expr::Group(Box::new(expr)))
+		let expr =
+			if tokens.peek() == Some(&Token::LParen) {
+				tokens.next();
+				
+				let expr = Expr::parse(tokens)?;
+				
+				// make sure there's a closing parenthesis
+				if tokens.next() != Some(Token::RParen) {
+					return Err("`)` after subexpression");
+				}
+				
+				Expr::Group(Box::new(expr))
+			} else {
+				// otherwise, treat it as a Term.
+				Expr::Term(Term::parse(tokens)?)
+			};
+		
+		if tokens.peek() == Some(&Token::As) {
+			Ok(Expr::Cast(Box::new(expr), Type::parse(tokens)?))
 		} else {
-			// otherwise, treat it as a Term.
-			Ok(Expr::Term(Term::parse(tokens)?))
+			Ok(expr)
 		}
 	}
 	
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
 			Expr::Cast(_, t) => Some(t.clone()),
-			_ => unimplemented!()
+			_ => None // TODO
 		}
 	}
 }

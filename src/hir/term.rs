@@ -7,9 +7,9 @@ pub enum Term {
 }
 
 impl Term {
-	pub fn eval(&self, t: &Scope) -> Value {
+	pub fn eval(&self, t: &Scope) -> EvalResult {
 	    match self {
-	        Term::Lit(lit) => lit.eval(),
+	        Term::Lit(lit) => Ok(lit.eval()),
 	        Term::LVal(lval) => lval.eval(t),
 	    }
 	}

@@ -5,6 +5,7 @@ use crate::hir::{Item, Module};
 
 mod io;
 mod value;
+mod intrinsic;
 
 pub use self::value::Value;
 
@@ -14,9 +15,13 @@ pub struct StackFrame {
     locals: Vec<(String, Value)>,
 }
 
-pub type EvalResult = Result<Value, &'static str>;
 pub type Scope = Vec<(String, Value)>;
 pub type Stack = Vec<StackFrame>;
+pub type EvalResult = Result<Value, &'static str>;
+
+pub trait Eval {
+	fn eval(&self, scope: &Scope) -> EvalResult;
+}
 
 
 pub fn interpret_file(items: Vec<ast::Item>) {
@@ -37,38 +42,5 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 		}
 	} else {
 		eprintln!("No main procedure found.");
-	}
-}
-
-pub mod intrinsic {
-	use super::Value;
-	use std::io::prelude::*;
-	
-	pub fn puts(args: Box<[Value]>) -> Box<[Value]> {
-		assert!(args.len() == 1);
-		
-		let mut rstdout = super::io::RevStdout::new();
-		let string = match &args[0] {
-			Value::String(s) => s.as_bytes(),
-			_ => panic!("not a string")
-		};
-		
-		rstdout.write(string);
-		
-		args
-	}
-	
-	pub fn unputs(args: Box<[Value]>) -> Box<[Value]> {
-		assert!(args.len() == 1);
-		
-		let mut rstdout = super::io::RevStdout::new();
-		let string = match &args[0] {
-			Value::String(s) => s.as_bytes(),
-			_ => panic!("not a string")
-		};
-		
-		rstdout.unwrite(string, string.len());
-		
-		args
 	}
 }

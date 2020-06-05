@@ -19,8 +19,11 @@ impl From<ast::LValue> for LValue {
 	}
 }
 
-impl LValue {
-	pub fn eval(&self, t: &Scope) -> Value {
-	    t.iter().rfind(|(id, _)| *id == self.id).unwrap().1.clone()
+impl Eval for LValue {
+	fn eval(&self, t: &Scope) -> EvalResult {
+	    t.iter()
+    	.rfind(|(id, _)| *id == self.id)
+    	.map(|(_, val)| val.clone())
+    	.ok_or("could not find variable")
 	}
 }

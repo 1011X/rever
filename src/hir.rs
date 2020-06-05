@@ -4,7 +4,8 @@ A High-level Intermediate Representation (HIR) of Rever constructs.
 
 // TODO: hir should maybe not depend on interpret?
 // And if it *must*, then perhaps merge them.
-use crate::interpret::{EvalResult, Scope, Value};
+//use crate::interpret::{EvalResult, Scope, Value, Eval};
+use crate::interpret::*;
 use crate::ast;
 
 mod expr;

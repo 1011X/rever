@@ -22,8 +22,6 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum BinOp {
-	// precedence 4
-	Exp,
 	// precedence 5
 	Mul, Div, Mod, And,
 	// precedence 6
@@ -34,29 +32,31 @@ pub enum BinOp {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-	// precedence 1
 	Term(Term),
-	Group(Box<Expr>),
 	Cast(Box<Expr>, Type),
 	
-	// precedence 3
 	Not(Box<Expr>),
 	
-	// binary op, precendeces 4-7
-	BinOp(BinOp, Box<Expr>, Box<Expr>),
+	/*
+	Exp(Box<Expr>, Box<Expr>),
+	Product(Vec<Expr>),
+	Sum(Vec<Expr>),
+	Compare(Box<Expr>, Box<Expr>),
+	And(Vec<Expr>),
+	Or(Vec<Expr>),
+	*/
+	BinOp(Term, BinOp, Term),
 	
-	// secret precendece 8
 	If(Box<Expr>, Box<Expr>, Box<Expr>),
-	
-	// secret precedence 9
-	Let(String, Option<Type>, Box<Expr>, Box<Expr>),
+	Let(String, Type, Box<Expr>, Box<Expr>),
 }
 
 impl From<ast::Expr> for Expr {
 	fn from(v: ast::Expr) -> Self {
 		match v {
 			ast::Expr::Term(term) => Expr::Term(term.into()),
-			ast::Expr::Group(expr) => Expr::Group(Box::new((*expr).into())),
+			
+			ast::Expr::Not(e) => Expr::Not(Box::new((*e).into())),
 			_ => todo!()
 		}
 	}
@@ -72,35 +72,52 @@ impl From<ast::Expr> for Expr {
 impl Expr {
 	pub fn eval(&self, t: &Scope) -> EvalResult {
 		match self {
-			// 1
-			Expr::Term(term) => Ok(term.eval(t)),
-			Expr::Group(e) => Ok(e.eval(t)?),
+			Expr::Term(term) => Ok(term.eval(t)?),
+			
 			Expr::Cast(e, typ) => match (typ, e.eval(t)?) {
 				(Type::Unit, _) => Ok(Value::Nil),
-				(Type::Int, Value::Uint(v)) => Ok(Value::Int(v as i64)),
-				(Type::UInt, Value::Int(v)) => Ok(Value::Uint(v as u64)),
+				(Type::Int, Value::Uint(u))  => Ok(Value::Int(u as i64)),
+				(Type::UInt, Value::Bool(b)) => Ok(Value::Uint(b as u64)),
+				(Type::UInt, Value::Int(i))  => Ok(Value::Uint(i as u64)),
 				_ => unimplemented!()
 			}
 			
-			// 3
 			Expr::Not(e) => match e.eval(t)? {
-				Value::Bool(true) => Ok(Value::Bool(false)),
-				Value::Bool(false) => Ok(Value::Bool(true)),
-				_ => Err("tried NOTting non-boolean value")
+				Value::Bool(b) => Ok(Value::Bool(!b)),
+				Value::Uint(n) => Ok(Value::Uint(!n)),
+				Value::Int(n) => Ok(Value::Int(!n)),
+				_ => Err("tried NOTting non-boolean or non-integer value")
 			}
 			
-			// 4 - 7
-			Expr::BinOp(op, left, right) => {
+			/*
+			Expr::Exp(base, exp) => {
+				let base = base.eval(t)?;
+				let exp = exp.eval(t)?;
+				
+				match (base, exp) {
+					(Value::Int(base), Value::Uint(exp)) =>
+						Ok(Value::Int(base.pow(exp as u32))),
+					(Value::Uint(base), Value::Uint(exp)) =>
+						Ok(Value::Uint(base.pow(exp as u32))),
+					_ => Err("tried to get power of non-integer values")
+				}
+			}
+			
+			Expr::Product(terms) => {
+				// there *should* be at least one term in the vector
+				let first = terms.remove(0);
+				
+				for term in terms {
+					
+				}
+			}
+			*/
+			
+			Expr::BinOp(left, op, right) => {
 				let left = left.eval(t)?;
 				let right = right.eval(t)?;
 				
 				match (op, left, right) {
-					// 4
-					(BinOp::Exp, Value::Int(b), Value::Int(e)) =>
-						Ok(Value::from(b.pow(e as u32))),
-					(BinOp::Exp, _, _) =>
-						Err("tried to get power of non-integer values"),
-					
 					// 5
 					(BinOp::Mul, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l * r)),
