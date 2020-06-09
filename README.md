@@ -33,20 +33,20 @@ To get a better grasp of how a reversible language works, try the [Janus playgro
 What's Rever like?
 ------------------
 
-Rever prefers to use newlines and keywords (e.g. `end`, `fi`) rather than braces to denote blocks. It may have significant *newlines*, but don't worry, it doesn't distinguish between spaces and tabs.
+Rever prefers to use newlines and keywords (e.g. `end`, `fi`) rather than braces to denote blocks. It may have significant newlines, but it doesn't distinguish between spaces and tabs.
 
 A Rever file consists of *items*, which include procedures, functions, types, modules, etc. They are much like those in Rust.
 
 ### Simple statements
 
-The most trivial statement is `skip`. It does absolutely nothing. However, you'll sometimes need it since some parts of the language don't accept an empty block, or when you want to be explicit that nothing should be done in some cases.
+The most trivial statement is `skip`. It does absolutely nothing. Maybe you'll want it to be explicit that nothing should be done in some cases.
 
 Next come the modifying assignments. These include increment (`+=`), decrement (`-=`), left-rotate (`:<`), right-rotate (`:>`), and xor-assign (`:=`). They each do what their names say.
 
-	sum += 4
-	name.len -= sum + 1
-	n_squared :< 1
-	hash[0] := 3
+	hash[0]     := 3
+	sum         += 4
+	name.len    -= sum + 1
+	n_times_two :< 1
 
 There's also swap (`<>`), which takes 2 variables and swaps their values.
 

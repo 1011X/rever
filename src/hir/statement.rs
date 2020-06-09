@@ -20,7 +20,7 @@ pub enum Statement {
 	Do(String, Vec<Expr>),
 	Undo(String, Vec<Expr>),
 	
-	Var(String, Type, Expr, Vec<Statement>, Expr),
+	Let(String, Type, Expr, Vec<Statement>, Expr),
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	//Match(String, Vec<_, Vec<Statement>>),
@@ -41,8 +41,8 @@ impl Statement {
 			Do(p, args) => Undo(p, args),
 			Undo(p, args) => Do(p, args),
 			
-			Var(n, t, init, s, dest) =>
-				Var(n, t, dest, s, init),
+			Let(n, t, init, s, dest) =>
+				Let(n, t, dest, s, init),
 			If(test, b, eb, assert) =>
 				If(assert, b, eb, test),
 			From(assert, b, lb, test) =>
@@ -69,14 +69,14 @@ impl From<ast::Statement> for Statement {
 			Stmt::Undo(p, args) =>
 				Statement::Undo(p, args.into_iter().map(Expr::from).collect()),
 			
-			Stmt::Var(n, t, s, b, e) => {
+			Stmt::Let(n, t, s, b, e) => {
 				let init: Expr = s.into();
-				Statement::Var(
+				Statement::Let(
 					n,
 					t.map(Type::from).unwrap_or(init.get_type()),
-					init,
+					init.clone(),
 					b.into_iter().map(Statement::from).collect(),
-					e.into()
+					e.map(|e| e.into()).unwrap_or(init.clone())
 				)
 			}
 			Stmt::If(e, b, eb, a) =>
@@ -104,7 +104,7 @@ impl Statement {
 		match self {
 			Skip => {}
 			
-			Var(id, _, init, block, dest) => {
+			Let(id, _, init, block, dest) => {
 				let init = init.eval(t)?;
 				t.push((id.clone(), init));
 				

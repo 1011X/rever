@@ -53,6 +53,15 @@ pub enum Expr {
 	Let(String, Option<Type>, Box<Expr>, Box<Expr>),
 }
 
+impl Expr {
+	pub fn get_type(&self) -> Option<Type> {
+		match self {
+			Expr::Cast(_, t) => Some(t.clone()),
+			_ => None // TODO
+		}
+	}
+}
+
 impl Parse for Expr {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		if tokens.peek() == Some(&Token::If) {
@@ -262,13 +271,6 @@ impl Expr {
 			Ok(Expr::Cast(Box::new(expr), Type::parse(tokens)?))
 		} else {
 			Ok(expr)
-		}
-	}
-	
-	pub fn get_type(&self) -> Option<Type> {
-		match self {
-			Expr::Cast(_, t) => Some(t.clone()),
-			_ => None // TODO
 		}
 	}
 }

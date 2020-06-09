@@ -1,5 +1,5 @@
-# Fibnoacci example
-# Calculates a fibonacci pair using recursion
+~ Fibnoacci example
+~ Calculates a fibonacci pair using recursion
 
 proc fib(x1: int, x2: int, n: int)
 	if n = 0

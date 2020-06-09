@@ -1,10 +1,10 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
 	// keywords
-	And, Do, Drop, Else, End, Fi, From, If, Let, Mod, Not, Or, Proc, Skip, Then,
-	Undo, Until, Var,
+	And, Do, Drop, Else, End, Fi, From, If, Let, Loop, Mod, Not, Or, Proc, Skip,
+	Then, Undo, Until, Var,
 	// reserved
-	Alias, As, Fn, For, In, Loop, Match, Tag, //Goto, ComeFrom,
+	Alias, As, Fn, For, In, Match, Tag, //Goto, ComeFrom,
 	
 	// brackets
 	LParen, RParen, LBracket, RBracket, LBrace, RBrace,

@@ -31,24 +31,23 @@ impl Parse for LValue {
 	    			tokens.next();
 	    			ops.push(Deref::Direct);
     			}
-    			// '['
-    			Some(Token::LBracket) => {
-    				tokens.next();
-    				let expr = Expr::parse(tokens)?;
-    				
-    				tokens.expect(&Token::RBracket)
-    					.ok_or("`]` after index expression")?;
-    				
-    				ops.push(Deref::Index(expr));
-    			}
     			// '.'
     			Some(Token::Period) => {
     				tokens.next();
     				
-    				if let Some(Token::Ident(name)) = tokens.next() {
-    					ops.push(Deref::Field(name));
-    				} else {
-    					return Err("field name after variable");
+    				match tokens.next() {
+    					Some(Token::LParen) => {
+							let expr = Expr::parse(tokens)?;
+							
+							tokens.expect(&Token::RParen)
+								.ok_or("`)` after index expression")?;
+							
+							ops.push(Deref::Index(expr));
+    					}
+    					Some(Token::Ident(name)) => {
+	    					ops.push(Deref::Field(name));
+    					}
+    					_ => return Err("field name or `(` after variable"),
     				}
     			}
     			_ => break

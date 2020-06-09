@@ -20,7 +20,7 @@ pub enum Statement {
 	Do(String, Vec<Expr>),
 	Undo(String, Vec<Expr>),
 	
-	Var(String, Option<Type>, Expr, Vec<Statement>, Expr),
+	Let(String, Option<Type>, Expr, Vec<Statement>, Option<Expr>),
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	//Match(String, Vec<_, Vec<Statement>>),
@@ -184,8 +184,8 @@ impl Parse for Statement {
 				Ok(Statement::From(assert, main_block, back_block, test))
 			}
 			
-			// var-drop
-			Some(Token::Var) => {
+			// let-drop
+			Some(Token::Let) => {
 				tokens.next();
 				
 				// get name
@@ -238,12 +238,12 @@ impl Parse for Statement {
 				let drop =
 					if tokens.peek() == Some(&Token::Assign) {
 						tokens.next();
-						Expr::parse(tokens)?
+						Some(Expr::parse(tokens)?)
 					} else {
-						init.clone()
+						None
 					};
 				
-				Ok(Statement::Var(name, typ, init, block, drop))
+				Ok(Statement::Let(name, typ, init, block, drop))
 			}
 			
 			// if-else

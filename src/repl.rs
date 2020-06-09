@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::tokenize::{Token, Tokens};
 use crate::ast::{self, Expr, Item, Statement};
 use crate::hir;
-use crate::interpret;
+use crate::interpret::{self, Eval};
 
 
 pub struct Scope {

@@ -7,18 +7,20 @@ pub enum Term {
 }
 
 impl Term {
-	pub fn eval(&self, t: &Scope) -> EvalResult {
-	    match self {
-	        Term::Lit(lit) => Ok(lit.eval()),
-	        Term::LVal(lval) => lval.eval(t),
-	    }
-	}
-	
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
 			Term::Lit(lit) => Some(lit.get_type()),
 			Term::LVal(_)  => None,
 		}
+	}
+}
+
+impl Eval for Term {
+	fn eval(&self, t: &Scope) -> EvalResult {
+	    match self {
+	        Term::Lit(lit) => Ok(lit.eval()),
+	        Term::LVal(lval) => lval.eval(t),
+	    }
 	}
 }
 

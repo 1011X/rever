@@ -42,13 +42,19 @@ pub enum Expr {
 	Product(Vec<Expr>),
 	Sum(Vec<Expr>),
 	Compare(Box<Expr>, Box<Expr>),
-	And(Vec<Expr>),
-	Or(Vec<Expr>),
+	All(Vec<Expr>),
+	Any(Vec<Expr>),
 	*/
 	BinOp(Term, BinOp, Term),
 	
 	If(Box<Expr>, Box<Expr>, Box<Expr>),
 	Let(String, Type, Box<Expr>, Box<Expr>),
+}
+
+impl Expr {
+	pub fn get_type(&self) -> Type {
+		unimplemented!()
+	}
 }
 
 impl From<ast::Expr> for Expr {
@@ -69,8 +75,8 @@ impl From<ast::Expr> for Expr {
 // atom -> ( expr )
 //      -> expr 'as' type
 //      -> factor
-impl Expr {
-	pub fn eval(&self, t: &Scope) -> EvalResult {
+impl Eval for Expr {
+	fn eval(&self, t: &Scope) -> EvalResult {
 		match self {
 			Expr::Term(term) => Ok(term.eval(t)?),
 			
@@ -195,10 +201,6 @@ impl Expr {
 				scope.eval(&t_copy)
 			}
 		}
-	}
-	
-	pub fn get_type(&self) -> Type {
-		unimplemented!()
 	}
 }
 

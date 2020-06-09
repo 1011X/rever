@@ -5,40 +5,40 @@
  ]~
 
 ~ Calculates floor(sqrt(num))
-proc root(var num: int, root: int)
-    var bit := 1
+proc root(var num: int, var root: int)
+    let bit := 1
     
     from bit = 1
-    until bit * bit > num   ~ find exponential ball park
+    until bit ^ 2 > num   ~ find exponential ball park
         do doublebit: bit
     loop
 
-    from bit * bit > num
+    from bit ^ 2 > num
         undo doublebit: bit
-        if (root + bit) * (root + bit) <= num
+        if (root + bit) ^ 2 <= num
             root += bit
         fi root / bit mod 2 != 0
     until bit = 1
     loop
     
-    drop bit := 1
-    num -= root * root
+    drop bit
+    num -= root ^ 2
 end
 
 proc doublebit(var bit: int)
-    var z := bit
+    let z := bit
     bit += z
     drop z := bit / 2
 end
 
 proc main
-    var num := 66
-    var root := 0
+    let num := 66
+    let root := 0
     do root: num, root
     drop root := 8
     drop num := 2
     ~[
     root += 25
-    uncall root(num, root)
+    undo root: num, root
     ]~
 end
