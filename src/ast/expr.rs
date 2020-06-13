@@ -64,12 +64,12 @@ impl Expr {
 
 impl Parse for Expr {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		if tokens.peek() == Some(&Token::If) {
+		if tokens.starts_with(&Token::If) {
 			tokens.next();
 			
 			let test = Box::new(Expr::parse_rel(tokens)?);
 			
-			// ensure there's a newline afterwards
+			// check for `then`
 			tokens.expect(&Token::Then)
 				.ok_or("`then` after `if` predicate")?;
 			
@@ -83,38 +83,41 @@ impl Parse for Expr {
 			// parse else section
 			let else_block = Box::new(Expr::parse(tokens)?);
 			
+			// check for `fi`
+			tokens.expect(&Token::Fi)
+				.ok_or("`fi` in `if` expression")?;
+			
 			Ok(Expr::If(test, main_expr, else_block))
-		} else if tokens.peek() == Some(&Token::Let) {
+		} else if tokens.starts_with(&Token::Let) {
 			tokens.next();
 			
-			let name = match tokens.next() {
-				Some(Token::Ident(name)) => name,
-				_ => return Err("name for let-binding")
-			};
+			let name = tokens.expect_ident()
+				.ok_or("variable name for let binding")?;
 			
 			// get optional type as `: type`
-			let typ = if tokens.peek() == Some(&Token::Colon) {
-				tokens.next();
-				Some(Type::parse(tokens)?)
-			} else {
-				None
-			};
+			let typ =
+				if tokens.starts_with(&Token::Colon) {
+					tokens.next();
+					Some(Type::parse(tokens)?)
+				} else {
+					None
+				};
 			
 			// expect '='
 			tokens.expect(&Token::Eq)
-				.ok_or("`=` after let-binding name")?;
+				.ok_or("`=` at let binding")?;
 			
 			// val is artificially limited here on purpose. it doesn't make much
 			// sence to allow `let` inside a `let` binding value, for example.
-			let val = Expr::parse_rel(tokens)?;
+			let val = Box::new(Expr::parse_rel(tokens)?);
 			
 			// check for newline
 			tokens.expect(&Token::Newline)
-				.ok_or("`in` after `let` binding")?;
+				.ok_or("newline at let binding")?;
 			
-			let scope = Expr::parse(tokens)?;
+			let scope = Box::new(Expr::parse(tokens)?);
 			
-			Ok(Expr::Let(name, typ, Box::new(val), Box::new(scope)))
+			Ok(Expr::Let(name, typ, val, scope))
 		} else {
 			Expr::parse_rel(tokens)
 		}
@@ -257,9 +260,8 @@ impl Expr {
 				let expr = Expr::parse(tokens)?;
 				
 				// make sure there's a closing parenthesis
-				if tokens.next() != Some(Token::RParen) {
-					return Err("`)` after subexpression");
-				}
+				tokens.expect(&Token::RParen)
+					.ok_or("`)` after subexpression")?;
 				
 				Expr::Group(Box::new(expr))
 			} else {

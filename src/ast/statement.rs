@@ -23,8 +23,8 @@ pub enum Statement {
 	Let(String, Option<Type>, Expr, Vec<Statement>, Option<Expr>),
 	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
 	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
+	//FromLet(String, Expr, Vec<Statement>, Vec<Statement>, Expr),
 	//Match(String, Vec<_, Vec<Statement>>),
-	//FromVar(String, Expr, Vec<Statement>, Vec<Statement>, Expr),
 	//For(String, Expr, Vec<Statement>),
 }
 
@@ -189,10 +189,8 @@ impl Parse for Statement {
 				tokens.next();
 				
 				// get name
-				let name = match tokens.next() {
-					Some(Token::Ident(name)) => name,
-					_ => return Err("variable name")
-				};
+				let name = tokens.expect_ident()
+					.ok_or("name in variable declaration")?;
 				
 				// get optional type
 				let mut typ = None;
@@ -205,7 +203,7 @@ impl Parse for Statement {
 				
 				// check for assignment op
 				tokens.expect(&Token::Assign)
-					.ok_or("`:=` after variable name")?;
+					.ok_or("`:=` in variable declaration")?;
 				
 				// get initialization expression
 				let init = Expr::parse(tokens)?;

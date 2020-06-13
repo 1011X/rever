@@ -6,9 +6,10 @@ pub enum Literal {
 	Bool(bool),
 	Int(i64),
 	UInt(u64),
-	//Char(char),
+	Char(char),
 	String(String),
-	Fn(Vec<String>, Box<Expr>)
+	Array(Vec<Expr>),
+	Fn(Vec<String>, Box<Expr>),
 }
 
 impl Parse for Literal {
@@ -30,10 +31,6 @@ impl Parse for Literal {
 			}
 			
 			Some(Token::Number(num)) => {
-				/*if num.starts_with('+') || num.starts_with('-') {
-					let (n, tx) = Literal::snum(&num)?;
-					Ok((Literal::SNum(n), sx))
-				else {*/
 				match i64::from_str_radix(num, 10) {
 					Ok(n)  => {
 						tokens.next();
@@ -41,7 +38,11 @@ impl Parse for Literal {
 					}
 					Err(_) => return Err("a smaller number"),
 				}
-				//}
+			}
+			
+			Some(&Token::Char(c)) => {
+				tokens.next();
+				Literal::Char(c)
 			}
 			
 			Some(Token::String(st)) => {
@@ -50,8 +51,36 @@ impl Parse for Literal {
 				Literal::String(s)
 			}
 			
+			Some(Token::LBracket) => {
+				tokens.next();
+				
+				let mut elements = Vec::new();
+				
+				loop {
+					match tokens.peek() {
+						Some(Token::RBracket) => {
+							tokens.next();
+							break;
+						}
+						Some(_) => {
+							let expr = Expr::parse(tokens)?;
+							elements.push(expr);
+							
+							if let Some(Token::Comma) = tokens.peek() {
+								tokens.next();
+							}
+						}
+						None =>
+							return Err("`,` or `]` after element in array literal"),
+					}
+				}
+				
+				Literal::Array(elements)
+			}
+			
 			Some(Token::Fn) => {
 				tokens.next();
+				
 				tokens.expect(&Token::LParen)
 					.ok_or("`(` at start of function literal")?;
 				
@@ -90,7 +119,9 @@ impl Literal {
 			Literal::Bool(_)   => Some(Type::Bool),
 			Literal::Int(_)    => Some(Type::Int),
 			Literal::UInt(_)   => Some(Type::UInt),
+			Literal::Char(_)   => Some(Type::Char),
 			Literal::String(_) => Some(Type::String),
+			Literal::Array(_)  => None,
 			Literal::Fn(..)    => None,
 		}
 	}

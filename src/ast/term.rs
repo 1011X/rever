@@ -8,7 +8,10 @@ pub enum Term {
 
 impl Parse for Term {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-	    if let Ok(lit) = Literal::parse(tokens) {
+		let mut clone = tokens.clone();
+		
+	    if Literal::parse(&mut clone).is_ok() {
+	    	let lit = Literal::parse(tokens)?;
 	        Ok(Term::Lit(lit))
         } else {
 		    let lval = LValue::parse(tokens)?;

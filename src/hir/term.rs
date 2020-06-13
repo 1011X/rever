@@ -18,7 +18,7 @@ impl Term {
 impl Eval for Term {
 	fn eval(&self, t: &Scope) -> EvalResult {
 	    match self {
-	        Term::Lit(lit) => Ok(lit.eval()),
+	        Term::Lit(lit)   => lit.eval(t),
 	        Term::LVal(lval) => lval.eval(t),
 	    }
 	}

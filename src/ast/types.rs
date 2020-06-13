@@ -7,7 +7,7 @@ pub enum Type {
 	Bool,
 	UInt, Int,
     Char, String,
-	//Array(Box<Type>, usize),
+	Array(Box<Type>, usize),
 	Fn(Vec<Type>, Box<Type>),
 	Proc(Vec<(bool, Type)>),
 	//Alternate(Vec<Type>),

@@ -1,4 +1,4 @@
-use crate::hir::{Literal, Type};
+use crate::hir::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
@@ -7,34 +7,24 @@ pub enum Value {
     //Byte(u8),
     Int(i64),
     Uint(u64),
-    //Char(char),
+    Char(char),
     String(String),
+    Array(Box<[Value]>),
     //Proc(String),
 }
 
 impl Value {
     pub fn get_type(&self) -> Type {
         match self {
-        	Value::Nil => Type::Unit,
-            Value::Bool(_) => Type::Bool,
-            Value::Int(_) => Type::Int,
-            Value::Uint(_) => Type::UInt,
+        	Value::Nil       => Type::Unit,
+            Value::Bool(_)   => Type::Bool,
+            Value::Int(_)    => Type::Int,
+            Value::Uint(_)   => Type::UInt,
             //Value::Signed(_) => Type::I32,
-            //Value::Char(_) => Type::Char,
+            Value::Char(_)   => Type::Char,
             Value::String(_) => Type::String,
-        }
-    }
-}
-
-
-impl From<Literal> for Value {
-    fn from(l: Literal) -> Self {
-        match l {
-            Literal::Nil => Value::Nil,
-            Literal::Bool(b) => Value::Bool(b),
-            Literal::Int(n) => Value::Int(n),
-            Literal::UInt(n) => Value::Uint(n),
-            Literal::String(s) => Value::String(s.clone()),
+            
+            Value::Array(_)  => todo!()
         }
     }
 }
@@ -45,6 +35,10 @@ impl From<()> for Value {
 
 impl From<bool> for Value {
     fn from(b: bool) -> Self { Value::Bool(b) }
+}
+
+impl From<char> for Value {
+    fn from(c: char) -> Self { Value::Char(c) }
 }
 
 impl From<i64> for Value {

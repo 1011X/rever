@@ -23,13 +23,12 @@ pub struct Procedure {
 impl Parse for Procedure {
 	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
 		// keyword `proc`
-		tokens.expect(&Token::Proc).ok_or("`proc`")?;
+		tokens.expect(&Token::Proc)
+			.ok_or("`proc`")?;
 		
 		// get procedure name
-		let proc_name = match tokens.next() {
-			Some(Token::Ident(n)) => n,
-			_ => return Err("procedure name")
-		};
+		let proc_name = tokens.expect_ident()
+			.ok_or("procedure name")?;
 		
 		// parse parameter list
 		let mut params = Vec::new();
@@ -47,23 +46,14 @@ impl Parse for Procedure {
 						break;
 					}
 					
-					None => return Err("`,` or `)`"),
-					
 					// parse as parameter
-					_ => {
+					Some(_) => {
 						// check mutability
-						let mut mutable = false;
-						
-						if tokens.peek() == Some(&Token::Var) {
-							mutable = true;
-							tokens.next();
-						}
+						let mutable = tokens.expect(&Token::Var).is_some();
 						
 						// get parameter name
-						let param_name = match tokens.next() {
-							Some(Token::Ident(n)) => n,
-							_ => return Err("a parameter name")
-						};
+						let param_name = tokens.expect_ident()
+							.ok_or("parameter name in procedure declaration")?;
 						
 						// expect ':'
 						tokens.expect(&Token::Colon)
@@ -88,9 +78,11 @@ impl Parse for Procedure {
 						match tokens.next() {
 							Some(Token::RParen) => break,
 							Some(Token::Comma) => {}
-							_ => return Err("`,` or `)`")
+							_ => return Err("`,` or `)` in parameter list")
 						}
 					}
+					
+					None => return Err("`,` or `)` in parameter list"),
 				}
 			}
 		}

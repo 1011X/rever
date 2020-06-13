@@ -1,8 +1,10 @@
 proc main
 	let prog := ""
-	let mem := [0; 65536]
+	let mem := [0, 0, 0, 0, 0, 0, 0, 0]
 	let ptr := 0
-	from let pc := 0
+	let pc := 0
+	from pc = 0
+	until pc = prog.len
 		if prog.(pc) = '>'
 			ptr += 1
 		else if prog.(pc) = '<'
@@ -20,29 +22,33 @@ proc main
 			do print: mem.(ptr)
 		else if prog.(pc) = '['
 			if mem.(ptr) = 0
-				from let count := 0
+				let count := 0
+				from count = 0
 					if prog.(pc) = '['
 						count += 1
 					else if prog.(pc) = ']'
 						count -= 1
 					fi
 					fi
-				until drop count := 0
+				until count = 0
 					pc += 1
 				loop
+				drop count
 			fi prog.(pc) = ']'
 		else if prog.(pc) = ']'
 			if mem.(ptr) != 0
-				from let count := 0
+				let count := 0
+				from count = 0
 					if prog.(pc) = ']'
 						count += 1
 					else if prog.(pc) = '['
 						count -= 1
 					fi
 					fi
-				until drop count := 0
+				until count = 0
 					pc += 1
 				loop
+				drop count
 			fi prog.(pc) = '['
 		fi
 		fi
@@ -53,10 +59,10 @@ proc main
 		fi
 		fi
 		pc += 1
-	until drop pc := prog.len
 	loop
 	do print: ptr
 	do print: mem
+	drop pc := prog.len
 	drop ptr
 	drop mem
 	drop prog

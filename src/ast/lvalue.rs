@@ -19,10 +19,8 @@ impl Parse for LValue {
 	    let mut ops = Vec::new();
 	    
 	    // get lval name
-	    let name = match tokens.next() {
-	    	Some(Token::Ident(n)) => n,
-	    	_ => return Err("a variable name")
-		};
+	    let name = tokens.expect_ident()
+	    	.ok_or("variable name in left-value expression")?;
 	    
 	    loop {
 	    	match tokens.peek() {
