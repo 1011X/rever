@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::tokenize::{Token, Tokens};
+use crate::tokenize::Token;
 use crate::ast::{self, Expr, Item, Statement};
 use crate::hir;
 use crate::interpret::{self, Eval};
@@ -40,7 +40,6 @@ impl Scope {
 	
 	pub fn eval_line(&mut self, line: ReplLine) -> Result<(), ()> {
 		match line {
-			ReplLine::Skip => {}
 			ReplLine::Show(var) => {
 				if let Some(val) = self.get(&var) {
 					println!("> {:?}", val);
@@ -77,8 +76,8 @@ impl Scope {
 	}
 }
 
+#[derive(Debug, Clone)]
 pub enum ReplLine {
-	Skip,
 	Show(String),
 	Var(String, Expr),
 	Drop(String),
@@ -87,53 +86,61 @@ pub enum ReplLine {
 	Stmt(Statement),
 }
 
-impl ast::Parse for ReplLine {
-	fn parse(tokens: &mut Tokens) -> ast::ParseResult<Self> {
-		match tokens.peek() {
-			None => Ok(ReplLine::Skip),
-			Some(Token::Var) => {
-				tokens.next();
+impl ast::Parser {
+	pub fn parse_repl_line(&mut self) -> ast::ParseResult<ReplLine> {
+		Ok(match self.peek() {
+			None => todo!(),
+			Some(Token::Let) => {
+				let (_, start) = self.expect(&Token::Let).unwrap();
 				
-				let name = match tokens.next() {
-					Some(Token::Ident(n)) => n,
-					_ => return Err("variable name after `var`")
-				};
+				let name = self.expect_ident()
+					.ok_or("variable name after `let`")?;
 				
-				tokens.expect(&Token::Assign)
+				self.expect(&Token::Assign)
 					.ok_or("`:=` after variable name")?;
 				
-				let init = Expr::parse(tokens)?;
+				let (init, end) = self.parse_expr()?;
 				
-				Ok(ReplLine::Var(name, init))
+				(ReplLine::Var(name, init), start.merge(&end))
 			}
 			Some(Token::Drop) => {
-				tokens.next();
+				let (_, start) = self.expect(&Token::Drop).unwrap();
 				
-				let name = match tokens.next() {
-					Some(Token::Ident(n)) => n,
-					_ => return Err("variable name after `drop`")
-				};
+				let (name, end) = self.expect_ident_span()
+					.ok_or("variable name after `drop`")?;
 				
-				Ok(ReplLine::Drop(name))
+				(ReplLine::Drop(name), start.merge(&end))
 			}
 			Some(Token::Ident(id)) if id == "show" => {
-				tokens.next();
+				let (_, start) = self.expect_ident_span().unwrap();
 				
-				let name = match tokens.next() {
-					Some(Token::Ident(name)) => name,
-					_ => return Err("variable name after `show`"),
-				};
+				let (name, end) = self.expect_ident_span()
+					.ok_or("variable name after `show`")?;
 				
-				Ok(ReplLine::Show(name))
+				(ReplLine::Show(name), start.merge(&end))
 			}
-			Some(tok) => match tok {
-				Token::Fn | Token::Proc | Token::Mod =>
-					Ok(ReplLine::Item(Item::parse(tokens)?)),
-				
-				_ => Ok(ReplLine::Stmt(Statement::parse(tokens)?)),
+			
+			Some(Token::Fn)
+			| Some(Token::Proc)
+			| Some(Token::Mod) => {
+				let (item, span) = self.parse_item()?;
+				(item.into(), span)
 			}
-		}
+				
+			Some(_) => {
+				let (stmt, span) = self.parse_stmt()?;
+				(stmt.into(), span)
+			}
+		})
 	}
+}
+
+impl From<Item> for ReplLine {
+	fn from(item: Item) -> Self { ReplLine::Item(item) }
+}
+
+impl From<Statement> for ReplLine {
+	fn from(stmt: Statement) -> Self { ReplLine::Stmt(stmt) }
 }
 
 enum Error {

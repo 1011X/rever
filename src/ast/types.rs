@@ -6,97 +6,94 @@ pub enum Type {
 	Unit,
 	Bool,
 	UInt, Int,
-    Char, String,
-	Array(Box<Type>, usize),
-	Fn(Vec<Type>, Box<Type>),
-	Proc(Vec<(bool, Type)>),
+	Char, String,
+	Array(Box<(Type, Span)>, usize),
+	Fn(Vec<(Type, Span)>, Box<(Type, Span)>),
+	Proc(Vec<(bool, (Type, Span))>),
 	//Alternate(Vec<Type>),
 	//Composite(Vec<Type>),
 }
 
-impl Parse for Type {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		match tokens.peek().ok_or("a type")? {
-			Token::Ident(t) if t == "never" => {
-				tokens.next();
-				Ok(Type::Never)
+impl Parser {
+	pub fn parse_type(&mut self) -> ParseResult<Type> {
+		Ok(match self.peek().ok_or("a type")? {
+			Token::Ident(_) => {
+				let (name, span) = self.expect_ident_span().unwrap();
+				match name.as_str() {
+					"never" => (Type::Never, span),
+					"unit"  => (Type::Unit, span),
+					"bool"  => (Type::Bool, span),
+					"uint"  => (Type::UInt, span),
+					"int"   => (Type::Int, span),
+					"str"   => (Type::String, span),
+					id      => todo!(),
+				}
 			}
-			Token::Ident(t) if t == "unit" => {
-				tokens.next();
-				Ok(Type::Unit)
-			}
-			Token::Ident(t) if t == "bool" => {
-				tokens.next();
-				Ok(Type::Bool)
-			}
-			Token::Ident(t) if t == "uint" => {
-				tokens.next();
-				Ok(Type::UInt)
-			}
-			Token::Ident(t) if t == "int" => {
-				tokens.next();
-				Ok(Type::Int)
-			}
-			Token::Ident(t) if t == "str" => {
-				tokens.next();
-				Ok(Type::String)
-			}
+			
 			Token::Fn => {
-				tokens.next();
+				let (_, start) = self.next().unwrap();
 				
-				tokens.expect(&Token::LParen)
+				self.expect(&Token::LParen)
 					.ok_or("`(` for `fn` type")?;
 				
 				let mut params = Vec::new();
-				
-				while tokens.peek() != Some(&Token::RParen) {
-					params.push(Type::parse(tokens)?);
-					
-					match tokens.peek() {
-						Some(Token::RParen) => {}
-						Some(Token::Comma) => { tokens.next(); }
-						_ => return Err("`)` or `,` in fn param list")
+				loop {
+					match self.peek() {
+						Some(Token::RParen) => break,
+						Some(_) => {
+							params.push(self.parse_type()?);
+							
+							match self.peek() {
+								Some(Token::Comma) => { self.next(); }
+								Some(Token::RParen) => {}
+								_ => return Err("`,` or `)` in fn param list"),
+							}
+						}
+						None => return Err("`,` or `)` in fn param list"),
 					}
 				}
-				tokens.next();
+				self.next();
 				
-				tokens.expect(&Token::Colon)
+				self.expect(&Token::Colon)
 					.ok_or("`:` to specify `fn` return type")?;
 				
-				let ret = Type::parse(tokens)?;
+				let ret = self.parse_type()?;
+				let span = start.merge(&ret.1);
 				
-				Ok(Type::Fn(params, Box::new(ret)))
+				(Type::Fn(params, Box::new(ret)), span)
 			}
+			
 			Token::Proc => {
-				tokens.next();
+				let (_, start) = self.next().unwrap();
 				
-				tokens.expect(&Token::LParen)
+				self.expect(&Token::LParen)
 					.ok_or("`(` for `proc` type")?;
 				
 				let mut params = Vec::new();
-				
-				while tokens.peek() != Some(&Token::RParen) {
-					let mut var = false;
-					
-					if let Some(Token::Var) = tokens.peek() {
-						var = true;
-						tokens.next();
-					}
-					
-					params.push((var, Type::parse(tokens)?));
-					
-					match tokens.peek() {
-						Some(Token::RParen) => {}
-						Some(Token::Comma) => { tokens.next(); }
-						_ => return Err("`)` or `,` in proc param list")
+				loop {
+					match self.peek() {
+						Some(Token::RParen) => break,
+						Some(_) => {
+							let var = self.expect(&Token::Var).is_some();
+							let t = self.parse_type()?;
+							
+							params.push((var, t));
+							
+							match self.peek() {
+								Some(Token::Comma) => { self.next(); }
+								Some(Token::RParen) => {}
+								_ => return Err("`,` or `)` in fn param list"),
+							}
+						}
+						None => return Err("`)` or `,` in proc param list"),
 					}
 				}
-				tokens.next();
+				let (_, end) = self.next().unwrap();
 				
-				Ok(Type::Proc(params))
+				(Type::Proc(params), start.merge(&end))
 			}
 			
-			_ => Err("a valid type")
-		}
+			_ => return Err("a valid type")
+		})
 	}
 }

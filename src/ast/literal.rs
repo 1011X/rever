@@ -8,103 +8,106 @@ pub enum Literal {
 	UInt(u64),
 	Char(char),
 	String(String),
-	Array(Vec<Expr>),
-	Fn(Vec<String>, Box<Expr>),
+	Array(Vec<(Expr, Span)>),
+	Fn(Vec<String>, Box<(Expr, Span)>),
 }
 
-impl Parse for Literal {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		Ok(match tokens.peek() {
+impl Parser {
+	pub fn parse_lit(&mut self) -> ParseResult<Literal> {
+		Ok(match self.peek() {
 			Some(Token::Ident(x)) if x == "nil" => {
-				tokens.next();
-				Literal::Nil
+				let (_, span) = self.next().unwrap();
+				(Literal::Nil, span)
 			}
 			
 			Some(Token::Ident(x)) if x == "true" => {
-				tokens.next();
-				Literal::Bool(true)
+				let (_, span) = self.next().unwrap();
+				(Literal::Bool(true), span)
 			}
 			
 			Some(Token::Ident(x)) if x == "false" => {
-				tokens.next();
-				Literal::Bool(false)
+				let (_, span) = self.next().unwrap();
+				(Literal::Bool(false), span)
 			}
 			
-			Some(Token::Number(num)) => {
+			Some(Token::Number(num)) =>
 				match i64::from_str_radix(num, 10) {
-					Ok(n)  => {
-						tokens.next();
-						Literal::Int(n)
+					Ok(n) => {
+						let (_, span) = self.next().unwrap();
+						(Literal::Int(n), span)
 					}
 					Err(_) => return Err("a smaller number"),
 				}
-			}
 			
 			Some(&Token::Char(c)) => {
-				tokens.next();
-				Literal::Char(c)
+				let (_, span) = self.next().unwrap();
+				(Literal::Char(c), span)
 			}
 			
-			Some(Token::String(st)) => {
-				let s = st.clone();
-				tokens.next();
-				Literal::String(s)
+			Some(Token::String(_)) => {
+				let (s, span) = self.expect_ident_span().unwrap();
+				(Literal::String(s), span)
 			}
 			
 			Some(Token::LBracket) => {
-				tokens.next();
+				let (_, start) = self.next().unwrap();
 				
 				let mut elements = Vec::new();
 				
 				loop {
-					match tokens.peek() {
-						Some(Token::RBracket) => {
-							tokens.next();
-							break;
-						}
+					match self.peek() {
+						Some(Token::RBracket) =>
+							break,
 						Some(_) => {
-							let expr = Expr::parse(tokens)?;
-							elements.push(expr);
+							elements.push(self.parse_expr()?);
 							
-							if let Some(Token::Comma) = tokens.peek() {
-								tokens.next();
+							match self.peek() {
+								Some(Token::Comma) => { self.next(); }
+								Some(Token::RBracket) => {}
+								_ => return Err("`,` or `]` after element in array literal"),
 							}
 						}
 						None =>
 							return Err("`,` or `]` after element in array literal"),
 					}
 				}
+				let (_, end) = self.next().unwrap();
 				
-				Literal::Array(elements)
+				(Literal::Array(elements), start.merge(&end))
 			}
 			
 			Some(Token::Fn) => {
-				tokens.next();
+				let (_, start) = self.next().unwrap();
 				
-				tokens.expect(&Token::LParen)
-					.ok_or("`(` at start of function literal")?;
+				self.expect(&Token::LParen)
+					.ok_or("`(` at start of closure")?;
 				
 				let mut args = Vec::new();
 				loop {
-					match tokens.next() {
+					match self.peek() {
 						Some(Token::RParen) => break,
-						Some(Token::Ident(id)) => {
+						Some(Token::Ident(_)) => {
+							let id = self.expect_ident().unwrap();
 							args.push(id);
 							
-							if let Some(Token::Comma) = tokens.peek() {
-								tokens.next();
+							match self.peek() {
+								Some(Token::Comma) => { self.next(); }
+								Some(Token::RParen) => {}
+								_ => return Err("`,` or `)` after argument name in closure"),
 							}
 						}
-						_ => return Err("`,` or `)` after argument name in function literal")
+						_ => return Err("`,` or `)` after argument name in closure")
 					}
 				}
+				self.next();
 				
-				tokens.expect(&Token::Colon)
-					.ok_or("`:` after arguments in function literal")?;
+				self.expect(&Token::Colon)
+					.ok_or("`:` after arguments in closure")?;
 				
-				let expr = Expr::parse(tokens)?;
+				let expr = self.parse_expr()?;
+				let span = start.merge(&expr.1);
 				
-				Literal::Fn(args, Box::new(expr))
+				(Literal::Fn(args, Box::new(expr)), span)
 			}
 			
 			_ => return Err("valid literal value")

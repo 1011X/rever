@@ -1,13 +1,10 @@
 use super::*;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Dir { Fore, Back }
-
 #[derive(Debug, Clone)]
 pub struct Param {
 	pub name: String,
 	pub mutable: bool,
-	pub typ: Type,
+	pub typ: (Type, Span),
 }
 
 #[derive(Debug, Clone)]
@@ -15,69 +12,68 @@ pub struct Procedure {
 	/// Name of the procedure.
 	pub name: String,
 	/// List of parameters for the procedure.
-	pub params: Vec<Param>,
+	pub params: Vec<(Param, Span)>,
 	/// Sequence of statements that define the procedure.
-	pub code: Vec<Statement>,
+	pub code: Vec<(Statement, Span)>,
 }
 
-impl Parse for Procedure {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		// keyword `proc`
-		tokens.expect(&Token::Proc)
+impl Parser {
+	pub fn parse_proc(&mut self) -> ParseResult<Procedure> {
+		let (_, start) = self.expect(&Token::Proc)
 			.ok_or("`proc`")?;
 		
-		// get procedure name
-		let proc_name = tokens.expect_ident()
+		let proc_name = self.expect_ident()
 			.ok_or("procedure name")?;
 		
-		// parse parameter list
 		let mut params = Vec::new();
 		
+		// parse parameter list
 		// starting '('
-		if tokens.peek() == Some(&Token::LParen) {
-			tokens.next();
-			
+		if self.expect(&Token::LParen).is_some() {
 			loop {
 				// TODO add case for newline for multiline param declaration?
-				match tokens.peek() {
+				match self.peek() {
 					// ending ')'
-					Some(Token::RParen) => {
-						tokens.next();
-						break;
-					}
+					Some(Token::RParen) => break,
 					
 					// parse as parameter
 					Some(_) => {
-						// check mutability
-						let mutable = tokens.expect(&Token::Var).is_some();
+						let var = self.expect(&Token::Var)
+							.map(|(_, span)| span);
 						
-						// get parameter name
-						let param_name = tokens.expect_ident()
+						let (param_name, param_start) = self.expect_ident_span()
 							.ok_or("parameter name in procedure declaration")?;
 						
-						// expect ':'
-						tokens.expect(&Token::Colon)
+						let (mutable, start) = match var {
+							Some(span) => (true,  span),
+							None       => (false, param_start),
+						};
+						
+						self.expect(&Token::Colon)
 							.ok_or("`:` after parameter name")?;
 						
 						// get type
-						let typ = Type::parse(tokens)?;
+						let typ = self.parse_type()?;
 						
-						for Param { name, .. } in &params {
+						for (Param { name, .. }, _) in &params {
 							if *name == param_name {
 								eprintln!(
 									"Some parameter names in `proc {}` overlap: {:?}",
 									proc_name, name
 								);
-								return Err("parameter name to be unique");
+								return Err("parameter names to be unique");
 							}
 						}
 						
-						// push to list of parameters
-						params.push(Param { mutable, name: param_name, typ });
+						let span = start.merge(&typ.1);
+						params.push((
+							Param { mutable, name: param_name, typ },
+							span
+						));
 						
-						match tokens.next() {
-							Some(Token::RParen) => break,
-							Some(Token::Comma) => {}
+						match self.peek() {
+							Some(Token::Comma) => { self.next(); }
+							Some(Token::RParen) => {}
 							_ => return Err("`,` or `)` in parameter list")
 						}
 					}
@@ -85,42 +81,25 @@ impl Parse for Procedure {
 					None => return Err("`,` or `)` in parameter list"),
 				}
 			}
+			self.next();
 		}
 		
-		// check for newline
-		tokens.expect(&Token::Newline)
+		self.expect(&Token::Newline)
 			.ok_or("newline after parameter list")?;
 		
 		// code block section
 		let mut code = Vec::new();
 		loop {
-			match tokens.peek() {
-				// ending 'end'
-				Some(Token::End) => {
-					tokens.next();
-					break;
-				}
-				
+			match self.peek() {
+				Some(Token::End) => break,
+				Some(_) => code.push(self.parse_stmt()?),
 				None => return Err("a statement or `end`"),
-				
-				// statement
-				_ => code.push(Statement::parse(tokens)?),
 			}
-		}
+		};
+		let (_, end) = self.next().unwrap();
 		
-		// the optional `proc` in `end proc`
-		if tokens.peek() == Some(&Token::Proc) {
-			tokens.next();
-			
-			// the optional name of procedure after `end proc`
-			if tokens.peek() == Some(&Token::Ident(proc_name.clone())) {
-				tokens.next();
-			}
-		}
+		self.expect(&Token::Newline);
 		
-		// the likely newline afterwards
-		if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
-		
-		Ok(Procedure { name: proc_name, params, code })
+		Ok((Procedure { name: proc_name, params, code }, start.merge(&end)))
 	}
 }

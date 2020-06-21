@@ -26,7 +26,12 @@ impl From<Vec<ast::Item>> for Module {
 }
 
 impl From<ast::Module> for Module {
-	fn from(m: ast::Module) -> Self { m.items.into() }
+	fn from(m: ast::Module) -> Self {
+		m.items.into_iter()
+			.map(|(item, _)| item)
+			.collect::<Vec<ast::Item>>()
+			.into()
+	}
 }
 
 impl Module {

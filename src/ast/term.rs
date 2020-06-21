@@ -6,17 +6,17 @@ pub enum Term {
 	LVal(LValue),
 }
 
-impl Parse for Term {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		let mut clone = tokens.clone();
+impl Parser {
+	pub fn parse_term(&mut self) -> ParseResult<Term> {
+		let mut clone = self.clone();
 		
-	    if Literal::parse(&mut clone).is_ok() {
-	    	let lit = Literal::parse(tokens)?;
-	        Ok(Term::Lit(lit))
-        } else {
-		    let lval = LValue::parse(tokens)?;
-		    Ok(Term::LVal(lval))
-	    }
+		if clone.parse_lit().is_ok() {
+			let (lit, span) = self.parse_lit()?;
+			Ok((Term::Lit(lit), span))
+		} else {
+			let (lval, span) = self.parse_lval()?;
+			Ok((Term::LVal(lval), span))
+		}
 	}
 }
 
@@ -30,9 +30,9 @@ impl Term {
 }
 
 impl From<Literal> for Term {
-    fn from(lit: Literal) -> Self { Term::Lit(lit) }
+	fn from(lit: Literal) -> Self { Term::Lit(lit) }
 }
 
 impl From<LValue> for Term {
-    fn from(lval: LValue) -> Self { Term::LVal(lval) }
+	fn from(lval: LValue) -> Self { Term::LVal(lval) }
 }

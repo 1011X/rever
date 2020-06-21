@@ -61,9 +61,9 @@ impl From<ast::Literal> for Literal {
 			ast::Literal::String(s) => Literal::String(s),
 			
 			ast::Literal::Array(arr) =>
-				Literal::Array(arr.into_iter().map(Expr::from).collect()),
+				Literal::Array(arr.into_iter().map(|e| e.0.into()).collect()),
 			ast::Literal::Fn(args, ret) =>
-				Literal::Fn(args.clone(), Box::new((*ret).into())),
+				Literal::Fn(args.clone(), Box::new((*ret).0.into())),
 		}
 	}
 }

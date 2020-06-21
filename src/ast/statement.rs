@@ -7,35 +7,51 @@ pub enum Statement {
 	//Not(LValue),
 	//Neg(LValue),
 	
-	RotLeft(LValue, Expr),
-	RotRight(LValue, Expr),
+	RotLeft((LValue, Span), (Expr, Span)),
+	RotRight((LValue, Span), (Expr, Span)),
 	
-	Xor(LValue, Expr),
-	Add(LValue, Expr),
-	Sub(LValue, Expr),
+	Xor((LValue, Span), (Expr, Span)),
+	Add((LValue, Span), (Expr, Span)),
+	Sub((LValue, Span), (Expr, Span)),
 	
-	Swap(LValue, LValue),
+	Swap((LValue, Span), (LValue, Span)),
 	//CSwap(Factor, LValue, LValue),
 	
-	Do(String, Vec<Expr>),
-	Undo(String, Vec<Expr>),
+	Do(String, Vec<(Expr, Span)>),
+	Undo(String, Vec<(Expr, Span)>),
 	
-	Let(String, Option<Type>, Expr, Vec<Statement>, Option<Expr>),
-	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
-	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
+	Let(
+		String,
+		Option<(Type, Span)>,
+		(Expr, Span),
+		Vec<(Statement, Span)>,
+		Option<(Expr, Span)>
+	),
+	If(
+		(Expr, Span),
+		Vec<(Statement, Span)>,
+		Vec<(Statement, Span)>,
+		Option<(Expr, Span)>
+	),
+	From(
+		(Expr, Span),
+		Vec<(Statement, Span)>,
+		Vec<(Statement, Span)>,
+		(Expr, Span)
+	),
 	//FromLet(String, Expr, Vec<Statement>, Vec<Statement>, Expr),
 	//Match(String, Vec<_, Vec<Statement>>),
 	//For(String, Expr, Vec<Statement>),
 }
 
-impl Parse for Statement {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		let res = match tokens.peek() {
+impl Parser {
+	pub fn parse_stmt(&mut self) -> ParseResult<Statement> {
+		let stmt = match self.peek().ok_or("a statement")? {
 			// skip
 			// TODO use this keyword as a prefix to comment out statements?
-			Some(Token::Skip) => {
-				tokens.next();
-				Ok(Statement::Skip)
+			Token::Skip => {
+				let (_, span) = self.next().unwrap();
+				(Statement::Skip, span)
 			}
 			
 			/* do-call syntax accepts three forms:
@@ -48,43 +64,45 @@ impl Parse for Statement {
 			   also has special syntax like:
 			   + do something: var new_var, drop used_var
 			*/
-			Some(Token::Do) => {
-				tokens.next();
+			Token::Do => {
+				let (_, start) = self.next().unwrap();
 				
-				let name = match tokens.next() {
-					Some(Token::Ident(name)) => name,
-					_ => return Err("procedure name after `do`")
-				};
+				let (name, end) = self.expect_ident_span()
+					.ok_or("procedure name after `do`")?;
 				
 				// TODO check for parentheses. if so, go into multiline mode
 				let mut args = Vec::new();
 				
-				if tokens.peek() == Some(&Token::Newline) {
+				if self.expect(&Token::Newline).is_some() {
 					// do nothing
-				} else if tokens.peek() == Some(&Token::Colon) {
-					tokens.next();
+				} else if self.expect(&Token::Colon).is_some() {
 					// TODO check for newline, in case expression is missing
-					args.push(Expr::parse(tokens)?);
+					let expr = self.parse_expr()?;
+					args.push(expr);
+					
 					loop {
-						match tokens.peek() {
-							None | Some(Token::Newline) => break,
+						match self.peek() {
+							Some(Token::Newline)
+							| None =>
+								break,
 							Some(Token::Comma) => {
-								tokens.next();
+								self.next();
 								// TODO check for "substatements" first.
 								// E.g. `var file` or `drop buf` in args.
-								args.push(Expr::parse(tokens)?);
+								args.push(self.parse_expr()?);
 							}
 							_ => return Err("`,` or newline"),
 						}
 					}
-				} else if tokens.peek() == Some(&Token::LParen) {
-					tokens.next();
+				} else if self.expect(&Token::LParen).is_some() {
 					unimplemented!();
 				} else {
 					return Err("`:`, or newline");
-				}
+				};
 				
-				Ok(Statement::Do(name, args))
+				let end = args.last().map(|(_, span)| *span).unwrap_or(end);
+				
+				(Statement::Do(name, args), start.merge(&end))
 			}
 			
 			// undo
@@ -93,287 +111,260 @@ impl Parse for Statement {
 			// `tok @ pattern` and matching at the end because it gives a
 			// "cannot borrow `*tokens` as mutable more than once at a time"
 			// error (as of rustc v1.42.0).
-			Some(Token::Undo) => {
-				tokens.next();
+			Token::Undo => {
+				let (_, start) = self.next().unwrap();
 				
-				let name = match tokens.next() {
-					Some(Token::Ident(name)) => name,
-					_ => return Err("procedure name after `undo`")
-				};
+				let (name, end) = self.expect_ident_span()
+					.ok_or("procedure name after `undo`")?;
 				
 				// TODO check for parentheses. if so, go into multiline mode
 				let mut args = Vec::new();
 				
-				if tokens.peek() == Some(&Token::Newline) {
+				if self.expect(&Token::Newline).is_some() {
 					// do nothing
-				} else if tokens.peek() == Some(&Token::Colon) {
-					tokens.next();
+				} else if self.expect(&Token::Colon).is_some() {
 					// TODO check for newline, in case expression is missing
-					args.push(Expr::parse(tokens)?);
+					let expr = self.parse_expr()?;
+					args.push(expr);
+					
 					loop {
-						match tokens.peek() {
-							None | Some(Token::Newline) => break,
+						match self.peek() {
+							Some(Token::Newline)
+							| None => 
+								break,
 							Some(Token::Comma) => {
-								tokens.next();
-								args.push(Expr::parse(tokens)?);
+								self.next();
+								args.push(self.parse_expr()?);
 							}
 							_ => return Err("`,` or newline"),
 						}
 					}
-				} else if tokens.peek() == Some(&Token::LParen) {
-					tokens.next();
+				} else if self.expect(&Token::LParen).is_some() {
 					unimplemented!();
 				} else {
 					return Err("`:`, or newline");
-				}
+				};
 				
-				Ok(Statement::Undo(name, args))
+				let end = args.last().map(|(_, span)| *span).unwrap_or(end);
+				
+				(Statement::Undo(name, args), start.merge(&end))
 			}
 			
 			// from-until
-			Some(Token::From) => {
-				tokens.next();
+			Token::From => {
+				let (_, start) = self.next().unwrap();
 				
 				// parse loop assertion
-				let assert = Expr::parse(tokens)?;
+				let assert = self.parse_expr()?;
 				
-				// ensure there's a newline afterwards
-				tokens.expect(&Token::Newline)
-					.ok_or("newline after from expression")?;
+				self.expect(&Token::Newline)
+					.ok_or("newline after `from` assertion")?;
 				
 				// parse the main loop block
 				let mut main_block = Vec::new();
 				loop {
-					match tokens.peek() {
-						Some(Token::Until) => {
-							tokens.next();
-							break;
-						}
-						Some(_) => {
-							let stmt = Statement::parse(tokens)?;
-							main_block.push(stmt);
-						}
-						None => return Err("a statement or `until`")
+					match self.peek() {
+						Some(Token::Until) => break,
+						Some(_) => main_block.push(self.parse_stmt()?),
+						None => return Err("a statement or `until`"),
 					}
 				}
+				self.next();
 				
 				// parse the `until` test expression
-				let test = Expr::parse(tokens)?;
+				let test = self.parse_expr()?;
 				
-				// ensure there's a newline afterwards
-				tokens.expect(&Token::Newline)
-					.ok_or("newline after until expression")?;
+				self.expect(&Token::Newline)
+					.ok_or("newline after `until` expression")?;
 				
 				// parse reverse loop block
 				let mut back_block = Vec::new();
 				loop {
-					match tokens.peek() {
-						Some(Token::Loop) => {
-							tokens.next();
-							break;
-						}
-						Some(_) => back_block.push(Statement::parse(tokens)?),
+					match self.peek() {
+						Some(Token::Loop) => break,
+						Some(_) => back_block.push(self.parse_stmt()?),
 						None => return Err("a statement or `loop`"),
 					}
-				}
+				};
+				let (_, end) = self.next().unwrap();
 				
+				// TODO: remove?
 				if main_block.is_empty() && back_block.is_empty() {
 					return Err("a non-empty do-block or back-block in from-loop");
 				}
 				
-				Ok(Statement::From(assert, main_block, back_block, test))
+				(Statement::From(assert, main_block, back_block, test), start.merge(&end))
 			}
 			
 			// let-drop
-			Some(Token::Let) => {
-				tokens.next();
+			Token::Let => {
+				let (_, start) = self.next().unwrap();
 				
 				// get name
-				let name = tokens.expect_ident()
+				let name = self.expect_ident()
 					.ok_or("name in variable declaration")?;
 				
 				// get optional type
-				let mut typ = None;
-				
-				if tokens.peek() == Some(&Token::Colon) {
-					tokens.next();
-					let t = Type::parse(tokens)?;
-					typ = Some(t);
-				}
+				let typ = match self.expect(&Token::Colon) {
+					Some(_) => Some(self.parse_type()?),
+					None => None,
+				};
 				
 				// check for assignment op
-				tokens.expect(&Token::Assign)
+				self.expect(&Token::Assign)
 					.ok_or("`:=` in variable declaration")?;
 				
 				// get initialization expression
-				let init = Expr::parse(tokens)?;
+				let init = self.parse_expr()?;
 				
-				// get newline
-				tokens.expect(&Token::Newline)
+				self.expect(&Token::Newline)
 					.ok_or("newline after variable declaration")?;
 				
 				// get list of statements for which this variable is valid
 				let mut block = Vec::new();
 				loop {
-					match tokens.peek() {
-						Some(Token::Drop) => {
-							tokens.next();
-							break;
-						}
-						Some(_) => {
-							let stmt = Statement::parse(tokens)?;
-							block.push(stmt);
-						}
-						None => return Err("a statement or `drop`")
+					match self.peek() {
+						Some(Token::Drop) => break,
+						Some(_) => block.push(self.parse_stmt()?),
+						None => return Err("a statement or `drop`"),
 					}
 				}
+				self.next();
 				
-				// get deinit name
-				tokens.expect(&Token::Ident(name.to_string()))
+				// assert name
+				let drop_name = self.expect(&Token::Ident(name.clone()))
 					.ok_or("same variable name as before")?;
 				
-				// check for assignment op
-				let drop =
-					if tokens.peek() == Some(&Token::Assign) {
-						tokens.next();
-						Some(Expr::parse(tokens)?)
-					} else {
-						None
-					};
+				// get optional deinit value
+				let drop = match self.expect(&Token::Assign) {
+					Some(_) => Some(self.parse_expr()?),
+					None => None,
+				};
 				
-				Ok(Statement::Let(name, typ, init, block, drop))
+				let end = drop.as_ref().map(|(_, span)| span).unwrap_or(&drop_name.1);
+				let span = start.merge(&end);
+				
+				(Statement::Let(name, typ, init, block, drop), span)
 			}
 			
 			// if-else
-			Some(Token::If) => {
-				tokens.next();
+			Token::If => {
+				let (_, start) = self.next().unwrap();
 				
 				// parse if condition
-				let cond = Expr::parse(tokens)?;
+				let cond = self.parse_expr()?;
 				
-				// expect newline
-				tokens.expect(&Token::Newline)
+				self.expect(&Token::Newline)
 					.ok_or("newline after `if` predicate")?;
 				
 				// parse the main block
 				let mut main_block = Vec::new();
 				loop {
-					match tokens.peek() {
-						// if `else` or `fi` is found, end block.
-						Some(Token::Else) |
-						Some(Token::Fi) => break,
-						
-						Some(_) => {
-							let stmt = Statement::parse(tokens)?;
-							main_block.push(stmt);
-						}
-						None => return Err("a statement, `else`, or `fi`")
+					match self.peek() {
+						Some(Token::Else)
+						| Some(Token::Fi) => break,
+						Some(_) => main_block.push(self.parse_stmt()?),
+						None => return Err("a statement, `else`, or `fi`"),
 					}
 				}
+				//self.next();
 				
 				// parse else section
 				let mut else_block = Vec::new();
 				
 				// saw `else`
-				if tokens.peek() == Some(&Token::Else) {
-					tokens.next();
-					
-					// check if newline to parse a block
-					if tokens.peek() == Some(&Token::Newline) {
-						tokens.next();
-						// parse else block. MUST have at least 1 statement.
+				if self.expect(&Token::Else).is_some() {
+					if self.expect(&Token::Newline).is_some() {
+						// parse a block
 						loop {
-							match tokens.peek() {
-								// TODO is minimum statement requirement a good idea?
-								Some(Token::Fi) if else_block.is_empty() =>
-									return Err("else-block to have at least 1 statement"),
-								Some(Token::Fi) =>
-									break,
-								Some(_) =>
-									else_block.push(Statement::parse(tokens)?),
-								None =>
-									return Err("a statement or `fi`"),
+							match self.peek() {
+								Some(Token::Fi) => break,
+								Some(_) => else_block.push(self.parse_stmt()?),
+								None => return Err("a statement or `fi`"),
 							}
 						}
-					} else if tokens.peek() == Some(&Token::If) {
+					} else if self.peek() == Some(&Token::If) {
 						// check if it's a single `if` statement. this allows
 						// "embedding" of chained `if` statements.
-						let stmt = Statement::parse(tokens)?;
-						else_block.push(stmt);
+						else_block.push(self.parse_stmt()?);
 					} else {
 						return Err("chaining `if` or a newline");
 					}
 				}
 				
 				// expect ending `fi`
-				tokens.expect(&Token::Fi)
+				let fi = self.expect(&Token::Fi)
 					.ok_or("`fi` to finish `if` statement")?;
 				
-				// parse the `fi` assertion if any, else use initial condition
-				let assert = match tokens.peek() {
-					None | Some(Token::Newline) => cond.clone(),
-					_ => Expr::parse(tokens)?,
+				// parse `fi` assertion, if any
+				let assert = match self.peek() {
+					Some(Token::Newline)
+					| None  => None,
+					Some(_) => Some(self.parse_expr()?),
 				};
 				
-				Ok(Statement::If(cond, main_block, else_block, assert))
+				let end = assert.as_ref().map(|expr| expr.1).unwrap_or(fi.1);
+				let span = start.merge(&end);
+				
+				(Statement::If(cond, main_block, else_block, assert), span)
 			}
 			
-			Some(_) =>
-				if let Ok(lval) = LValue::parse(tokens) {
-					match tokens.peek() {
-						Some(Token::Assign) => {
-							tokens.next();
-							
-						    let expr = Expr::parse(tokens)?;
-						    Ok(Statement::Xor(lval, expr))
-						}
-						Some(Token::AddAssign) => {
-							tokens.next();
-							
-						    let expr = Expr::parse(tokens)?;
-						    Ok(Statement::Add(lval, expr))
-						}
-						Some(Token::SubAssign) => {
-							tokens.next();
-							
-						    let expr = Expr::parse(tokens)?;
-						    Ok(Statement::Sub(lval, expr))
-						}
-						
-						Some(Token::Rol) => {
-							tokens.next();
-							
-						    let expr = Expr::parse(tokens)?;
-						    Ok(Statement::RotLeft(lval, expr))
-						}
-						Some(Token::Ror) => {
-							tokens.next();
-							
-						    let expr = Expr::parse(tokens)?;
-						    Ok(Statement::RotRight(lval, expr))
-						}
-						
-						Some(Token::Swap) => {
-							tokens.next();
-							
-						    let rval = LValue::parse(tokens)?;
-						    Ok(Statement::Swap(lval, rval))
-						}
-						
-						Some(_) => Err("`:=`, `+=`, `-=`, or `<>`"),
-						None => Err("modifying operator"),
+			Token::Ident(_) => {
+				let lval = self.parse_lval()?;
+				let start = lval.1;
+				
+				match self.peek().ok_or("modifying operator")? {
+					Token::Assign => {
+						self.next();
+						let expr = self.parse_expr()?;
+						let span = start.merge(&expr.1);
+					    (Statement::Xor(lval, expr), span)
 					}
-				} else {
-					Err("a valid statement")
+					Token::AddAssign => {
+						self.next();
+						let expr = self.parse_expr()?;
+						let span = start.merge(&expr.1);
+					    (Statement::Add(lval, expr), span)
+					}
+					Token::SubAssign => {
+						self.next();
+						let expr = self.parse_expr()?;
+						let span = start.merge(&expr.1);
+					    (Statement::Sub(lval, expr), span)
+					}
+					
+					Token::Rol => {
+						self.next();
+						let expr = self.parse_expr()?;
+						let span = start.merge(&expr.1);
+					    (Statement::RotLeft(lval, expr), span)
+					}
+					Token::Ror => {
+						self.next();
+						let expr = self.parse_expr()?;
+						let span = start.merge(&expr.1);
+					    (Statement::RotRight(lval, expr), span)
+					}
+					
+					Token::Swap => {
+						self.next();
+						let rhs = self.parse_lval()?;
+						let span = start.merge(&rhs.1);
+					    (Statement::Swap(lval, rhs), span)
+					}
+					
+					_ => return Err("`:=`, `+=`, `-=`, `:<`, `:>`, or `<>`"),
 				}
+			}
 			
-			None => Err("a statement"),
+			// TODO: handle newline here for empty statement
+			_ => return Err("a valid statement"),
 		};
 				
 		// consume newline afterwards, if any
-		tokens.expect(&Token::Newline)
+		self.expect(&Token::Newline)
 			.ok_or("newline after statement")?;
 		
-		res
+		Ok(stmt)
 	}
 }

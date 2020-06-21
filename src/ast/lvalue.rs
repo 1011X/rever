@@ -3,55 +3,60 @@ use super::*;
 #[derive(Debug, Clone)]
 pub enum Deref {
 	Direct,
-	Index(Expr),
 	Field(String),
+	Index(Expr),
 }
 
 #[derive(Debug, Clone)]
 pub struct LValue {
 	pub id: String,
-	pub ops: Vec<Deref>,
+	pub ops: Vec<(Deref, Span)>,
 }
 
 // TODO ponder: is `var name` and `drop name` within statements part of a bigger pattern?
-impl Parse for LValue {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+impl Parser {
+	pub fn parse_lval(&mut self) -> ParseResult<LValue> {
 	    let mut ops = Vec::new();
 	    
 	    // get lval name
-	    let name = tokens.expect_ident()
+	    let (name, start) = self.expect_ident_span()
 	    	.ok_or("variable name in left-value expression")?;
-	    
+    	
 	    loop {
-	    	match tokens.peek() {
+	    	match self.peek() {
 	    		// '!'
 	    		Some(Token::Bang) => {
-	    			tokens.next();
-	    			ops.push(Deref::Direct);
+	    			let (_, span) = self.next().unwrap();
+	    			ops.push((Deref::Direct, span));
     			}
     			// '.'
     			Some(Token::Period) => {
-    				tokens.next();
+    				self.next();
     				
-    				match tokens.next() {
+    				match self.peek() {
     					Some(Token::LParen) => {
-							let expr = Expr::parse(tokens)?;
+    						self.next();
+    						
+							let (expr, span) = self.parse_expr()?;
 							
-							tokens.expect(&Token::RParen)
+							self.expect(&Token::RParen)
 								.ok_or("`)` after index expression")?;
 							
-							ops.push(Deref::Index(expr));
+							ops.push((Deref::Index(expr), span));
     					}
-    					Some(Token::Ident(name)) => {
-	    					ops.push(Deref::Field(name));
+    					Some(Token::Ident(_)) => {
+    						let (name, span) = self.expect_ident_span().unwrap();
+	    					ops.push((Deref::Field(name), span));
     					}
-    					_ => return Err("field name or `(` after variable"),
+    					_ => return Err("field name or `(`"),
     				}
     			}
-    			_ => break
+    			
+    			_ => break,
 			}
 		}
         
-        Ok(LValue { id: name, ops })
+        let end = ops.last().map(|(_, span)| *span).unwrap_or(start);
+        Ok((LValue { id: name, ops }, start.merge(&end)))
 	}
 }

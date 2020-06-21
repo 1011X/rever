@@ -10,9 +10,11 @@ pub struct Function {
 impl From<ast::Function> for Function {
 	fn from(v: ast::Function) -> Self {
 		Function {
-			params: v.params,
-			ret: v.ret,
-			body: v.body.into(),
+			params: v.params.into_iter()
+				.map(|(n, t)| (n, t.unwrap().0))
+				.collect(),
+			ret: v.ret.unwrap().0,
+			body: v.body.0.into(),
 		}
 	}
 }

@@ -6,59 +6,37 @@ use super::*;
 #[derive(Clone, Debug)]
 pub struct Module {
 	pub name: String,
-	pub items: Vec<Item>,
+	pub items: Vec<(Item, Span)>,
 }
 
-impl Module {
-	/// Constructs a new module with the given name and items.
-	pub fn new<T: ToString>(name: T, items: Vec<Item>) -> Module {
-		Module { name: name.to_string(), items }
-	}
-}
-
-impl Parse for Module {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		// `mod` keyword
-		tokens.expect(&Token::Mod).ok_or("`mod`")?;
+impl Parser {
+	pub fn parse_mod(&mut self) -> ParseResult<Module> {
+		let (_, start) = self.expect(&Token::Mod)
+			.ok_or("`mod`")?;
 		
-		// get name
-		let name = match tokens.next() {
-			Some(Token::Ident(name)) => name,
-			_ => return Err("module name"),
-		};
+		let name = self.expect_ident()
+			.ok_or("module name")?;
 		
-		// get newline
-		tokens.expect(&Token::Newline).ok_or("newline after module name")?;
+		self.expect(&Token::Newline)
+			.ok_or("newline after module name")?;
 		
 		// parse as many items as possible
 	    let mut items = Vec::new();
 		loop {
-			match tokens.peek() {
-				Some(Token::End) => {
-					tokens.next();
-					break;
-				}
-				Some(_) => {
-					let item = Item::parse(tokens)?;
-					items.push(item);
-				}
-				None => return Err("an item or `end`")
+			match self.peek() {
+				Some(Token::End) =>
+					break,
+				Some(_) =>
+					items.push(self.parse_item()?),
+				None =>
+					return Err("an item or `end`"),
 			}
 		}
-		
-		// the optional `mod` in `end mod`
-		if tokens.peek() == Some(&Token::Mod) {
-			tokens.next();
-			
-			// the optional name of procedure after `end mod`
-			if tokens.peek() == Some(&Token::Ident(name.clone())) {
-				tokens.next();
-			}
-		}
+		let (_, end) = self.next().unwrap();
 		
 		// the likely newline afterwards
-		if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
+		self.expect(&Token::Newline);
 		
-		Ok(Module { name, items })
+		Ok((Module { name, items }, start.merge(&end)))
 	}
 }

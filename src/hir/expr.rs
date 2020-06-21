@@ -62,7 +62,7 @@ impl From<ast::Expr> for Expr {
 		match v {
 			ast::Expr::Term(term) => Expr::Term(term.into()),
 			
-			ast::Expr::Not(e) => Expr::Not(Box::new((*e).into())),
+			ast::Expr::Not(e) => Expr::Not(Box::new((*e).0.into())),
 			_ => todo!()
 		}
 	}

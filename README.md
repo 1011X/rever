@@ -3,7 +3,7 @@ Rever
 
 Rever is a reversible programming language. It features ["copy-in copy-out"] semantics, a minimal Pascal-like syntax, and a distinction between procedures and functions.
 
-It is inspired by Prolog, Pascal, Python, Rust, and Janus. Examples of other such reversible languages include [Janus] and [rFun].
+It is mostly inspired by Janus and Rust, followed by Pascal and Prolog. Examples of other such reversible languages include [Janus] and [rFun].
 
 <!-- [Bob](https://link.springer.com/chapter/10.1007/978-3-642-29517-1_3). -->
 
@@ -33,7 +33,9 @@ To get a better grasp of how a reversible language works, try the [Janus playgro
 What's Rever like?
 ------------------
 
-Rever prefers to use newlines and keywords (e.g. `end`, `fi`) rather than braces to denote blocks. It may have significant newlines, but it doesn't distinguish between spaces and tabs.
+If you've already played with Janus, then you'll notice that Rever's syntax is a more modern and cleaned up version of Janus's syntax.
+
+Rever uses newlines and keywords (e.g. `end`, `fi`, `loop`), rather than braces, to denote blocks. It may have significant newlines, but it doesn't distinguish between spaces and tabs.
 
 A Rever file consists of *items*, which include procedures, functions, types, modules, etc. They are much like those in Rust.
 
@@ -43,7 +45,7 @@ The most trivial statement is `skip`. It does absolutely nothing. Maybe you'll w
 
 Next come the modifying assignments. These include increment (`+=`), decrement (`-=`), left-rotate (`:<`), right-rotate (`:>`), and xor-assign (`:=`). They each do what their names say.
 
-	hash[0]     := 3
+	hash.(0)    := 3
 	sum         += 4
 	name.len    -= sum + 1
 	n_times_two :< 1

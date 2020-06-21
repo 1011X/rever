@@ -73,10 +73,10 @@ impl Procedure {
 }
 
 impl From<ast::Param> for Param {
-	fn from(v: ast::Param) -> Self {
+	fn from(param: ast::Param) -> Self {
 		Param {
-			name: v.name,
-			typ: v.typ.into(),
+			name: param.name,
+			typ: param.typ.0.into(),
 		}
 	}
 }
@@ -84,8 +84,12 @@ impl From<ast::Param> for Param {
 impl From<ast::Procedure> for Procedure {
 	fn from(v: ast::Procedure) -> Self {
 		Procedure {
-			params: v.params.into_iter().map(Param::from).collect(),
-			code: v.code.into_iter().map(Statement::from).collect(),
+			params: v.params.into_iter()
+				.map(|p| p.0.into())
+				.collect(),
+			code: v.code.into_iter()
+				.map(|s| s.0.into())
+				.collect(),
 		}
 	}
 }

@@ -24,9 +24,10 @@ use std::env;
 use std::io;
 use std::io::prelude::*;
 
-use crate::ast::Parse;
+//use crate::ast::Parse;
 //use crate::interpret;
 
+mod span;
 mod tokenize;
 mod ast;
 mod hir;
@@ -53,9 +54,10 @@ fn main() -> io::Result<()> {
 				stdout.flush()?;
 				stdin.read_line(&mut input)?;
 				
-				let mut tokens = tokenize::tokenize(&input)
+				let tokens = tokenize::tokenize(&input)
 					.expect("Could not tokenize");
-				let line = repl::ReplLine::parse(&mut tokens);
+				let mut parser = ast::Parser::new(tokens);
+				let line = parser.parse_repl_line();
 				
 				if let Err(e) = line {
 					eprintln!("! Invalid input: expected {}.", e);
@@ -64,7 +66,7 @@ fn main() -> io::Result<()> {
 				}
 				let line = line.unwrap();
 				
-				if scope.eval_line(line).is_ok() {
+				if scope.eval_line(line.0).is_ok() {
 					input.clear();
 				} else {
 					break;
@@ -99,15 +101,15 @@ fn main() -> io::Result<()> {
 			use std::fs::read_to_string as open;
 			
 			let source = open(file)?;
-			let mut tokens = tokenize::tokenize(&source)
+			let tokens = tokenize::tokenize(&source)
 				.expect("Lexer error");
 			
-			let ast = match ast::parse_file_module(&mut tokens) {
+			let ast = match ast::parse_file_module(tokens) {
 				Ok(ast) => ast,
 				Err(e) => {
-					let remaining_tokens = tokens.as_inner();
+					//let remaining_tokens = tokens.as_slice();
 					eprintln!("Expected {}.", e);
-					eprintln!("Tokens: {:#?}", remaining_tokens);
+					//eprintln!("Tokens: {:#?}", remaining_tokens);
 					return Ok(())
 				}
 			};

@@ -57,41 +57,41 @@ impl From<ast::Statement> for Statement {
 		
 		match v {
 			Stmt::Skip => Statement::Skip,
-			Stmt::RotLeft(lval, expr) => Statement::RotLeft(lval.into(), expr.into()),
-			Stmt::RotRight(lval, expr) => Statement::RotRight(lval.into(), expr.into()),
-			Stmt::Add(lval, expr) => Statement::Add(lval.into(), expr.into()),
-			Stmt::Sub(lval, expr) => Statement::Sub(lval.into(), expr.into()),
-			Stmt::Xor(lval, expr) => Statement::Xor(lval.into(), expr.into()),
-			Stmt::Swap(l, r) => Statement::Swap(l.into(), r.into()),
+			Stmt::RotLeft(lval, expr) => Statement::RotLeft(lval.0.into(), expr.0.into()),
+			Stmt::RotRight(lval, expr) => Statement::RotRight(lval.0.into(), expr.0.into()),
+			Stmt::Add(lval, expr) => Statement::Add(lval.0.into(), expr.0.into()),
+			Stmt::Sub(lval, expr) => Statement::Sub(lval.0.into(), expr.0.into()),
+			Stmt::Xor(lval, expr) => Statement::Xor(lval.0.into(), expr.0.into()),
+			Stmt::Swap(l, r) => Statement::Swap(l.0.into(), r.0.into()),
 			
 			Stmt::Do(p, args) =>
-				Statement::Do(p, args.into_iter().map(Expr::from).collect()),
+				Statement::Do(p, args.into_iter().map(|(e,_)| e.into()).collect()),
 			Stmt::Undo(p, args) =>
-				Statement::Undo(p, args.into_iter().map(Expr::from).collect()),
+				Statement::Undo(p, args.into_iter().map(|(e,_)| e.into()).collect()),
 			
 			Stmt::Let(n, t, s, b, e) => {
-				let init: Expr = s.into();
+				let init: Expr = s.0.into();
 				Statement::Let(
 					n,
-					t.map(Type::from).unwrap_or(init.get_type()),
+					t.map(|(t,_)| t.into()).unwrap_or(init.get_type()),
 					init.clone(),
-					b.into_iter().map(Statement::from).collect(),
-					e.map(|e| e.into()).unwrap_or(init.clone())
+					b.into_iter().map(|(s,_)| s.into()).collect(),
+					e.map(|e| e.0.into()).unwrap_or(init.clone())
 				)
 			}
 			Stmt::If(e, b, eb, a) =>
 				Statement::If(
-					e.into(),
-					b.into_iter().map(Statement::from).collect(),
-					eb.into_iter().map(Statement::from).collect(),
-					a.into()
+					e.0.into(),
+					b.into_iter().map(|(s,_)| s.into()).collect(),
+					eb.into_iter().map(|(s,_)| s.into()).collect(),
+					a.unwrap().0.into()
 				),
 			Stmt::From(a, d, l, e) =>
 				Statement::From(
-					a.into(),
-					d.into_iter().map(Statement::from).collect(),
-					l.into_iter().map(Statement::from).collect(),
-					e.into()
+					a.0.into(),
+					d.into_iter().map(|(s,_)| s.into()).collect(),
+					l.into_iter().map(|(s,_)| s.into()).collect(),
+					e.0.into()
 				),
 		}
 	}

@@ -3,55 +3,45 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
-    pub params: Vec<(String, Type)>,
-    pub ret: Type,
-    pub body: Expr,
+    pub params: Vec<(String, Option<(Type, Span)>)>,
+    pub ret: Option<(Type, Span)>,
+    pub body: (Expr, Span),
 }
 
-impl Parse for Function {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
+impl Parser {
+	pub fn parse_fn(&mut self) -> ParseResult<Function> {
 		// keyword `fn`
-		tokens.expect(&Token::Fn)
+		let (_, start) = self.expect(&Token::Fn)
 			.ok_or("`fn`")?;
 		
-		// get function name
-		let fn_name = match tokens.next() {
-			Some(Token::Ident(n)) => n,
-			_ => return Err("function name")
-		};
+		// function name
+		let fn_name = self.expect_ident()
+			.ok_or("function name")?;
 		
 		// parse parameter list
 		let mut params = Vec::new();
 		
 		// starting '('
-		tokens.expect(&Token::LParen)
+		self.expect(&Token::LParen)
 			.ok_or("`(` before parameter list")?;
 		
 		loop {
 			// TODO add case for newline for multiline param declaration?
-			match tokens.peek() {
+			match self.peek() {
 				// ending ')'
-				Some(Token::RParen) => {
-					tokens.next();
-					break;
-				}
-				
-				None => return Err("`,` or `)`"),
+				Some(Token::RParen) => break,
 				
 				// parse as parameter
-				_ => {
+				Some(_) => {
 					// get parameter name
-					let param_name = match tokens.next() {
-						Some(Token::Ident(n)) => n,
-						_ => return Err("a parameter name")
+					let param_name = self.expect_ident()
+						.ok_or("a parameter name")?;
+					
+					// get optional type
+					let typ = match self.expect(&Token::Colon) {
+						Some(_) => Some(self.parse_type()?),
+						None => None,
 					};
-					
-					// ':'
-					tokens.expect(&Token::Colon)
-						.ok_or("`:` after parameter name")?;
-					
-					// get type
-					let typ = Type::parse(tokens)?;
 					
 					// ensure param name is unique
 					for (name, _) in &params {
@@ -60,57 +50,53 @@ impl Parse for Function {
 								"A parameter name in `fn {}` was repeated: {:?}",
 								fn_name, param_name
 							);
-							return Err("parameter name to be unique");
+							return Err("parameter names to be unique");
 						}
 					}
 					
 					// push to list of parameters
 					params.push((param_name, typ));
 					
-					match tokens.next() {
-						Some(Token::RParen) => break,
-						Some(Token::Comma) => {}
+					match self.peek() {
+						Some(Token::Comma) => { self.next(); }
+						Some(Token::RParen) => {}
 						_ => return Err("`,` or `)`")
 					}
 				}
+				
+				None => return Err("`,` or `)`"),
 			}
 		}
+		self.next();
 		
 		// get return type
-		tokens.expect(&Token::Colon)
-			.ok_or("`:` after function parameter list")?;
-		
-		let ret = Type::parse(tokens)?;
-		
-		// check for newline
-		tokens.expect(&Token::Newline)
-			.ok_or("newline after return type")?;
+		// in case below code don't work:
+		let mut ret = None;
+		if self.expect(&Token::Colon).is_some() {
+			ret = Some(self.parse_type()?);
+		}
+		/*
+		let ret = self.expect(&Token::Colon)
+			.and_then(|_| self.parse_type())
+			.transpose()?;
+		*/
+		// finish function declaration
+		self.expect(&Token::Newline)
+			.ok_or("newline after function declaration")?;
 		
 		// code block section
-		// TODO check result of Expr::parse
-		let body = Expr::parse(tokens)?;
+		// TODO check result?
+		let body = self.parse_expr()?;
 		
-		// check for newline
-		tokens.expect(&Token::Newline)
+		self.expect(&Token::Newline)
 			.ok_or("newline after function body")?;
 		
-		// check for `end`
-		tokens.expect(&Token::End)
+		// reached `end`
+		let (_, end) = self.expect(&Token::End)
 			.ok_or("`end` after function body")?;
 		
-		// the optional `fn` in `end fn`
-		if tokens.peek() == Some(&Token::Fn) {
-			tokens.next();
-			
-			// the optional name of function after `end fn`
-			if tokens.peek() == Some(&Token::Ident(fn_name.clone())) {
-				tokens.next();
-			}
-		}
+		self.expect(&Token::Newline);
 		
-		// the likely newline afterwards
-		if tokens.peek() == Some(&Token::Newline) { tokens.next(); }
-		
-		Ok(Function { name: fn_name, params, body, ret })
+		Ok((Function { name: fn_name, params, body, ret }, start.merge(&end)))
 	}
 }

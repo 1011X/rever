@@ -10,23 +10,23 @@ pub enum Item {
 	//Type(Type),
 }
 
-impl Parse for Item {
-	fn parse(tokens: &mut Tokens) -> ParseResult<Self> {
-		match tokens.peek() {
+impl Parser {
+	pub fn parse_item(&mut self) -> ParseResult<Item> {
+		Ok(match self.peek() {
 			Some(Token::Proc) => {
-				let p = Procedure::parse(tokens)?;
-				Ok(Item::Proc(p))
+				let (p, span) = self.parse_proc()?;
+				(Item::Proc(p), span)
 			}
 			Some(Token::Mod) => {
-				let m = Module::parse(tokens)?;
-				Ok(Item::Mod(m))
+				let (m, span) = self.parse_mod()?;
+				(Item::Mod(m), span)
 			}
 			Some(Token::Fn) => {
-				let f = Function::parse(tokens)?;
-				Ok(Item::Fn(f))
+				let (f, span) = self.parse_fn()?;
+				(Item::Fn(f), span)
 			}
-			_ => Err("a module, function, or procedure")
-		}
+			_ => Err("a module, function, or procedure")?,
+		})
 	}
 }
 
@@ -39,15 +39,16 @@ impl Item {
 		}
 	}
 }
-
+/*
 impl From<Module> for Item {
-	fn from(m: Module) -> Item { Item::Mod(m) }
+	fn from(m: (Module, Span)) -> Item { (Item::Mod(m.0), m.1) }
 }
 
 impl From<Procedure> for Item {
-	fn from(p: Procedure) -> Item { Item::Proc(p) }
+	fn from(p: (Procedure, Span)) -> Item { (Item::Proc(p.0), p.1) }
 }
 
 impl From<Function> for Item {
-	fn from(f: Function) -> Item { Item::Fn(f) }
+	fn from(f: (Function, Span)) -> Item { (Item::Fn(f.0), f.1) }
 }
+*/
