@@ -22,8 +22,8 @@ impl Literal {
 			Literal::Char(_)   => Type::Char,
 			Literal::String(_) => Type::String,
 			
-			Literal::Array(_) => todo!(),
-			Literal::Fn(..)   => todo!(),
+			Literal::Array(arr) => Type::Array(arr.len()),
+			Literal::Fn(..)     => todo!(),
 		}
 	}
 }

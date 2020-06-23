@@ -45,8 +45,12 @@ impl Parser {
 			}
 			
 			Some(Token::String(_)) => {
-				let (s, span) = self.expect_ident_span().unwrap();
-				(Literal::String(s), span)
+				let (s, span) = self.next().unwrap();
+				if let Token::String(s) = s {
+					(Literal::String(s), span)
+				} else {
+					unreachable!()
+				}
 			}
 			
 			Some(Token::LBracket) => {

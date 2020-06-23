@@ -22,12 +22,34 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum BinOp {
+	Exp,
 	// precedence 5
 	Mul, Div, Mod, And,
 	// precedence 6
-	Add, Sub, Or, Xor,
+	Add, Sub, Or, //Xor,
 	// precedence 7
 	Eq, Ne, Lt, Gt, Le, Ge,
+}
+
+impl From<ast::BinOp> for BinOp {
+	fn from(v: ast::BinOp) -> Self {
+		match v {
+			ast::BinOp::Exp => BinOp::Exp,
+			ast::BinOp::Mul => BinOp::Mul,
+			ast::BinOp::Div => BinOp::Div,
+			ast::BinOp::Mod => BinOp::Mod,
+			ast::BinOp::And => BinOp::And,
+			ast::BinOp::Add => BinOp::Add,
+			ast::BinOp::Sub => BinOp::Sub,
+			ast::BinOp::Or  => BinOp::Or,
+			ast::BinOp::Eq  => BinOp::Eq,
+			ast::BinOp::Ne  => BinOp::Ne,
+			ast::BinOp::Lt  => BinOp::Lt,
+			ast::BinOp::Gt  => BinOp::Gt,
+			ast::BinOp::Le  => BinOp::Le,
+			ast::BinOp::Ge  => BinOp::Ge,
+		}
+	}
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +67,7 @@ pub enum Expr {
 	All(Vec<Expr>),
 	Any(Vec<Expr>),
 	*/
-	BinOp(Term, BinOp, Term),
+	BinOp(Box<Expr>, BinOp, Box<Expr>),
 	
 	If(Box<Expr>, Box<Expr>, Box<Expr>),
 	Let(String, Type, Box<Expr>, Box<Expr>),
@@ -53,7 +75,10 @@ pub enum Expr {
 
 impl Expr {
 	pub fn get_type(&self) -> Type {
-		unimplemented!()
+		match self {
+			Expr::Term(term) => term.get_type(),
+			_ => todo!()
+		}
 	}
 }
 
@@ -61,8 +86,19 @@ impl From<ast::Expr> for Expr {
 	fn from(v: ast::Expr) -> Self {
 		match v {
 			ast::Expr::Term(term) => Expr::Term(term.into()),
+			ast::Expr::Cast(expr, kind) => Expr::Cast(
+				Box::new(expr.0.into()),
+				kind.0.into()
+			),
 			
 			ast::Expr::Not(e) => Expr::Not(Box::new((*e).0.into())),
+			
+			ast::Expr::BinOp(left, op, right) => Expr::BinOp(
+				Box::new(left.0.into()),
+				op.into(),
+				Box::new(right.0.into()),
+			),
+			
 			_ => todo!()
 		}
 	}
@@ -155,12 +191,14 @@ impl Eval for Expr {
 						Ok(Value::from(l || r)),
 					(BinOp::Or, _, _) =>
 						Err("tried ORing non-boolean values"),
+					/*
 					(BinOp::Xor, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l ^ r)),
 					(BinOp::Xor, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l ^ r)),
 					(BinOp::Xor, _, _) =>
 						Err("tried XORing non-boolean or non-integer values"),
+					*/
 					
 					// 7
 					(BinOp::Eq, l, r) =>
@@ -183,6 +221,8 @@ impl Eval for Expr {
 						Ok(Value::from(l >= r)),
 					(BinOp::Ge, _, _) =>
 						Err("tried comparing non-integer values"),
+					
+					_ => todo!()
 				}
 			}
 			

@@ -250,10 +250,10 @@ you can write something like this (syntax subject to change):
 
 ```
 match a
-	0 -> do something1
-	1 -> do something2
+	0: do something1
+	1: do something2
 	...
-	_ -> skip
+	_: skip
 end
 ```
 
@@ -265,11 +265,11 @@ A common case for loops is to iterate through a range of numbers, a list of item
 ```
 for i in 0..100   ~ for numbers
     do something
-end
+loop
 
 for i in list     ~ for finite lists
     do something
-end
+loop
 ```
 
 ### Inline variable declaration

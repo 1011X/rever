@@ -31,10 +31,12 @@ mod term;
 mod types;
 
 pub use self::expr::Expr;
+pub use self::expr::BinOp;
 pub use self::function::Function;
 pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::LValue;
+pub use self::lvalue::Deref;
 pub use self::module::Module;
 pub use self::procedure::{Param, Procedure};
 pub use self::statement::Statement;

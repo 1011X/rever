@@ -21,18 +21,19 @@ impl Procedure {
 	// TODO perhaps the arguments should be stored in a HashMap, the local vars
 	// in a vector, and then turn the vector into a hashmap and compare keys at
 	// the end to verify everything is there.
-	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> Vec<Value> {
+	fn call_base(&self, dir: Dir, mut args: Vec<Value>, m: &Module) -> Vec<Value> {
 		// verify number of arguments and their types
-		assert_eq!(args.len(), self.params.len());
+		debug_assert_eq!(args.len(), self.params.len());
 		for (arg, param) in args.iter().zip(&self.params) {
-			assert_eq!(arg.get_type(), param.typ);
+			debug_assert_eq!(arg.get_type(), param.typ);
 		}
 		
+		let mut vars = Vec::new();
+		
 		// store args in scope stack
-		let mut vars: Vec<(String, Value)> = self.params.iter()
-			.map(|param| param.name.clone())
-			.zip(args.into_iter())
-			.collect();
+		for param in &self.params {
+			vars.push((param.name.clone(), args.pop().unwrap()));
+		}
 		
 		// execute actual code
 		if dir == Dir::Fore {
@@ -45,16 +46,20 @@ impl Procedure {
 			}
 		}
 		
-		// verify number of arguments and their types again
-		assert_eq!(vars.len(), self.params.len());
-		for (var, param) in vars.iter().zip(&self.params) {
-			assert_eq!(var.1.get_type(), param.typ);
-		}
-			
 		// store arg values back in parameters
-		vars.into_iter()
-			.map(|(_, val)| val)
-			.collect()
+		for param in &self.params {
+			args.push(vars.pop().unwrap().1);
+		}
+		
+		drop(vars);
+		
+		// verify number of arguments and their types again
+		debug_assert_eq!(args.len(), self.params.len());
+		for (arg, param) in args.iter().zip(&self.params) {
+			debug_assert_eq!(arg.get_type(), param.typ);
+		}
+		
+		args
 	}
 	
 	pub fn call(&self, args: Vec<Value>, m: &Module) -> Vec<Value> {

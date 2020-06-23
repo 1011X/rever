@@ -27,7 +27,7 @@ pub enum BinOp {
 	// precedence 5
 	Mul, Div, Mod, And,
 	// precedence 6
-	Add, Sub, Or, Xor,
+	Add, Sub, Or, //Xor,
 	// precedence 7
 	Eq, Ne, Lt, Gt, Le, Ge,
 }
@@ -177,7 +177,7 @@ impl Parser {
 				Some(Token::Plus)  => BinOp::Add,
 				Some(Token::Minus) => BinOp::Sub,
 				Some(Token::Or)    => BinOp::Or,
-				Some(Token::Colon) => BinOp::Xor,
+				//Some(Token::Colon) => BinOp::Xor,
 			    _ => break
 			};
 			self.next();

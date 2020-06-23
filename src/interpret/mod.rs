@@ -23,6 +23,11 @@ pub trait Eval {
 	fn eval(&self, scope: &Scope) -> EvalResult;
 }
 
+pub enum EvalError {
+	TypeMismatch,
+	
+}
+
 
 pub fn interpret_file(items: Vec<ast::Item>) {
 	// create root module
@@ -36,6 +41,7 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 	// run main procedure, if any
 	if let Some(main) = root.0.get("main") {
 		if let Item::Proc(pr) = main {
+			println!("running `proc main`...");
 			pr.call(Vec::new(), &root);
 		} else {
 			eprintln!("found `main`, but it's not a procedure");

@@ -79,13 +79,15 @@ impl From<ast::Statement> for Statement {
 					e.map(|e| e.0.into()).unwrap_or(init.clone())
 				)
 			}
-			Stmt::If(e, b, eb, a) =>
+			Stmt::If(e, b, eb, a) => {
+				let pred: Expr = e.0.into();
 				Statement::If(
-					e.0.into(),
+					pred.clone(),
 					b.into_iter().map(|(s,_)| s.into()).collect(),
 					eb.into_iter().map(|(s,_)| s.into()).collect(),
-					a.unwrap().0.into()
-				),
+					a.map(|a| a.0.into()).unwrap_or(pred.clone())
+				)
+			}
 			Stmt::From(a, d, l, e) =>
 				Statement::From(
 					a.0.into(),
@@ -113,8 +115,11 @@ impl Statement {
 				}
 				
 				let (final_id, final_val) = t.pop().unwrap();
+				
+				println!("{}: {:?}", final_id, final_val);
 				assert_eq!(*id, final_id);
-				assert_eq!(final_val, dest.eval(t)?);
+				assert_eq!(final_val, dest.eval(t)?,
+					"variable {:?} had unexpected value", id);
 			}
 			
 			Xor(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
@@ -127,14 +132,18 @@ impl Statement {
 				_ => return Err("tried to do something illegal")
 			}
 			
-			Add(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => {
-					let pos = t.iter()
-						.rposition(|var| var.0 == lval.id)
-						.expect("variable name not found");
-					t[pos].1 = Value::Int(l.wrapping_add(r));
+			Add(lval, expr) => {
+				let expr = expr.eval(t)?;
+				match (lval.get_mut_ref(t)?, expr) {
+					(Value::Int(l), Value::Int(r)) => {
+						/*let pos = t.iter()
+							.rposition(|var| var.0 == lval.id)
+							.expect("variable name not found");*/
+						*l = l.wrapping_add(r);
+						//t[pos].1 = Value::Int(l.wrapping_add(r));
+					}
+					_ => return Err("tried to do something illegal")
 				}
-				_ => return Err("tried to do something illegal")
 			}
 			Sub(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
 				(Value::Int(l), Value::Int(r)) => {
