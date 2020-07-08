@@ -29,7 +29,7 @@ impl Parser {
 				Some(_) =>
 					items.push(self.parse_item()?),
 				None =>
-					return Err("an item or `end`"),
+					Err("an item or `end`")?,
 			}
 		}
 		let (_, end) = self.next().unwrap();

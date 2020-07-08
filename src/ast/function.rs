@@ -44,13 +44,14 @@ impl Parser {
 					};
 					
 					// ensure param name is unique
+					// TODO leave until hir translation?
 					for (name, _) in &params {
 						if *name == param_name {
 							eprintln!(
 								"A parameter name in `fn {}` was repeated: {:?}",
 								fn_name, param_name
 							);
-							return Err("parameter names to be unique");
+							Err("parameter names to be unique")?;
 						}
 					}
 					
@@ -60,11 +61,11 @@ impl Parser {
 					match self.peek() {
 						Some(Token::Comma) => { self.next(); }
 						Some(Token::RParen) => {}
-						_ => return Err("`,` or `)`")
+						_ => Err("`,` or `)`")?
 					}
 				}
 				
-				None => return Err("`,` or `)`"),
+				None => Err("`,` or `)`")?
 			}
 		}
 		self.next();

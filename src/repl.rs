@@ -42,7 +42,7 @@ impl Scope {
 		match line {
 			ReplLine::Show(var) => {
 				if let Some(val) = self.get(&var) {
-					println!("> {:?}", val);
+					println!("> {}", val);
 				}
 			}
 			ReplLine::Var(name, expr) => {
@@ -58,7 +58,7 @@ impl Scope {
 				
 				match val {
 					None => return Err(()),
-					Some(i) => println!("> {:?}", self.vars.remove(i).1),
+					Some(i) => println!("> {}", self.vars.remove(i).1),
 				}
 			}
 			// TODO return Err for item and stmt when not enough input.

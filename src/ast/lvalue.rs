@@ -48,7 +48,7 @@ impl Parser {
     						let (name, span) = self.expect_ident_span().unwrap();
 	    					ops.push((Deref::Field(name), span));
     					}
-    					_ => return Err("field name or `(`"),
+					_ => Err("field name or `(`")?,
     				}
     			}
     			

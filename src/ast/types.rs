@@ -47,10 +47,10 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RParen) => {}
-								_ => return Err("`,` or `)` in fn param list"),
+								_ => Err("`,` or `)` in fn param list")?,
 							}
 						}
-						None => return Err("`,` or `)` in fn param list"),
+						None => Err("`,` or `)` in fn param list")?,
 					}
 				}
 				self.next();
@@ -83,10 +83,10 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RParen) => {}
-								_ => return Err("`,` or `)` in fn param list"),
+								_ => Err("`,` or `)` in fn param list")?,
 							}
 						}
-						None => return Err("`)` or `,` in proc param list"),
+						None => Err("`)` or `,` in proc param list")?,
 					}
 				}
 				let (_, end) = self.next().unwrap();
@@ -94,7 +94,7 @@ impl Parser {
 				(Type::Proc(params), start.merge(&end))
 			}
 			
-			_ => return Err("a valid type")
+			_ => Err("a valid type")?
 		})
 	}
 }

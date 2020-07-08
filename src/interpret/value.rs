@@ -1,3 +1,4 @@
+use std::fmt;
 use crate::hir::Type;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +28,29 @@ impl Value {
             Value::Array(_)  => todo!()
         }
     }
+}
+
+impl fmt::Display for Value {
+	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Value::Nil => fmt.write_str("nil"),
+			
+			Value::Bool(b) => b.fmt(fmt),
+			Value::Int(i)  => i.fmt(fmt),
+			Value::Uint(u) => u.fmt(fmt),
+			
+			Value::Char(c)   => write!(fmt, "{:?}", c),
+			Value::String(s) => write!(fmt, "{:?}", s),
+			
+			Value::Array(array) => {
+				fmt.write_str("[")?;
+				for value in array.iter() {
+					write!(fmt, "{}, ", value)?;
+				}
+				fmt.write_str("]")
+			}
+		}
+	}
 }
 
 impl From<()> for Value {

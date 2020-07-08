@@ -60,7 +60,7 @@ fn main() -> io::Result<()> {
 				let line = parser.parse_repl_line();
 				
 				if let Err(e) = line {
-					eprintln!("! Invalid input: expected {}.", e);
+					eprintln!("! Invalid input: {}.", e);
 					input.clear();
 					continue;
 				}
@@ -108,7 +108,7 @@ fn main() -> io::Result<()> {
 				Ok(ast) => ast,
 				Err(e) => {
 					//let remaining_tokens = tokens.as_slice();
-					eprintln!("Expected {}.", e);
+					eprintln!("{}", e);
 					//eprintln!("Tokens: {:#?}", remaining_tokens);
 					return Ok(())
 				}

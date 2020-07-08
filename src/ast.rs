@@ -16,6 +16,7 @@ List of state given to program:
 * stdio
 
 */
+use std::fmt;
 use crate::span::Span;
 use crate::tokenize::{Token, Tokens, TokenStream};
 
@@ -43,19 +44,30 @@ pub use self::statement::Statement;
 pub use self::term::Term;
 pub use self::types::Type;
 
-pub type ParseResult<T> = Result<(T, Span), &'static str>;
+pub type ParseResult<T> = Result<(T, Span), ParseError>;
 
 #[derive(Debug, Clone)]
-enum ParseError {
+pub enum ParseError {
 	Eof,
-	Empty,
-	Msg(&'static str),
+	Expected(&'static str),
+}
+
+impl fmt::Display for ParseError {
+	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			ParseError::Eof =>
+				fmt.write_str("reached end of file"),
+			ParseError::Expected(msg) => {
+				fmt.write_str("expected ")?;
+				fmt.write_str(msg)
+			}
+		}
+	}
 }
 
 impl From<&'static str> for ParseError {
-	fn from(msg: &'static str) -> Self {
-		ParseError::Msg(msg)
-	}
+	#[inline]
+	fn from(msg: &'static str) -> Self { ParseError::Expected(msg) }
 }
 
 #[derive(Debug, Clone)]
@@ -130,10 +142,10 @@ impl Parser {
 	*/
 }
 
-pub fn parse_file_module(tokens: Tokens) -> Result<Vec<Item>, &'static str> {
+pub fn parse_file_module(tokens: Tokens) -> Result<Vec<Item>, ParseError> {
 	let mut parser = Parser::new(tokens);
-    let mut items = Vec::new();
-    
+	let mut items = Vec::new();
+	
 	while ! parser.is_empty() {
 		let (item, _) = parser.parse_item()?;
 		items.push(item);

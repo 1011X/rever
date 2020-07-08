@@ -36,7 +36,7 @@ impl Parser {
 						let (_, span) = self.next().unwrap();
 						(Literal::Int(n), span)
 					}
-					Err(_) => return Err("a smaller number"),
+					Err(_) => Err("a smaller number")?,
 				}
 			
 			Some(&Token::Char(c)) => {
@@ -68,11 +68,11 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RBracket) => {}
-								_ => return Err("`,` or `]` after element in array literal"),
+								_ => Err("`,` or `]` after element in array literal")?,
 							}
 						}
 						None =>
-							return Err("`,` or `]` after element in array literal"),
+							Err("`,` or `]` after element in array literal")?,
 					}
 				}
 				let (_, end) = self.next().unwrap();
@@ -97,10 +97,10 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RParen) => {}
-								_ => return Err("`,` or `)` after argument name in closure"),
+								_ => Err("`,` or `)` after argument name in closure")?,
 							}
 						}
-						_ => return Err("`,` or `)` after argument name in closure")
+						_ => Err("`,` or `)` after argument name in closure")?,
 					}
 				}
 				self.next();
@@ -114,7 +114,7 @@ impl Parser {
 				(Literal::Fn(args, Box::new(expr)), span)
 			}
 			
-			_ => return Err("valid literal value")
+			_ => Err("valid literal value")?
 		})
 	}
 }

@@ -91,13 +91,13 @@ impl Parser {
 								// E.g. `var file` or `drop buf` in args.
 								args.push(self.parse_expr()?);
 							}
-							_ => return Err("`,` or newline"),
+							_ => Err("`,` or newline")?,
 						}
 					}
 				} else if self.expect(&Token::LParen).is_some() {
 					unimplemented!();
 				} else {
-					return Err("`:`, or newline");
+					Err("`:`, or newline")?;
 				};
 				
 				let end = args.last().map(|(_, span)| *span).unwrap_or(end);
@@ -136,13 +136,13 @@ impl Parser {
 								self.next();
 								args.push(self.parse_expr()?);
 							}
-							_ => return Err("`,` or newline"),
+							_ => Err("`,` or newline")?,
 						}
 					}
 				} else if self.expect(&Token::LParen).is_some() {
 					unimplemented!();
 				} else {
-					return Err("`:`, or newline");
+					Err("`:`, or newline")?;
 				};
 				
 				let end = args.last().map(|(_, span)| *span).unwrap_or(end);
@@ -166,7 +166,7 @@ impl Parser {
 					match self.peek() {
 						Some(Token::Until) => break,
 						Some(_) => main_block.push(self.parse_stmt()?),
-						None => return Err("a statement or `until`"),
+						None => Err("a statement or `until`")?,
 					}
 				}
 				self.next();
@@ -183,14 +183,14 @@ impl Parser {
 					match self.peek() {
 						Some(Token::Loop) => break,
 						Some(_) => back_block.push(self.parse_stmt()?),
-						None => return Err("a statement or `loop`"),
+						None => Err("a statement or `loop`")?,
 					}
 				};
 				let (_, end) = self.next().unwrap();
 				
-				// TODO: remove?
+				// TODO: leave until hir translation?
 				if main_block.is_empty() && back_block.is_empty() {
-					return Err("a non-empty do-block or back-block in from-loop");
+					Err("a non-empty do-block or back-block in from-loop")?;
 				}
 				
 				(Statement::From(assert, main_block, back_block, test), start.merge(&end))
@@ -226,7 +226,7 @@ impl Parser {
 					match self.peek() {
 						Some(Token::Drop) => break,
 						Some(_) => block.push(self.parse_stmt()?),
-						None => return Err("a statement or `drop`"),
+						None => Err("a statement or `drop`")?,
 					}
 				}
 				self.next();
@@ -264,7 +264,7 @@ impl Parser {
 						Some(Token::Else)
 						| Some(Token::Fi) => break,
 						Some(_) => main_block.push(self.parse_stmt()?),
-						None => return Err("a statement, `else`, or `fi`"),
+						None => Err("a statement, `else`, or `fi`")?,
 					}
 				}
 				//self.next();
@@ -280,7 +280,7 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Fi) => break,
 								Some(_) => else_block.push(self.parse_stmt()?),
-								None => return Err("a statement or `fi`"),
+								None => Err("a statement or `fi`")?,
 							}
 						}
 					} else if self.peek() == Some(&Token::If) {
@@ -288,7 +288,7 @@ impl Parser {
 						// "embedding" of chained `if` statements.
 						else_block.push(self.parse_stmt()?);
 					} else {
-						return Err("chaining `if` or a newline");
+						Err("chaining `if` or a newline")?;
 					}
 				}
 				
@@ -353,12 +353,12 @@ impl Parser {
 					    (Statement::Swap(lval, rhs), span)
 					}
 					
-					_ => return Err("`:=`, `+=`, `-=`, `:<`, `:>`, or `<>`"),
+					_ => Err("`:=`, `+=`, `-=`, `:<`, `:>`, or `<>`")?,
 				}
 			}
 			
 			// TODO: handle newline here for empty statement
-			_ => return Err("a valid statement"),
+			_ => Err("a valid statement")?,
 		};
 				
 		// consume newline afterwards, if any
