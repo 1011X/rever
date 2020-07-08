@@ -318,39 +318,39 @@ impl Parser {
 						self.next();
 						let expr = self.parse_expr()?;
 						let span = start.merge(&expr.1);
-					    (Statement::Xor(lval, expr), span)
+						(Statement::Xor(lval, expr), span)
 					}
 					Token::AddAssign => {
 						self.next();
 						let expr = self.parse_expr()?;
 						let span = start.merge(&expr.1);
-					    (Statement::Add(lval, expr), span)
+						(Statement::Add(lval, expr), span)
 					}
 					Token::SubAssign => {
 						self.next();
 						let expr = self.parse_expr()?;
 						let span = start.merge(&expr.1);
-					    (Statement::Sub(lval, expr), span)
+						(Statement::Sub(lval, expr), span)
 					}
 					
 					Token::Rol => {
 						self.next();
 						let expr = self.parse_expr()?;
 						let span = start.merge(&expr.1);
-					    (Statement::RotLeft(lval, expr), span)
+						(Statement::RotLeft(lval, expr), span)
 					}
 					Token::Ror => {
 						self.next();
 						let expr = self.parse_expr()?;
 						let span = start.merge(&expr.1);
-					    (Statement::RotRight(lval, expr), span)
+						(Statement::RotRight(lval, expr), span)
 					}
 					
 					Token::Swap => {
 						self.next();
 						let rhs = self.parse_lval()?;
 						let span = start.merge(&rhs.1);
-					    (Statement::Swap(lval, rhs), span)
+						(Statement::Swap(lval, rhs), span)
 					}
 					
 					_ => Err("`:=`, `+=`, `-=`, `:<`, `:>`, or `<>`")?,

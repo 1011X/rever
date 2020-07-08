@@ -17,19 +17,19 @@ impl Term {
 
 impl Eval for Term {
 	fn eval(&self, t: &Scope) -> EvalResult {
-	    match self {
-	        Term::Lit(lit)   => lit.eval(t),
-	        Term::LVal(lval) => lval.eval(t),
-	    }
+		match self {
+			Term::Lit(lit)   => lit.eval(t),
+			Term::LVal(lval) => lval.eval(t),
+		}
 	}
 }
 
 impl From<Literal> for Term {
-    fn from(lit: Literal) -> Self { Term::Lit(lit) }
+	fn from(lit: Literal) -> Self { Term::Lit(lit) }
 }
 
 impl From<LValue> for Term {
-    fn from(lval: LValue) -> Self { Term::LVal(lval) }
+	fn from(lval: LValue) -> Self { Term::LVal(lval) }
 }
 
 impl From<ast::Term> for Term {

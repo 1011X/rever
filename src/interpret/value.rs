@@ -4,30 +4,30 @@ use crate::hir::Type;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
 	Nil,
-    Bool(bool),
-    //Byte(u8),
-    Int(i64),
-    Uint(u64),
-    Char(char),
-    String(String),
-    Array(Box<[Value]>),
-    //Proc(String),
+	Bool(bool),
+	//Byte(u8),
+	Int(i64),
+	Uint(u64),
+	Char(char),
+	String(String),
+	Array(Box<[Value]>),
+	//Proc(String),
 }
 
 impl Value {
-    pub fn get_type(&self) -> Type {
-        match self {
-        	Value::Nil       => Type::Unit,
-            Value::Bool(_)   => Type::Bool,
-            Value::Int(_)    => Type::Int,
-            Value::Uint(_)   => Type::UInt,
-            //Value::Signed(_) => Type::I32,
-            Value::Char(_)   => Type::Char,
-            Value::String(_) => Type::String,
-            
-            Value::Array(_)  => todo!()
-        }
-    }
+	pub fn get_type(&self) -> Type {
+		match self {
+			Value::Nil       => Type::Unit,
+			Value::Bool(_)   => Type::Bool,
+			Value::Int(_)    => Type::Int,
+			Value::Uint(_)   => Type::UInt,
+			//Value::Signed(_) => Type::I32,
+			Value::Char(_)   => Type::Char,
+			Value::String(_) => Type::String,
+			
+			Value::Array(_)  => todo!()
+		}
+	}
 }
 
 impl fmt::Display for Value {
@@ -54,19 +54,19 @@ impl fmt::Display for Value {
 }
 
 impl From<()> for Value {
-    fn from(_: ()) -> Self { Value::Nil }
+	fn from(_: ()) -> Self { Value::Nil }
 }
 
 impl From<bool> for Value {
-    fn from(b: bool) -> Self { Value::Bool(b) }
+	fn from(b: bool) -> Self { Value::Bool(b) }
 }
 
 impl From<char> for Value {
-    fn from(c: char) -> Self { Value::Char(c) }
+	fn from(c: char) -> Self { Value::Char(c) }
 }
 
 impl From<i64> for Value {
-    fn from(n: i64) -> Self { Value::Int(n) }
+	fn from(n: i64) -> Self { Value::Int(n) }
 }
 
 impl From<String> for Value {

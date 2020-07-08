@@ -11,8 +11,8 @@ pub use self::value::Value;
 
 #[derive(Debug, Clone)]
 pub struct StackFrame {
-    args: Vec<Value>,
-    locals: Vec<(String, Value)>,
+	args: Vec<Value>,
+	locals: Vec<(String, Value)>,
 }
 
 pub type Scope = Vec<(String, Value)>;

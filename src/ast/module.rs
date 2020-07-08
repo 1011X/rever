@@ -21,7 +21,7 @@ impl Parser {
 			.ok_or("newline after module name")?;
 		
 		// parse as many items as possible
-	    let mut items = Vec::new();
+		let mut items = Vec::new();
 		loop {
 			match self.peek() {
 				Some(Token::End) =>

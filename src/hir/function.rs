@@ -2,9 +2,9 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub params: Vec<(String, Type)>,
-    pub ret: Type,
-    pub body: Expr,
+	pub params: Vec<(String, Type)>,
+	pub ret: Type,
+	pub body: Expr,
 }
 
 impl From<ast::Function> for Function {

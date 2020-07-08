@@ -2,10 +2,10 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub name: String,
-    pub params: Vec<(String, Option<(Type, Span)>)>,
-    pub ret: Option<(Type, Span)>,
-    pub body: (Expr, Span),
+	pub name: String,
+	pub params: Vec<(String, Option<(Type, Span)>)>,
+	pub ret: Option<(Type, Span)>,
+	pub body: (Expr, Span),
 }
 
 impl Parser {
