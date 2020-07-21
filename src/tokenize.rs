@@ -31,10 +31,6 @@ pub enum Token {
 	String(String),
 	Char(char),
 	
-	LineComment(String),
-	BlockComment(String),
-	DocComment(String),
-	
 	Other(char),
 }
 
@@ -305,78 +301,29 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 			'\n' => Token::Newline.at(i, 1),
 
 			// comment
-			'~' => match chars.peek().map(|t| t.1) {
-				None => Token::LineComment(String::new()).at(i, 1),
-				Some('[') => {
-					chars.next();
-					
-					let mut comment = String::new();
-					loop {
-						match chars.next().map(|t| t.1) {
-							Some(']') => match chars.peek().map(|t| t.1) {
-								Some('~') => {
-									chars.next();
-									break;
-								}
-								Some(_) => comment.push(']'),
-								None => return Err(TokenError::Eof),
-							}
-							Some(c) => comment.push(c),
-							None => return Err(TokenError::Eof),
+			'~' => {
+				//let mut comment = String::new();
+				
+				loop {
+					match chars.peek().map(|t| t.1) {
+						Some('\n') | None => break,
+						Some(c) => {
+							chars.next();
+							//comment.push(c);
 						}
 					}
-					
-					let len = comment.len() + 4;
-					Token::BlockComment(comment).at(i, len)
 				}
-				Some('{') => {
-					chars.next();
-					
-					let mut comment = String::new();
-					loop {
-						match chars.next().map(|t| t.1) {
-							Some('}') => match chars.peek().map(|t| t.1) {
-								Some('~') => {
-									chars.next();
-									break;
-								}
-								Some(_) => comment.push('}'),
-								None => return Err(TokenError::Eof),
-							}
-							Some(c) => comment.push(c),
-							None => return Err(TokenError::Eof),
-						}
-					}
-					
-					let len = comment.len() + 4;
-					Token::DocComment(comment).at(i, len)
-				}
-				Some(_) => {
-					let mut comment = String::new();
-					
-					loop {
-						match chars.peek().map(|t| t.1) {
-							Some('\n') | None => break,
-							Some(c) => {
-								chars.next();
-								comment.push(c);
-							}
-						}
-					}
-					
-					let len = comment.len();
-					Token::LineComment(comment).at(i, len)
-				}
+				
+				//let len = comment.len();
+				//Token::Comment(comment).at(i, len)
+				continue;
 			}
 			
 			c => Token::Other(c).at(i, 1),
 		});
 	}
 	
-	while tokens.last().map(|t| &t.0) == Some(&Token::Newline) {
-		tokens.pop();
-	}
-	
+	// remove any starting newlines
 	while tokens.first().map(|t| &t.0) == Some(&Token::Newline) {
 		tokens.remove(0);
 	}
