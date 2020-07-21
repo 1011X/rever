@@ -6,26 +6,33 @@ pub enum Term {
 	LVal(LValue),
 }
 
-impl Parser {
-	pub fn parse_term(&mut self) -> ParseResult<Term> {
-		let mut clone = self.clone();
-		
-		if clone.parse_lit().is_ok() {
-			let (lit, span) = self.parse_lit()?;
-			Ok((Term::Lit(lit), span))
-		} else {
-			let (lval, span) = self.parse_lval()?;
-			Ok((Term::LVal(lval), span))
-		}
-	}
-}
-
 impl Term {
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
 			Term::Lit(lit) => lit.get_type(),
 			Term::LVal(_)  => None,
 		}
+	}
+}
+
+impl Parser {
+	pub fn parse_term(&mut self) -> ParseResult<Term> {
+		let mut clone = self.clone();
+		
+		if clone.parse_lit().is_ok() {
+			Ok(self.parse_lit()?.into())
+		} else {
+			Ok(self.parse_lval()?.into())
+		}
+	}
+}
+
+impl Eval for Term {
+	fn eval(&self, t: &Scope) -> EvalResult {
+	    match self {
+	        Term::Lit(lit)   => lit.eval(t),
+	        Term::LVal(lval) => lval.eval(t),
+	    }
 	}
 }
 

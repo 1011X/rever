@@ -8,22 +8,35 @@ pub enum Item {
 	Proc(Procedure),
 	Fn(Function),
 	//Type(Type),
+	
+	InternProc(&'static str, fn(Box<[Value]>), fn(Box<[Value]>)),
+}
+
+impl Item {
+	pub fn get_name(&self) -> &str {
+		match self {
+			Item::Mod(m) => &m.name,
+			Item::Proc(p) => &p.name,
+			Item::Fn(f) => &f.name,
+			Item::InternProc(name, _, _) => name,
+		}
+	}
 }
 
 impl Parser {
 	pub fn parse_item(&mut self) -> ParseResult<Item> {
 		let item = match self.peek() {
 			Some(Token::Proc) => {
-				let (p, span) = self.parse_proc()?;
-				(Item::Proc(p), span)
+				let p = self.parse_proc()?;
+				Item::Proc(p)
 			}
 			Some(Token::Mod) => {
-				let (m, span) = self.parse_mod()?;
-				(Item::Mod(m), span)
+				let m = self.parse_mod()?;
+				Item::Mod(m)
 			}
 			Some(Token::Fn) => {
-				let (f, span) = self.parse_fn()?;
-				(Item::Fn(f), span)
+				let f = self.parse_fn()?;
+				Item::Fn(f)
 			}
 			_ => Err("a module, function, or procedure")?,
 		};
@@ -38,16 +51,6 @@ impl Parser {
 		while self.expect(&Token::Newline).is_some() {}
 		
 		Ok(item)
-	}
-}
-
-impl Item {
-	pub fn get_name(&self) -> &str {
-		match self {
-			Item::Mod(m) => &m.name,
-			Item::Proc(p) => &p.name,
-			Item::Fn(f) => &f.name,
-		}
 	}
 }
 /*

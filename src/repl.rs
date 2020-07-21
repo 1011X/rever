@@ -1,21 +1,21 @@
-use std::collections::HashMap;
+//use std::collections::HashMap;
 
 use crate::tokenize::Token;
-use crate::ast::{self, Expr, Item, Statement};
-use crate::hir;
+use crate::ast::{self, Expr, Item, Module, Statement};
+//use crate::hir;
 use crate::interpret::{self, Eval};
 
 
 pub struct Scope {
 	vars:  Vec<(String, interpret::Value)>,
-	items: HashMap<String, hir::Item>,
+	items: Vec<Item>,
 }
 
 impl Scope {
 	pub fn new() -> Self {
 		Self {
 			vars: Vec::new(),
-			items: HashMap::new(),
+			items: Vec::new(),
 		}
 	}
 	
@@ -42,14 +42,15 @@ impl Scope {
 		match line {
 			ReplLine::Show(var) => {
 				if let Some(val) = self.get(&var) {
-					println!("> {:?}", val);
+					println!(": {:?}", val);
 				}
 			}
+			
 			ReplLine::Var(name, expr) => {
-				let expr: hir::Expr = expr.clone().into();
 				let val = expr.eval(&mut self.vars).unwrap();
 				self.vars.push((name.clone(), val));
 			}
+			
 			ReplLine::Drop(name) => {
 				let val = self.vars.iter()
 					.enumerate()
@@ -57,18 +58,17 @@ impl Scope {
 					.map(|(i,_)| i);
 				
 				match val {
+					Some(i) => println!(": {:?}", self.vars.remove(i).1),
 					None => return Err(()),
-					Some(i) => println!("> {:?}", self.vars.remove(i).1),
 				}
 			}
 			// TODO return Err for item and stmt when not enough input.
 			ReplLine::Item(item) => {
-				self.items.insert(item.get_name().to_string(), item.into());
+				self.items.push(item);
 			}
+			
 			ReplLine::Stmt(stmt) => {
-				let stmt: hir::Statement = stmt.into();
-				let module = hir::Module(self.items.clone());
-				
+				let module = Module::new("repl".into(), self.items.clone());
 				stmt.eval(&mut self.vars, &module).unwrap();
 			}
 		}
@@ -91,7 +91,7 @@ impl ast::Parser {
 		Ok(match self.peek() {
 			None => todo!(),
 			Some(Token::Let) => {
-				let (_, start) = self.expect(&Token::Let).unwrap();
+				self.next();
 				
 				let name = self.expect_ident()
 					.ok_or("variable name after `let`")?;
@@ -99,37 +99,35 @@ impl ast::Parser {
 				self.expect(&Token::Assign)
 					.ok_or("`:=` after variable name")?;
 				
-				let (init, end) = self.parse_expr()?;
+				let init = self.parse_expr()?;
 				
-				(ReplLine::Var(name, init), start.merge(&end))
+				ReplLine::Var(name, init)
 			}
 			Some(Token::Drop) => {
-				let (_, start) = self.expect(&Token::Drop).unwrap();
+				self.next();
 				
-				let (name, end) = self.expect_ident_span()
+				let name = self.expect_ident()
 					.ok_or("variable name after `drop`")?;
 				
-				(ReplLine::Drop(name), start.merge(&end))
+				ReplLine::Drop(name)
 			}
 			Some(Token::Ident(id)) if id == "show" => {
-				let (_, start) = self.expect_ident_span().unwrap();
+				self.expect_ident();
 				
-				let (name, end) = self.expect_ident_span()
+				let name = self.expect_ident()
 					.ok_or("variable name after `show`")?;
 				
-				(ReplLine::Show(name), start.merge(&end))
+				ReplLine::Show(name)
 			}
 			
 			Some(Token::Fn)
 			| Some(Token::Proc)
 			| Some(Token::Mod) => {
-				let (item, span) = self.parse_item()?;
-				(item.into(), span)
+				self.parse_item()?.into()
 			}
 				
 			Some(_) => {
-				let (stmt, span) = self.parse_stmt()?;
-				(stmt.into(), span)
+				self.parse_stmt()?.into()
 			}
 		})
 	}

@@ -1,5 +1,3 @@
-use crate::span::Span;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
 	// keywords
@@ -32,12 +30,6 @@ pub enum Token {
 	Char(char),
 	
 	Other(char),
-}
-
-impl Token {
-	pub fn at(self, start: usize, len: usize) -> (Token, Span) {
-		(self, Span::new(start, len))
-	}
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -109,7 +101,7 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 					_ => Token::Ident(token)
 				};
 				
-				token.at(i, len)
+				token
 			}
 
 			// handle numbers
@@ -126,7 +118,7 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 				
 				token.shrink_to_fit();
 				let len = token.len();
-				Token::Number(token).at(i, len)
+				Token::Number(token)
 			}
 			
 			// handle strings
@@ -168,7 +160,7 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 				
 				string.shrink_to_fit();
 				let len = string.len();
-				Token::String(string).at(i, len)
+				Token::String(string)
 			}
 			
 			'\'' => {
@@ -193,65 +185,65 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 					None => return Err(TokenError::Eof),
 				}
 				
-				t.at(i, len)
+				t
 			}
 
 			'!' => match chars.peek().map(|t| t.1) {
 				Some('=') => {
 					chars.next();
-					Token::Neq.at(i, 2)
+					Token::Neq
 				}
-				_ => Token::Bang.at(i, 1),
+				_ => Token::Bang,
 			}
 			'<' => match chars.peek().map(|t| t.1) {
 				Some('>') => {
 					chars.next();
-					Token::Swap.at(i, 2)
+					Token::Swap
 				}
 				Some('=') => {
 					chars.next();
-					Token::Lte.at(i, 2)
+					Token::Lte
 				}
-				_ => Token::Lt.at(i, 1),
+				_ => Token::Lt,
 			}
 			'>' => match chars.peek().map(|t| t.1) {
 				Some('=') => {
 					chars.next();
-					Token::Gte.at(i, 2)
+					Token::Gte
 				}
-				_ => Token::Gt.at(i, 1),
+				_ => Token::Gt,
 			}
 
-			'(' => Token::LParen.at(i, 1),
-			')' => Token::RParen.at(i, 1),
-			'[' => Token::LBracket.at(i, 1),
-			']' => Token::RBracket.at(i, 1),
-			'{' => Token::LBrace.at(i, 1),
-			'}' => Token::RBrace.at(i, 1),
-			',' => Token::Comma.at(i, 1),
+			'(' => Token::LParen,
+			')' => Token::RParen,
+			'[' => Token::LBracket,
+			']' => Token::RBracket,
+			'{' => Token::LBrace,
+			'}' => Token::RBrace,
+			',' => Token::Comma,
 			'.' => match chars.peek().map(|t| t.1) {
 				Some('.') => {
 					chars.next();
-					Token::Range.at(i, 2)
+					Token::Range
 				}
-				_ => Token::Period.at(i, 1),
+				_ => Token::Period,
 			}
 			':' => match chars.peek().map(|t| t.1) {
 				Some('=') => {
 					chars.next();
-					Token::Assign.at(i, 2)
+					Token::Assign
 				}
 				Some('>') => {
 					chars.next();
-					Token::Ror.at(i, 2)
+					Token::Ror
 				}
 				Some('<') => {
 					chars.next();
-					Token::Rol.at(i, 2)
+					Token::Rol
 				}
 				Some(':') => {
 					chars.next();
-					Token::Scope.at(i, 2)
+					Token::Scope
 				}
 				/*
 				Some('-') => {
@@ -259,46 +251,46 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 					unimplemented!()
 				}
 				*/
-				_ => Token::Colon.at(i, 1),
+				_ => Token::Colon,
 			}
-			';' => Token::Semicolon.at(i, 1),
-			'=' => Token::Eq.at(i, 1),
+			';' => Token::Semicolon,
+			'=' => Token::Eq,
 			'+' => match chars.peek().map(|t| t.1) {
 				Some('=') => {
 					chars.next();
-					Token::AddAssign.at(i, 2)
+					Token::AddAssign
 				}
-				_ => Token::Plus.at(i, 1),
+				_ => Token::Plus,
 			}
 			'-' => match chars.peek().map(|t| t.1) {
 				Some('=') => {
 					chars.next();
-					Token::SubAssign.at(i, 2)
+					Token::SubAssign
 				}
 				Some('>') => {
 					chars.next();
-					Token::RightArrow.at(i, 2)
+					Token::RightArrow
 				}
-				_ => Token::Minus.at(i, 1),
+				_ => Token::Minus,
 			}
-			'*' => Token::Star.at(i, 1),
-			'/' => Token::FSlash.at(i, 1),
-			'^' => Token::Caret.at(i, 1),
-			'#' => Token::Hash.at(i, 1),
-			'?' => Token::QMark.at(i, 1),
+			'*' => Token::Star,
+			'/' => Token::FSlash,
+			'^' => Token::Caret,
+			'#' => Token::Hash,
+			'?' => Token::QMark,
 			
 			// unicode options
-			'≠' => Token::Neq.at(i, 1),
-			'≤' => Token::Lte.at(i, 1),
-			'≥' => Token::Gte.at(i, 1),
-			'→' => Token::RightArrow.at(i, 1),
+			'≠' => Token::Neq,
+			'≤' => Token::Lte,
+			'≥' => Token::Gte,
+			'→' => Token::RightArrow,
 			//'↔' => Token::Swap,
 
 			// space
 			' ' | '\t' | '\r' => continue,
 			
 			// track newlines
-			'\n' => Token::Newline.at(i, 1),
+			'\n' => Token::Newline,
 
 			// comment
 			'~' => {
@@ -315,22 +307,19 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 				}
 				
 				//let len = comment.len();
-				//Token::Comment(comment).at(i, len)
+				//Token::Comment(comment)
 				continue;
 			}
 			
-			c => Token::Other(c).at(i, 1),
+			c => Token::Other(c),
 		});
 	}
 	
 	// remove any starting newlines
-	while tokens.first().map(|t| &t.0) == Some(&Token::Newline) {
+	while tokens.first() == Some(&Token::Newline) {
 		tokens.remove(0);
 	}
 	
-	tokens.dedup_by(|a, b|
-		a.0 == Token::Newline && b.0 == Token::Newline
-	);
 	tokens.shrink_to_fit();
 	Ok(TokenStream::new(tokens))
 }
@@ -338,11 +327,11 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 
 #[derive(Clone, Debug)]
 pub struct TokenStream {
-	stream: std::vec::IntoIter<(Token, Span)>,
+	stream: std::vec::IntoIter<Token>,
 }
 
 impl Iterator for TokenStream {
-	type Item = (Token, Span);
+	type Item = Token;
 	
 	fn next(&mut self) -> Option<Self::Item> {
 		self.stream.next()
@@ -356,17 +345,17 @@ impl ExactSizeIterator for TokenStream {
 }
 
 impl TokenStream {
-	pub fn new(tokens: Vec<(Token, Span)>) -> Self {
+	pub fn new(tokens: Vec<Token>) -> Self {
 		TokenStream {
 			stream: tokens.into_iter(),
 		}
 	}
 	
-	pub fn as_slice(&self) -> &[(Token, Span)] {
+	pub fn as_slice(&self) -> &[Token] {
 		self.stream.as_slice()
 	}
 	
-	pub fn peek(&self) -> Option<&(Token, Span)> {
+	pub fn peek(&self) -> Option<&Token> {
 		self.as_slice().first()
 	}
 	

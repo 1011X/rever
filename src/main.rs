@@ -30,7 +30,7 @@ use std::io::prelude::*;
 mod span;
 mod tokenize;
 mod ast;
-mod hir;
+//mod hir;
 //mod compile;
 mod interpret;
 mod repl;
@@ -66,7 +66,7 @@ fn main() -> io::Result<()> {
 				}
 				let line = line.unwrap();
 				
-				if scope.eval_line(line.0).is_ok() {
+				if scope.eval_line(line).is_ok() {
 					input.clear();
 				} else {
 					break;
@@ -106,7 +106,7 @@ fn main() -> io::Result<()> {
 			let mut parser = ast::Parser::new(tokens);
 			
 			let ast = match parser.parse_file_module() {
-				Ok(ast) => ast.0,
+				Ok(ast) => ast,
 				Err(e) => {
 					//let remaining_tokens = tokens.as_slice();
 					eprintln!("Error: expected {}.", e);

@@ -3,16 +3,21 @@ use super::*;
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: String,
-    pub params: Vec<(String, Option<(Type, Span)>)>,
-    pub ret: Option<(Type, Span)>,
-    pub body: (Expr, Span),
+    pub params: Vec<(String, Type)>,
+    pub ret: Type,
+    pub body: Expr,
 }
 
+// param ::= ident [":" type]
+// params ::= [ param { "," param } [","] ]
+// fn ::= "fn" ident "(" params ")" ":" type
+//            complex-expr
+//        "end"
+//    ::= "fn" ident "(" params ")" ":" type "=" line-expr
 impl Parser {
 	pub fn parse_fn(&mut self) -> ParseResult<Function> {
 		// keyword `fn`
-		let (_, start) = self.expect(&Token::Fn)
-			.ok_or("`fn`")?;
+		self.expect(&Token::Fn).ok_or("`fn`")?;
 		
 		// function name
 		let fn_name = self.expect_ident()
@@ -39,8 +44,8 @@ impl Parser {
 					
 					// get optional type
 					let typ = match self.expect(&Token::Colon) {
-						Some(_) => Some(self.parse_type()?),
-						None => None,
+						Some(_) => self.parse_type()?,
+						None => Type::Infer,
 					};
 					
 					// ensure param name is unique
@@ -70,16 +75,11 @@ impl Parser {
 		self.next();
 		
 		// get return type
-		// in case below code don't work:
-		let mut ret = None;
-		if self.expect(&Token::Colon).is_some() {
-			ret = Some(self.parse_type()?);
-		}
-		/*
-		let ret = self.expect(&Token::Colon)
-			.and_then(|_| self.parse_type())
-			.transpose()?;
-		*/
+		self.expect(&Token::Colon)
+			.ok_or("`:` after function parameters")?;
+		
+		let ret = self.parse_type()?;
+		
 		// finish function declaration
 		self.expect(&Token::Newline)
 			.ok_or("newline after function declaration")?;
@@ -92,11 +92,9 @@ impl Parser {
 			.ok_or("newline after function body")?;
 		
 		// reached `end`
-		let (_, end) = self.expect(&Token::End)
+		self.expect(&Token::End)
 			.ok_or("`end` after function body")?;
 		
-		self.expect(&Token::Newline);
-		
-		Ok((Function { name: fn_name, params, body, ret }, start.merge(&end)))
+		Ok(Function { name: fn_name, params, body, ret })
 	}
 }

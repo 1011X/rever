@@ -8,79 +8,76 @@ pub enum Literal {
 	UInt(u64),
 	Char(char),
 	String(String),
-	Array(Vec<(Expr, Span)>),
-	Fn(Vec<String>, Box<(Expr, Span)>),
+	Array(Vec<Expr>),
+	Fn(Vec<String>, Box<Expr>),
 }
 
 impl Parser {
 	pub fn parse_lit(&mut self) -> ParseResult<Literal> {
 		Ok(match self.peek() {
 			Some(Token::Ident(x)) if x == "nil" => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Nil, span)
+				self.next();
+				Literal::Nil
 			}
 			
 			Some(Token::Ident(x)) if x == "true" => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Bool(true), span)
+				self.next();
+				Literal::Bool(true)
 			}
 			
 			Some(Token::Ident(x)) if x == "false" => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Bool(false), span)
+				self.next();
+				Literal::Bool(false)
 			}
 			
 			Some(Token::Number(num)) =>
 				match i64::from_str_radix(num, 10) {
 					Ok(n) => {
-						let (_, span) = self.next().unwrap();
-						(Literal::Int(n), span)
+						self.next();
+						Literal::Int(n)
 					}
 					Err(_) => return Err("a smaller number"),
 				}
 			
 			Some(&Token::Char(c)) => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Char(c), span)
+				self.next();
+				Literal::Char(c)
 			}
 			
 			Some(Token::String(_)) => {
-				let (s, span) = self.next().unwrap();
-				if let Token::String(s) = s {
-					(Literal::String(s), span)
+				if let Token::String(s) = self.next().unwrap() {
+					Literal::String(s)
 				} else {
 					unreachable!()
 				}
 			}
 			
 			Some(Token::LBracket) => {
-				let (_, start) = self.next().unwrap();
+				self.next();
 				let mut elements = Vec::new();
 				
 				loop {
 					match self.peek() {
-						Some(Token::RBracket) =>
-							break,
+						Some(Token::RBracket) => break,
 						Some(_) => {
 							elements.push(self.parse_expr()?);
 							
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RBracket) => {}
-								_ => return Err("`,` or `]` after element in array literal"),
+								_ => return Err("`,` or `]` after element in array"),
 							}
 						}
-						None =>
-							return Err("`,` or `]` after element in array literal"),
+						None => Err("`,` or `]` after element in array")?,
 					}
 				}
-				let (_, end) = self.next().unwrap();
+				self.next();
 				
-				(Literal::Array(elements), start.merge(&end))
+				Literal::Array(elements)
 			}
 			
 			Some(Token::Fn) => {
-				let (_, start) = self.next().unwrap();
+				self.next();
 				
 				self.expect(&Token::LParen)
 					.ok_or("`(` at start of closure")?;
@@ -108,12 +105,33 @@ impl Parser {
 					.ok_or("`:` after arguments in closure")?;
 				
 				let expr = self.parse_expr()?;
-				let span = start.merge(&expr.1);
 				
-				(Literal::Fn(args, Box::new(expr)), span)
+				Literal::Fn(args, Box::new(expr))
 			}
 			
 			_ => return Err("valid literal value")
+		})
+	}
+}
+
+impl Eval for Literal {
+	fn eval(&self, t: &Scope) -> EvalResult {
+		Ok(match self {
+			Literal::Nil       => Value::Nil,
+			Literal::Bool(b)   => Value::Bool(*b),
+			Literal::Int(n)    => Value::Int(*n),
+			Literal::UInt(n)   => Value::Uint(*n),
+			Literal::Char(c)   => Value::Char(*c),
+			Literal::String(s) => Value::String(s.clone()),
+			
+			Literal::Array(arr) => Value::Array({
+				let mut vec = Vec::with_capacity(arr.len());
+				for expr in arr.iter() {
+					vec.push(expr.eval(t)?);
+				}
+				vec.into_boxed_slice()
+			}),
+			Literal::Fn(args, ret) => todo!(),
 		})
 	}
 }

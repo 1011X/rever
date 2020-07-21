@@ -16,8 +16,8 @@ List of state given to program:
 * stdio
 
 */
-use crate::span::Span;
 use crate::tokenize::{Token, Tokens, TokenStream};
+use crate::interpret::{Eval, EvalResult, Scope, Value};
 
 mod expr;
 mod function;
@@ -43,7 +43,7 @@ pub use self::statement::Statement;
 pub use self::term::Term;
 pub use self::types::Type;
 
-pub type ParseResult<T> = Result<(T, Span), &'static str>;
+pub type ParseResult<T> = Result<T, &'static str>;
 
 #[derive(Debug, Clone)]
 enum ParseError {
@@ -57,17 +57,27 @@ impl From<&'static str> for ParseError {
 		ParseError::Msg(msg)
 	}
 }
+/*
+struct Span<T> {
+	data: T,
+	span: Range<usize>,
+}
 
+impl<T> Span<T> {
+	fn merge(&mut self, other: Span<T>) -> Span<T> {
+		
+	}
+}
+*/
 #[derive(Debug, Clone)]
 pub struct Parser {
 	pub tokens: TokenStream,
 	line: usize,
-	col: usize,
 }
 
 impl Parser {
 	pub fn new(tokens: Tokens) -> Self {
-		Parser { tokens, line: 1, col: 1 }
+		Parser { tokens, line: 1 }
 	}
 	
 	pub fn is_empty(&self) -> bool {
@@ -75,32 +85,26 @@ impl Parser {
 	}
 	
 	pub fn peek(&self) -> Option<&Token> {
-		self.tokens.peek().map(|(t, _)| t)
+		self.tokens.peek()
 	}
 	
-	pub fn next(&mut self) -> Option<(Token, Span)> {
+	pub fn next(&mut self) -> Option<Token> {
 		let token = self.tokens.next();
 		// update parser location
-		if let Some((token, span)) = &token {
-			if *token == Token::Newline {
-				self.line += 1;
-				self.col = 1;
-			} else {
-				// FIXME
-				//self.col = span.end - span.start;
-			}
+		if let Some(Token::Newline) = token {
+			self.line += 1;
 		}
 		token
 	}
 	
-	pub fn next_if(&mut self, f: impl FnOnce(&Token) -> bool) -> Option<(Token, Span)> {
+	pub fn next_if(&mut self, f: impl FnOnce(&Token) -> bool) -> Option<Token> {
 		match self.peek() {
 			Some(token) if f(&token) => self.next(),
 			_ => None,
 		}
 	}
 	
-	pub fn expect(&mut self, tok: &Token) -> Option<(Token, Span)> {
+	pub fn expect(&mut self, tok: &Token) -> Option<Token> {
 		if self.peek() == Some(tok) {
 			self.next()
 		} else {
@@ -109,13 +113,9 @@ impl Parser {
 	}
 	
 	pub fn expect_ident(&mut self) -> Option<String> {
-		self.expect_ident_span().map(|(id, _)| id)
-	}
-	
-	pub fn expect_ident_span(&mut self) -> Option<(String, Span)> {
 		if let Some(Token::Ident(_)) = self.peek() {
-			self.next().map(|(token, span)| match token {
-				Token::Ident(id) => (id, span),
+			self.next().map(|token| match token {
+				Token::Ident(id) => id,
 				_ => unreachable!(),
 			})
 		} else {
@@ -130,26 +130,18 @@ impl Parser {
 	*/
 	pub fn parse_file_module(&mut self) -> ParseResult<Vec<Item>> {
 		let mut items = Vec::new();
-		let mut span: Option<Span> = None;
 		
 		while ! self.is_empty() {
 			match self.peek().unwrap() {
-				Token::BlockComment(_)
-				| Token::LineComment(_)
-				| Token::Newline => {
+				Token::Newline => {
 					self.next();
 					continue;
 				}
 				_ => {}
 			}
-			let (item, item_span) = self.parse_item()?;
-			items.push(item);
-			span = Some(match span {
-				Some(span) => span.merge(&item_span),
-				None => item_span,
-			});
+			items.push(self.parse_item()?);
 		}
 		
-		Ok((items, span.unwrap_or(Span::new(0, 0))))
+		Ok(items)
 	}
 }
