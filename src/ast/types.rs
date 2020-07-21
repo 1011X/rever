@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
+	Infer,
 	Never,
 	Unit,
 	Bool,
@@ -21,13 +22,14 @@ impl Parser {
 			Token::Ident(_) => {
 				let (name, span) = self.expect_ident_span().unwrap();
 				match name.as_str() {
-					"never" => (Type::Never, span),
-					"unit"  => (Type::Unit, span),
-					"bool"  => (Type::Bool, span),
-					"uint"  => (Type::UInt, span),
-					"int"   => (Type::Int, span),
-					"str"   => (Type::String, span),
-					id      => todo!(),
+					"_"    => (Type::Infer, span),
+					"void" => (Type::Never, span),
+					"unit" => (Type::Unit, span),
+					"bool" => (Type::Bool, span),
+					"uint" => (Type::UInt, span),
+					"int"  => (Type::Int, span),
+					"str"  => (Type::String, span),
+					id     => todo!(),
 				}
 			}
 			
@@ -97,4 +99,8 @@ impl Parser {
 			_ => return Err("a valid type")
 		})
 	}
+}
+
+impl Default for Type {
+	fn default() -> Self { Type::Infer }
 }
