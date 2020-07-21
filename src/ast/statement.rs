@@ -100,7 +100,9 @@ impl Parser {
 					return Err("`:`, or newline");
 				};
 				
-				let end = args.last().map(|(_, span)| *span).unwrap_or(end);
+				let end = args.last()
+					.map(|(_, span)| *span)
+					.unwrap_or(end);
 				
 				(Statement::Do(name, args), start.merge(&end))
 			}
@@ -145,7 +147,9 @@ impl Parser {
 					return Err("`:`, or newline");
 				};
 				
-				let end = args.last().map(|(_, span)| *span).unwrap_or(end);
+				let end = args.last()
+					.map(|(_, span)| *span)
+					.unwrap_or(end);
 				
 				(Statement::Undo(name, args), start.merge(&end))
 			}

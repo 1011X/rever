@@ -55,7 +55,6 @@ impl Parser {
 			
 			Some(Token::LBracket) => {
 				let (_, start) = self.next().unwrap();
-				
 				let mut elements = Vec::new();
 				
 				loop {
