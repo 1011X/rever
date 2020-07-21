@@ -31,6 +31,7 @@ mod term;
 mod types;
 
 pub use self::expr::Expr;
+pub use self::expr::BlockExpr;
 pub use self::expr::BinOp;
 pub use self::function::Function;
 pub use self::item::Item;

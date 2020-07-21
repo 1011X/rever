@@ -5,7 +5,7 @@ pub struct Function {
     pub name: String,
     pub params: Vec<(String, Type)>,
     pub ret: Type,
-    pub body: Expr,
+    pub body: BlockExpr,
 }
 
 // param ::= ident [":" type]
@@ -80,20 +80,40 @@ impl Parser {
 		
 		let ret = self.parse_type()?;
 		
-		// finish function declaration
-		self.expect(&Token::Newline)
-			.ok_or("newline after function declaration")?;
+		// choose parsing style based on next token
+		let body = match self.peek() {
+			// fn f(): _
+			//     <block-expr>
+			// end
+			Some(Token::Newline) => {
+				self.next();
+				
+				let body = self.parse_block_expr()?;
 		
-		// code block section
-		// TODO check result?
-		let body = self.parse_expr()?;
-		
-		self.expect(&Token::Newline)
-			.ok_or("newline after function body")?;
-		
-		// reached `end`
-		self.expect(&Token::End)
-			.ok_or("`end` after function body")?;
+				self.expect(&Token::Newline)
+					.ok_or("newline after function body")?;
+				
+				// reached `end`
+				self.expect(&Token::End)
+					.ok_or("`end` after function body")?;
+				
+				body
+			}
+			
+			// fn f(): _ = <inline-expr>
+			Some(Token::Eq) => {
+				self.next();
+				
+				let body = self.parse_expr()?;
+				
+				self.expect(&Token::Newline)
+					.ok_or("newline after function body")?;
+				
+				BlockExpr::Expr(body)
+			}
+			
+			_ => return Err("`=` or newline after function declaration"),
+		};
 		
 		Ok(Function { name: fn_name, params, body, ret })
 	}

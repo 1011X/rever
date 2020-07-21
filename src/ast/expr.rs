@@ -44,12 +44,15 @@ pub enum Expr {
 	
 	// binary op, precendeces 4-7
 	BinOp(Box<Expr>, BinOp, Box<Expr>),
+}
+
+#[derive(Debug, Clone)]
+pub enum BlockExpr {
+	Expr(Expr),
 	
-	// secret precendece 8
-	If(Box<Expr>, Box<Expr>, Box<Expr>),
+	If(Expr, Box<BlockExpr>, Box<BlockExpr>),
 	
-	// secret precedence 9
-	Let(String, Type, Box<Expr>, Box<Expr>),
+	Let(String, Type, Expr, Box<BlockExpr>),
 }
 
 impl Expr {
@@ -62,29 +65,30 @@ impl Expr {
 }
 
 impl Parser {
-	pub fn parse_expr(&mut self) -> ParseResult<Expr> {
-		match self.peek() {
+	pub fn parse_block_expr(&mut self) -> ParseResult<BlockExpr> {
+		let block_expr = match self.peek() {
 			Some(Token::If) => {
 				self.next();
-				let test = Box::new(self.parse_expr()?);
+				
+				let test = self.parse_expr()?;
 				
 				// check for `then`
 				self.expect(&Token::Then)
 					.ok_or("`then` after `if` predicate")?;
 				
 				// parse the main block
-				let main_expr = Box::new(self.parse_expr()?);
+				let main_expr = Box::new(self.parse_block_expr()?);
 				
 				// check for `else`
 				self.expect(&Token::Else)
 					.ok_or("`else` in `if` expression")?;
 				
-				let else_block = Box::new(self.parse_expr()?);
+				let else_block = Box::new(self.parse_block_expr()?);
 				
 				self.expect(&Token::Fi)
 					.ok_or("`fi` in `if` expression")?;
 				
-				Ok(Expr::If(test, main_expr, else_block))
+				BlockExpr::If(test, main_expr, else_block)
 			}
 			Some(Token::Let) => {
 				self.next();
@@ -102,22 +106,27 @@ impl Parser {
 				self.expect(&Token::Eq)
 					.ok_or("`=` at let binding")?;
 				
-				// val is artificially limited here on purpose. it doesn't make much
-				// sense to allow `let` inside a `let` binding value, for example.
-				let val = Box::new(self.parse_expr_rel()?);
+				let val = self.parse_expr()?;
 				
 				self.expect(&Token::Newline)
 					.ok_or("newline at let binding")?;
 				
-				let scope = self.parse_expr()?;
+				let scope = Box::new(self.parse_block_expr()?);
 				
-				Ok(Expr::Let(name, typ, val, Box::new(scope)))
+				BlockExpr::Let(name, typ, val, scope)
 			}
 			Some(_) =>
-				self.parse_expr_rel(),
+				BlockExpr::Expr(self.parse_expr()?),
 			None =>
 				todo!()
-		}
+		};
+		
+		self.expect(&Token::Newline)
+			.ok_or("newline after expression block")?;
+		
+		while self.expect(&Token::Newline).is_some() {}
+		
+		Ok(block_expr)
 	}
 	
 	// rel  -> expr {(=|≠|<|>|≤|≥|in) expr}
@@ -127,7 +136,7 @@ impl Parser {
 	// atom -> ( expr )
 	//      -> expr 'as' type
 	//      -> factor
-	pub fn parse_expr_rel(&mut self) -> ParseResult<Expr> {
+	pub fn parse_expr(&mut self) -> ParseResult<Expr> {
 		// <term>
 		let first = self.parse_expr_add()?;
 		let mut exprs: Vec<(BinOp, Expr)> = Vec::new();
@@ -268,7 +277,7 @@ impl Parser {
 				expr
 			} else {
 				// otherwise, treat it as a Term.
-				self.parse_term()?.into()
+				Expr::Term(self.parse_term()?)
 			};
 		
 		Ok(if self.expect(&Token::As).is_some() {
@@ -406,8 +415,16 @@ impl Eval for Expr {
 					_ => todo!()
 				}
 			}
+		}
+	}
+}
+
+impl Eval for BlockExpr {
+	fn eval(&self, t: &Scope) -> EvalResult {
+		match self {
+			BlockExpr::Expr(expr) => expr.eval(t),
 			
-			Expr::If(test, expr, else_expr) => {
+			BlockExpr::If(test, expr, else_expr) => {
 				if test.eval(t)? == Value::Bool(true) {
 					expr.eval(t)
 				} else {
@@ -415,7 +432,7 @@ impl Eval for Expr {
 				}
 			}
 			
-			Expr::Let(name, _, val, scope) => {
+			BlockExpr::Let(name, _, val, scope) => {
 				let val = val.eval(t)?;
 				let mut t_copy = t.clone();
 				t_copy.push((name.clone(), val));
@@ -423,8 +440,4 @@ impl Eval for Expr {
 			}
 		}
 	}
-}
-
-impl From<Term> for Expr {
-	fn from(f: Term) -> Self { Expr::Term(f) }
 }
