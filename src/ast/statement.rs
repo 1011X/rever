@@ -361,9 +361,12 @@ impl Parser {
 			_ => return Err("a valid statement"),
 		};
 				
-		// consume newline afterwards, if any
+		// mandatory newline after statement
 		self.expect(&Token::Newline)
 			.ok_or("newline after statement")?;
+		
+		// eat all extra newlines
+		while self.expect(&Token::Newline).is_some() {}
 		
 		Ok(stmt)
 	}

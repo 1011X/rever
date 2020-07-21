@@ -12,7 +12,7 @@ pub enum Item {
 
 impl Parser {
 	pub fn parse_item(&mut self) -> ParseResult<Item> {
-		Ok(match self.peek() {
+		let item = match self.peek() {
 			Some(Token::Proc) => {
 				let (p, span) = self.parse_proc()?;
 				(Item::Proc(p), span)
@@ -26,7 +26,18 @@ impl Parser {
 				(Item::Fn(f), span)
 			}
 			_ => Err("a module, function, or procedure")?,
-		})
+		};
+		
+		// mandatory newline (or EOF) after item
+		match self.peek() {
+			Some(Token::Newline) | None => {}
+			Some(_) => return Err("newline after item"),
+		}
+		
+		// eat all extra newlines
+		while self.expect(&Token::Newline).is_some() {}
+		
+		Ok(item)
 	}
 }
 
