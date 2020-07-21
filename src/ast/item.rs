@@ -2,7 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug)]
 pub enum Item {
-	//Use(),
+	//Use(Path, Option<String>),
 	//Static(bool, String, Type, ConstExpr),
 	Mod(Module),
 	Proc(Procedure),
@@ -53,16 +53,3 @@ impl Parser {
 		Ok(item)
 	}
 }
-/*
-impl From<Module> for Item {
-	fn from(m: (Module, Span)) -> Item { (Item::Mod(m.0), m.1) }
-}
-
-impl From<Procedure> for Item {
-	fn from(p: (Procedure, Span)) -> Item { (Item::Proc(p.0), p.1) }
-}
-
-impl From<Function> for Item {
-	fn from(f: (Function, Span)) -> Item { (Item::Fn(f.0), f.1) }
-}
-*/
