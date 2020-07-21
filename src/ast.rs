@@ -128,16 +128,28 @@ impl Parser {
 		// hint: u can use `peek()` and `next()` to track spans of consumed tokens
 	}
 	*/
-}
-
-pub fn parse_file_module(tokens: Tokens) -> Result<Vec<Item>, &'static str> {
-	let mut parser = Parser::new(tokens);
-    let mut items = Vec::new();
-    
-	while ! parser.is_empty() {
-		let (item, _) = parser.parse_item()?;
-		items.push(item);
+	pub fn parse_file_module(&mut self) -> ParseResult<Vec<Item>> {
+		let mut items = Vec::new();
+		let mut span: Option<Span> = None;
+		
+		while ! self.is_empty() {
+			match self.peek().unwrap() {
+				Token::BlockComment(_)
+				| Token::LineComment(_)
+				| Token::Newline => {
+					self.next();
+					continue;
+				}
+				_ => {}
+			}
+			let (item, item_span) = self.parse_item()?;
+			items.push(item);
+			span = Some(match span {
+				Some(span) => span.merge(&item_span),
+				None => item_span,
+			});
+		}
+		
+		Ok((items, span.unwrap_or(Span::new(0, 0))))
 	}
-	
-	Ok(items)
 }

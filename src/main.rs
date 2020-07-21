@@ -60,7 +60,7 @@ fn main() -> io::Result<()> {
 				let line = parser.parse_repl_line();
 				
 				if let Err(e) = line {
-					eprintln!("! Invalid input: expected {}.", e);
+					eprintln!("! Error: expected {}.", e);
 					input.clear();
 					continue;
 				}
@@ -103,13 +103,14 @@ fn main() -> io::Result<()> {
 			let source = open(file)?;
 			let tokens = tokenize::tokenize(&source)
 				.expect("Lexer error");
+			let mut parser = ast::Parser::new(tokens);
 			
-			let ast = match ast::parse_file_module(tokens) {
-				Ok(ast) => ast,
+			let ast = match parser.parse_file_module() {
+				Ok(ast) => ast.0,
 				Err(e) => {
 					//let remaining_tokens = tokens.as_slice();
-					eprintln!("Expected {}.", e);
-					//eprintln!("Tokens: {:#?}", remaining_tokens);
+					eprintln!("Error: expected {}.", e);
+					eprintln!("Remaining tokens: {:#?}", parser.tokens);
 					return Ok(())
 				}
 			};
