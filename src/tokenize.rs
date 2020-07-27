@@ -1,8 +1,8 @@
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Token {
 	// keywords
-	And, As, Do, Drop, Else, End, Fi, From, If, Let, Loop, Mod, Not, Or, Proc,
-	Skip, Then, Undo, Until, Var,
+	And, As, Begin, Do, Drop, Else, End, Fi, From, If, Let, Loop, Mod, Not, Or,
+	Proc, Skip, Then, Undo, Until, Var,
 	// reserved
 	Alias, Fn, For, In, Match, Tag, //Goto, ComeFrom,
 	
@@ -70,6 +70,7 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 					// keywords
 					"and"   => Token::And,
 					"as"    => Token::As,
+					"begin" => Token::Begin,
 					"do"    => Token::Do,
 					"drop"  => Token::Drop,
 					"else"  => Token::Else,
