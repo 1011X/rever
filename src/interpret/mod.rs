@@ -44,10 +44,10 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 	// run main procedure, if any
 	if let Some(main) = main {
 		if let Item::Proc(pr) = main {
-			println!("running `proc main`...");
+			println!("running `main`...");
 			pr.call(Vec::new(), &root);
 		} else {
-			eprintln!("found `main`, but it's not a procedure");
+			eprintln!("no `proc main` found");
 		}
 	} else {
 		eprintln!("No main procedure found.");

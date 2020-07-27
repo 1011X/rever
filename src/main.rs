@@ -3,13 +3,8 @@ Stuff to consider adding:
 + Annotations?
   + Could be used like hashtags where an items gets "tagged".
   + `#final fn f(): ...`
-+ Use `.` for "alternatives"
-  + E.g. module paths, tagged unions, etc.
-+ Should "objects" have a prototype like in Javascript?
 + Should "objects" be more like a set of procedures/functions that data structs
   implement?
-+ Should everything just be "tuples" and "enums" that implement "interfaces"?
-+ Should i just go to sleep already???
 
 TODO:
 + Evaluation
