@@ -1,8 +1,8 @@
 proc main
-	let prog := "+"
-	let mem := [0, 0, 0, 0, 0, 0, 0, 0]
-	let ptr := 0
-	let pc := 0
+	var prog := "+"
+	var mem := [0, 0, 0, 0, 0, 0, 0, 0]
+	var ptr := 0
+	var pc := 0
 	from pc = 0
 	until pc = prog.len
 		if prog.(pc) = '>'
@@ -19,7 +19,7 @@ proc main
 			do print: mem.(ptr)
 		else if prog.(pc) = '['
 			if mem.(ptr) = 0
-				let count := 0
+				var count := 0
 				from count = 0
 					if prog.(pc) = '['
 						count += 1
@@ -34,7 +34,7 @@ proc main
 			fi prog.(pc) = ']'
 		else if prog.(pc) = ']'
 			if mem.(ptr) != 0
-				let count := 0
+				var count := 0
 				from count = 0
 					if prog.(pc) = ']'
 						count += 1
