@@ -1,35 +1,97 @@
-#[derive(Debug, Clone, PartialEq, Eq)]
+use logos::Logos;
+
+#[derive(Debug, Clone, PartialEq, Eq, Logos)]
 pub enum Token {
 	// keywords
-	And, As, Begin, Do, Drop, Else, End, Fi, From, If, Let, Loop, Mod, Not, Or,
-	Proc, Skip, Then, Undo, Until, Var,
-	// reserved
-	Alias, Fn, For, In, Match, Tag, //Goto, ComeFrom,
+	#[token("and")]   And,
+	#[token("as")]    As,
+	#[token("begin")] Begin,
+	#[token("do")]    Do,
+	#[token("drop")]  Drop,
+	#[token("else")]  Else,
+	#[token("end")]   End,
+	#[token("fi")]    Fi,
+	#[token("from")]  From,
+	#[token("if")]    If,
+	#[token("let")]   Let,
+	#[token("loop")]  Loop,
+	#[token("mod")]   Mod,
+	#[token("not")]   Not,
+	#[token("or")]    Or,
+	#[token("proc")]  Proc,
+	#[token("skip")]  Skip,
+	#[token("then")]  Then,
+	#[token("undo")]  Undo,
+	#[token("until")] Until,
+	#[token("var")]   Var,
+	
+	// reserved keywords
+	#[token("alias")] Alias,
+	#[token("fn")]    Fn,
+	#[token("for")]   For,
+	#[token("in")]    In,
+	#[token("match")] Match,
+	#[token("tag")]   Tag,
+	//Goto,
+	//ComeFrom,
 	
 	// brackets
-	LParen, RParen, LBracket, RBracket, LBrace, RBrace,
+	#[token("(")] LParen,
+	#[token(")")] RParen,
+	#[token("[")] LBracket,
+	#[token("]")] RBracket,
+	#[token("{")] LBrace,
+	#[token("}")] RBrace,
 	
 	// relational
-	Neq, Lt, Gt, Lte, Gte, Eq,
-	Rol, Ror,
+	#[token("!=")] Neq,
+	#[token("<")]  Lt,
+	#[token(">")]  Gt,
+	#[token("<=")] Lte,
+	#[token(">=")] Gte,
+	#[token("=")]  Eq,
+	#[token(":<")] Rol,
+	#[token(":>")] Ror,
 	
 	// statements
-	Swap, Assign, AddAssign, SubAssign,
+	#[token("<>")] Swap,
+	#[token(":=")] Assign,
+	#[token("+=")] AddAssign,
+	#[token("-=")] SubAssign,
 	
 	// multi-purpose
-	Plus, Colon, Comma, Period, Semicolon, Minus,
-	Star, FSlash, Bang, Caret, Range, Scope, Hash,
-	RightArrow, QMark,
+	#[token("+")]  Plus,
+	#[token(":")]  Colon,
+	#[token(",")]  Comma,
+	#[token(".")]  Period,
+	#[token(";")]  Semicolon,
+	#[token("-")]  Minus,
+	#[token("*")]  Star,
+	#[token("/")]  FSlash,
+	#[token("!")]  Bang,
+	#[token("^")]  Caret,
+	#[token("..")] Range,
+	#[token("::")] Scope,
+	#[token("#")]  Hash,
+	#[token("->")] RightArrow,
+	#[token("?")]  QMark,
 	
-	Newline,
+	// v important
+	#[token("\n")] Newline,
 	
 	// ident and number
+	//#[regex("[A-Za-z_][A-Za-z0-9_]*")]
 	Ident(String),
+	//#[regex("[0-9]+")]
 	Number(String),
 	String(String),
 	Char(char),
 	
 	Other(char),
+	
+	#[error]
+	#[regex("[ \t\r]+", logos::skip)]
+	Error,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -39,7 +101,7 @@ pub enum TokenError {
 	InvalidChar(usize, char),
 }
 
-pub type Tokens = TokenStream;
+//pub type Tokens = TokenStream;
 
 pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 	let mut tokens = Vec::with_capacity(s.len() / 2);
@@ -325,6 +387,7 @@ pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
 	Ok(TokenStream::new(tokens))
 }
 
+//pub type TokenStream<'src> = std::iter::Peekable<logos::SpannedIter<'src, Token>>;
 
 #[derive(Clone, Debug)]
 pub struct TokenStream {

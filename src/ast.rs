@@ -16,7 +16,7 @@ List of state given to program:
 * stdio
 
 */
-use crate::tokenize::{Token, Tokens, TokenStream};
+use crate::tokenize::{Token, TokenStream};
 use crate::interpret::{Eval, EvalResult, Scope, Value};
 
 mod expr;
@@ -77,7 +77,7 @@ pub struct Parser {
 }
 
 impl Parser {
-	pub fn new(tokens: Tokens) -> Self {
+	pub fn new(tokens: TokenStream) -> Self {
 		Parser { tokens, line: 1 }
 	}
 	
