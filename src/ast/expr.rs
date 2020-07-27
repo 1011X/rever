@@ -72,16 +72,20 @@ impl Parser {
 				
 				let test = self.parse_expr()?;
 				
-				// check for `then`
-				self.expect(&Token::Then)
-					.ok_or("`then` after `if` predicate")?;
+				self.expect(&Token::Newline)
+					.ok_or("newline after `if` predicate")?;
 				
-				// parse the main block
+				// parse main block
 				let main_expr = Box::new(self.parse_block_expr()?);
 				
-				// check for `else`
 				self.expect(&Token::Else)
 					.ok_or("`else` in `if` expression")?;
+				
+				match self.peek() {
+					Some(Token::If) => {}
+					Some(Token::Newline) => { self.next(); }
+					_ => return Err("`if` or newline after `else`"),
+				}
 				
 				let else_block = Box::new(self.parse_block_expr()?);
 				

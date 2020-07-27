@@ -90,11 +90,11 @@ impl ast::Parser {
 	pub fn parse_repl_line(&mut self) -> ast::ParseResult<ReplLine> {
 		Ok(match self.peek() {
 			None => todo!(),
-			Some(Token::Let) => {
+			Some(Token::Var) => {
 				self.next();
 				
 				let name = self.expect_ident()
-					.ok_or("variable name after `let`")?;
+					.ok_or("variable name after `var`")?;
 				
 				self.expect(&Token::Assign)
 					.ok_or("`:=` after variable name")?;

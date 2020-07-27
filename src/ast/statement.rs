@@ -162,6 +162,9 @@ impl Parser {
 				self.expect(&Token::Newline)
 					.ok_or("newline after `from` assertion")?;
 				
+				// eat empty lines
+				while self.expect(&Token::Newline).is_some() {}
+				
 				// parse the main loop block
 				let mut main_block = Vec::new();
 				loop {
@@ -179,6 +182,8 @@ impl Parser {
 				self.expect(&Token::Newline)
 					.ok_or("newline after `until` expression")?;
 				
+				while self.expect(&Token::Newline).is_some() {}
+				
 				// parse reverse loop block
 				let mut back_block = Vec::new();
 				loop {
@@ -193,8 +198,8 @@ impl Parser {
 				Statement::From(assert, main_block, back_block, test)
 			}
 			
-			// let-drop
-			Token::Let => {
+			// var-drop
+			Token::Var => {
 				self.next();
 				
 				// get name
