@@ -86,14 +86,16 @@ pub enum Token {
 	Ident(String),
 	#[regex("[0-9]+")]
 	Number,
-//	#[regex("\"\"", |lex| lex.slice())]
-	String(String),
-	#[regex(r"'(\[ntr0'\]|[^\\])'")]
+	#[regex(r#""(\\[ntr0"\\]|[^"\\])*""#)]
+	String,
+	#[regex(r"'(\\[ntr0'\\]|[^'\\])'")]
 	Char,
+	
+	#[regex("~.*", logos::skip)]
+	Comment,
 	
 	#[error]
 	#[regex("[ \t\r]+", logos::skip)]
-	#[regex("~.*", logos::skip)]
 	Error,
 }
 

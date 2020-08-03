@@ -67,12 +67,47 @@ impl Parser<'_> {
 				Literal::Char(c)
 			}
 			
-			Some(Token::String(_)) => {
-				if let Token::String(s) = self.next().unwrap() {
-					Literal::String(s)
-				} else {
-					unreachable!()
+			Some(Token::String) => {
+				self.next();
+				
+				let mut chars = self.slice().chars();
+				let mut string = String::new();
+				
+				let dual = match chars.next().unwrap() {
+					'"' => '"',
+					'“' => '”',
+					'»' => '«',
+					'«' => '»',
+					_ => unreachable!()
+				};
+				
+				loop {
+					match chars.next() {
+						Some(c) if c == dual => break,
+						Some('\\') => string.push(match chars.next() {
+							Some('\\') => '\\',
+							Some('"')  => '"',
+							Some('”')  => '”',
+							Some('»')  => '»',
+							Some('«')  => '«',
+							
+							Some('n')  => '\n',
+							Some('t')  => '\t',
+							Some('r')  => '\r',
+							Some('0')  => '\0',
+							
+							Some(c) =>
+								return Err(ParseError::InvalidChar),
+							None =>
+								return Err(ParseError::Eof),
+						}),
+						Some(c) => string.push(c),
+						None => return Err(ParseError::Eof),
+					}
 				}
+				
+				string.shrink_to_fit();
+				Literal::String(string)
 			}
 			
 			Some(Token::LBracket) => {
