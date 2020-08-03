@@ -23,7 +23,7 @@ impl Item {
 	}
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_item(&mut self) -> ParseResult<Item> {
 		let item = match self.peek() {
 			Some(Token::Proc) => {
@@ -44,7 +44,7 @@ impl Parser {
 		// mandatory newline (or EOF) after item
 		match self.peek() {
 			Some(Token::Newline) | None => {}
-			Some(_) => return Err("newline after item"),
+			Some(_) => Err("newline after item")?,
 		}
 		
 		// eat all extra newlines

@@ -16,6 +16,8 @@ List of state given to program:
 * stdio
 
 */
+use std::fmt;
+
 use crate::tokenize::{Token, TokenStream};
 use crate::interpret::{Eval, EvalResult, Scope, Value};
 
@@ -44,13 +46,25 @@ pub use self::statement::Statement;
 pub use self::term::Term;
 pub use self::types::Type;
 
-pub type ParseResult<T> = Result<T, &'static str>;
+pub type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug, Clone)]
-enum ParseError {
+pub enum ParseError {
 	Eof,
 	Empty,
 	Msg(&'static str),
+	InvalidChar,
+}
+
+impl fmt::Display for ParseError {
+	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			ParseError::Eof => fmt.write_str("not end-of-file"),
+			ParseError::Empty => todo!(),
+			ParseError::Msg(s) => fmt.write_str(s),
+			ParseError::InvalidChar => fmt.write_str("valid character literal"),
+		}
+	}
 }
 
 impl From<&'static str> for ParseError {
@@ -70,32 +84,43 @@ impl<T> Span<T> {
 	}
 }
 */
-#[derive(Debug, Clone)]
-pub struct Parser {
-	pub tokens: TokenStream,
+#[derive(Clone)]
+pub struct Parser<'src> {
+	pub tokens: TokenStream<'src>,
+	peek: Option<Token>,
 	line: usize,
 }
 
-impl Parser {
-	pub fn new(tokens: TokenStream) -> Self {
-		Parser { tokens, line: 1 }
+impl<'src> Parser<'src> {
+	pub fn new(tokens: TokenStream<'src>) -> Self {
+		Parser { tokens, peek: None, line: 1 }
 	}
 	
-	pub fn is_empty(&self) -> bool {
-		self.tokens.is_empty()
+	pub fn slice(&self) -> &str {
+		self.tokens.slice()
 	}
 	
-	pub fn peek(&self) -> Option<&Token> {
-		self.tokens.peek()
+	pub fn peek(&mut self) -> Option<&Token> {
+		//self.tokens.peek()
+		if self.peek.is_none() {
+			self.peek = self.tokens.next();
+		}
+		self.peek.as_ref()
 	}
 	
 	pub fn next(&mut self) -> Option<Token> {
+		/*
 		let token = self.tokens.next();
 		// update parser location
 		if let Some(Token::Newline) = token {
 			self.line += 1;
 		}
 		token
+		*/
+		match self.peek {
+			None => self.tokens.next(),
+			Some(_) => self.peek.take(),
+		}
 	}
 	
 	pub fn next_if(&mut self, f: impl FnOnce(&Token) -> bool) -> Option<Token> {
@@ -132,7 +157,7 @@ impl Parser {
 	pub fn parse_file_module(&mut self) -> ParseResult<Vec<Item>> {
 		let mut items = Vec::new();
 		
-		while ! self.is_empty() {
+		while self.peek().is_some() {
 			match self.peek().unwrap() {
 				Token::Newline => {
 					self.next();

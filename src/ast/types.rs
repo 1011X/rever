@@ -16,7 +16,7 @@ pub enum Type {
 	//Composite(Vec<Type>),
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_type(&mut self) -> ParseResult<Type> {
 		Ok(match self.peek().ok_or("a type")? {
 			Token::Ident(_) => {
@@ -49,10 +49,10 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RParen) => {}
-								_ => return Err("`,` or `)` in fn param list"),
+								_ => Err("`,` or `)` in fn param list")?,
 							}
 						}
-						None => return Err("`,` or `)` in fn param list"),
+						None => Err("`,` or `)` in fn param list")?,
 					}
 				}
 				self.next();
@@ -84,10 +84,10 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RParen) => {}
-								_ => return Err("`,` or `)` in fn param list"),
+								_ => Err("`,` or `)` in fn param list")?,
 							}
 						}
-						None => return Err("`)` or `,` in proc param list"),
+						None => Err("`)` or `,` in proc param list")?,
 					}
 				}
 				self.next();
@@ -95,7 +95,7 @@ impl Parser {
 				Type::Proc(params)
 			}
 			
-			_ => return Err("a valid type")
+			_ => Err("a valid type")?,
 		})
 	}
 }

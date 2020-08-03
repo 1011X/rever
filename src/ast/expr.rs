@@ -64,7 +64,7 @@ impl Expr {
 	}
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_block_expr(&mut self) -> ParseResult<BlockExpr> {
 		let block_expr = match self.peek() {
 			Some(Token::If) => {
@@ -84,7 +84,7 @@ impl Parser {
 				match self.peek() {
 					Some(Token::If) => {}
 					Some(Token::Newline) => { self.next(); }
-					_ => return Err("`if` or newline after `else`"),
+					_ => Err("`if` or newline after `else`")?,
 				}
 				
 				let else_block = Box::new(self.parse_block_expr()?);
@@ -154,7 +154,6 @@ impl Parser {
 				Some(Token::Gt)  => BinOp::Gt,
 				Some(Token::Lte) => BinOp::Le,
 				Some(Token::Gte) => BinOp::Ge,
-				//Some(Token::In) => BinOp::In,
 			    _ => break
 			};
 			self.next();
@@ -186,7 +185,6 @@ impl Parser {
 				Some(Token::Plus)  => BinOp::Add,
 				Some(Token::Minus) => BinOp::Sub,
 				Some(Token::Or)    => BinOp::Or,
-				//Some(Token::Colon) => BinOp::Xor,
 			    _ => break
 			};
 			self.next();
@@ -354,6 +352,12 @@ impl Eval for Expr {
 				let right = right.eval(t)?;
 				
 				match (op, left, right) {
+					// 4
+					(BinOp::Exp, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l.pow(r as u32))),
+					(BinOp::Exp, Value::Int(l), Value::Int(r)) =>
+						Err("tried to exponentiate non-integer values"),
+					
 					// 5
 					(BinOp::Mul, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l * r)),
@@ -416,7 +420,7 @@ impl Eval for Expr {
 					(BinOp::Ge, _, _) =>
 						Err("tried comparing non-integer values"),
 					
-					_ => todo!()
+					_ => { dbg![self]; todo!() }
 				}
 			}
 		}

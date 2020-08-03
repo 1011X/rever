@@ -15,7 +15,7 @@ impl Term {
 	}
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_term(&mut self) -> ParseResult<Term> {
 		let mut clone = self.clone();
 		

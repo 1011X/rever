@@ -14,7 +14,7 @@ pub struct LValue {
 }
 
 // TODO ponder: is `var name` and `drop name` within statements part of a bigger pattern?
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_lval(&mut self) -> ParseResult<LValue> {
 	    let mut ops = Vec::new();
 	    
@@ -48,7 +48,7 @@ impl Parser {
     						let name = self.expect_ident().unwrap();
 	    					ops.push(Deref::Field(name));
     					}
-    					_ => return Err("field name or `(`"),
+    					_ => Err("field name or `(`")?,
     				}
     			}
     			

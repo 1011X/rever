@@ -15,7 +15,7 @@ impl Module {
 	}
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_mod(&mut self) -> ParseResult<Module> {
 		self.expect(&Token::Mod).ok_or("`mod`")?;
 		
@@ -31,7 +31,7 @@ impl Parser {
 			match self.peek() {
 				Some(Token::End) => break,
 				Some(_) => items.push(self.parse_item()?),
-				None => return Err("an item or `end`"),
+				None => Err("an item or `end`")?,
 			}
 		}
 		self.next();

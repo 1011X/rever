@@ -86,7 +86,7 @@ pub enum ReplLine {
 	Stmt(Statement),
 }
 
-impl ast::Parser {
+impl ast::Parser<'_> {
 	pub fn parse_repl_line(&mut self) -> ast::ParseResult<ReplLine> {
 		Ok(match self.peek() {
 			None => todo!(),

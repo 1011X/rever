@@ -12,7 +12,7 @@ pub enum Literal {
 	Fn(Vec<String>, Box<Expr>),
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_lit(&mut self) -> ParseResult<Literal> {
 		Ok(match self.peek() {
 			Some(Token::Ident(x)) if x == "nil" => {
@@ -30,17 +30,40 @@ impl Parser {
 				Literal::Bool(false)
 			}
 			
-			Some(Token::Number(num)) =>
-				match i64::from_str_radix(num, 10) {
-					Ok(n) => {
-						self.next();
-						Literal::Int(n)
-					}
-					Err(_) => return Err("a smaller number"),
-				}
-			
-			Some(&Token::Char(c)) => {
+			Some(Token::Number) => {
 				self.next();
+				match i64::from_str_radix(self.slice(), 10) {
+					Ok(n) => Literal::Int(n),
+					Err(_) => Err("a smaller number")?,
+				}
+			}
+			
+			Some(Token::Char) => {
+				self.next();
+				
+				let mut chars = self.slice().chars();
+				chars.next();
+				
+				let c = match chars.next() {
+					Some('\\') => match chars.next() {
+						Some('\\') => '\\',
+						Some('\'') => '\'',
+						Some('n') => '\n',
+						Some('t') => '\t',
+						Some('r') => '\r',
+						Some('0') => '\0',
+						_ => return Err(ParseError::InvalidChar),
+					}
+					Some(c) if ! "\\\'\n\t\r\0".contains(c) => c,
+					_ => return Err(ParseError::InvalidChar),
+				};
+				
+				match chars.next() {
+					Some('\'') => {}
+					Some(c) => return Err(ParseError::InvalidChar),
+					None => return Err(ParseError::Eof),
+				}
+				
 				Literal::Char(c)
 			}
 			
@@ -65,7 +88,7 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RBracket) => {}
-								_ => return Err("`,` or `]` after element in array"),
+								_ => Err("`,` or `]` after element in array")?,
 							}
 						}
 						None => Err("`,` or `]` after element in array")?,
@@ -93,10 +116,10 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RParen) => {}
-								_ => return Err("`,` or `)` after argument name in closure"),
+								_ => Err("`,` or `)` after argument name in closure")?,
 							}
 						}
-						_ => return Err("`,` or `)` after argument name in closure")
+						_ => Err("`,` or `)` after argument name in closure")?,
 					}
 				}
 				self.next();
@@ -109,7 +132,7 @@ impl Parser {
 				Literal::Fn(args, Box::new(expr))
 			}
 			
-			_ => return Err("valid literal value")
+			_ => Err("valid literal value")?,
 		})
 	}
 }

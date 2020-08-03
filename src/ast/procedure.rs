@@ -20,7 +20,7 @@ pub struct Procedure {
 	pub code: Vec<Statement>,
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_proc(&mut self) -> ParseResult<Procedure> {
 		self.expect(&Token::Proc).ok_or("`proc`")?;
 		
@@ -57,7 +57,7 @@ impl Parser {
 									"Some parameter names in `proc {}` overlap: {:?}",
 									proc_name, name
 								);
-								return Err("parameter names to be unique");
+								Err("parameter names to be unique")?;
 							}
 						}
 						
@@ -66,11 +66,11 @@ impl Parser {
 						match self.peek() {
 							Some(Token::Comma) => { self.next(); }
 							Some(Token::RParen) => {}
-							_ => return Err("`,` or `)` in parameter list")
+							_ => Err("`,` or `)` in parameter list")?,
 						}
 					}
 					
-					None => return Err("`,` or `)` in parameter list"),
+					None => Err("`,` or `)` in parameter list")?,
 				}
 			}
 			self.next();
@@ -85,7 +85,7 @@ impl Parser {
 			match self.peek() {
 				Some(Token::End) => break,
 				Some(_) => code.push(self.parse_stmt()?),
-				None => return Err("a statement or `end`"),
+				None => Err("a statement or `end`")?,
 			}
 		};
 		self.next();

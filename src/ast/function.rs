@@ -14,7 +14,7 @@ pub struct Function {
 //            complex-expr
 //        "end"
 //    ::= "fn" ident "(" params ")" ":" type "=" line-expr
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_fn(&mut self) -> ParseResult<Function> {
 		// keyword `fn`
 		self.expect(&Token::Fn).ok_or("`fn`")?;
@@ -55,7 +55,7 @@ impl Parser {
 								"A parameter name in `fn {}` was repeated: {:?}",
 								fn_name, param_name
 							);
-							return Err("parameter names to be unique");
+							Err("parameter names to be unique")?;
 						}
 					}
 					
@@ -65,11 +65,11 @@ impl Parser {
 					match self.peek() {
 						Some(Token::Comma) => { self.next(); }
 						Some(Token::RParen) => {}
-						_ => return Err("`,` or `)`")
+						_ => Err("`,` or `)`")?,
 					}
 				}
 				
-				None => return Err("`,` or `)`"),
+				None => Err("`,` or `)`")?,
 			}
 		}
 		self.next();
@@ -112,7 +112,7 @@ impl Parser {
 				BlockExpr::Expr(body)
 			}
 			
-			_ => return Err("`=` or newline after function declaration"),
+			_ => Err("`=` or newline after function declaration")?,
 		};
 		
 		Ok(Function { name: fn_name, params, body, ret })

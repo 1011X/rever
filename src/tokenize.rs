@@ -13,11 +13,14 @@ pub enum Token {
 	#[token("fi")]    Fi,
 	#[token("from")]  From,
 	#[token("if")]    If,
+	#[token("in")]    In,
+	#[token("inout")] Inout,
 	#[token("let")]   Let,
 	#[token("loop")]  Loop,
 	#[token("mod")]   Mod,
 	#[token("not")]   Not,
 	#[token("or")]    Or,
+	#[token("out")]   Out,
 	#[token("proc")]  Proc,
 	#[token("skip")]  Skip,
 	#[token("then")]  Then,
@@ -29,7 +32,6 @@ pub enum Token {
 	#[token("alias")] Alias,
 	#[token("fn")]    Fn,
 	#[token("for")]   For,
-	#[token("in")]    In,
 	#[token("match")] Match,
 	#[token("tag")]   Tag,
 	//Goto,
@@ -80,27 +82,31 @@ pub enum Token {
 	#[token("\n")] Newline,
 	
 	// ident and number
-	//#[regex("[A-Za-z_][A-Za-z0-9_]*")]
+	#[regex("[A-Za-z_][A-Za-z0-9_]*", |lex| lex.slice().to_string())]
 	Ident(String),
-	//#[regex("[0-9]+")]
-	Number(String),
+	#[regex("[0-9]+")]
+	Number,
+//	#[regex("\"\"", |lex| lex.slice())]
 	String(String),
-	Char(char),
-	
-	Other(char),
+	#[regex(r"'(\[ntr0'\]|[^\\])'")]
+	Char,
 	
 	#[error]
 	#[regex("[ \t\r]+", logos::skip)]
+	#[regex("~.*", logos::skip)]
 	Error,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/*#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenError {
 	Eof,
 	InvalidEscChar(usize, char),
 	InvalidChar(usize, char),
-}
+}*/
 
+pub type TokenStream<'src> = logos::Lexer<'src, Token>;
+
+/*
 //pub type Tokens = TokenStream;
 
 pub fn tokenize(s: &str) -> Result<TokenStream, TokenError> {
@@ -427,4 +433,4 @@ impl TokenStream {
 		self.stream.len() == 0
 	}
 }
-
+*/

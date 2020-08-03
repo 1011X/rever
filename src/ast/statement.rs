@@ -53,12 +53,15 @@ impl Statement {
 	}
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_stmt(&mut self) -> ParseResult<Statement> {
 		let stmt = match self.peek().ok_or("a statement")? {
 			// skip
 			// TODO use this keyword as a prefix to comment out statements?
-			Token::Skip => Statement::Skip,
+			Token::Skip => {
+				self.next();
+				Statement::Skip
+			}
 			
 			/* do-call syntax accepts three forms:
 			   + `do something`
@@ -97,13 +100,13 @@ impl Parser {
 								// E.g. `var file` or `drop buf` in args.
 								args.push(self.parse_expr()?);
 							}
-							_ => return Err("`,` or newline"),
+							_ => Err("`,` or newline")?,
 						}
 					}
 				} else if self.expect(&Token::LParen).is_some() {
 					unimplemented!();
 				} else {
-					return Err("`:`, or newline");
+					Err("`:`, or newline")?;
 				};
 				
 				Statement::Do(name, args)
@@ -140,13 +143,13 @@ impl Parser {
 								self.next();
 								args.push(self.parse_expr()?);
 							}
-							_ => return Err("`,` or newline"),
+							_ => Err("`,` or newline")?,
 						}
 					}
 				} else if self.expect(&Token::LParen).is_some() {
 					unimplemented!();
 				} else {
-					return Err("`:`, or newline");
+					Err("`:`, or newline")?;
 				};
 				
 				Statement::Undo(name, args)
@@ -171,7 +174,7 @@ impl Parser {
 					match self.peek() {
 						Some(Token::Until) => break,
 						Some(_) => main_block.push(self.parse_stmt()?),
-						None => return Err("a statement or `until`"),
+						None => Err("a statement or `until`")?,
 					}
 				}
 				self.next();
@@ -190,7 +193,7 @@ impl Parser {
 					match self.peek() {
 						Some(Token::Loop) => break,
 						Some(_) => back_block.push(self.parse_stmt()?),
-						None => return Err("a statement or `loop`"),
+						None => Err("a statement or `loop`")?,
 					}
 				}
 				self.next();
@@ -222,13 +225,16 @@ impl Parser {
 				self.expect(&Token::Newline)
 					.ok_or("newline after variable declaration")?;
 				
+				// eat empty lines
+				while self.expect(&Token::Newline).is_some() {}
+				
 				// get list of statements for which this variable is valid
 				let mut block = Vec::new();
 				loop {
 					match self.peek() {
 						Some(Token::Drop) => break,
 						Some(_) => block.push(self.parse_stmt()?),
-						None => return Err("a statement or `drop`"),
+						None => Err("a statement or `drop`")?,
 					}
 				}
 				self.next();
@@ -263,7 +269,7 @@ impl Parser {
 						Some(Token::Else)
 						| Some(Token::Fi) => break,
 						Some(_) => main_block.push(self.parse_stmt()?),
-						None => return Err("a statement, `else`, or `fi`"),
+						None => Err("a statement, `else`, or `fi`")?,
 					}
 				}
 				//self.next();
@@ -279,7 +285,7 @@ impl Parser {
 							match self.peek() {
 								Some(Token::Fi) => break,
 								Some(_) => else_block.push(self.parse_stmt()?),
-								None => return Err("a statement or `fi`"),
+								None => Err("a statement or `fi`")?,
 							}
 						}
 					} else if self.peek() == Some(&Token::If) {
@@ -287,7 +293,7 @@ impl Parser {
 						// "embedding" of chained `if` statements.
 						else_block.push(self.parse_stmt()?);
 					} else {
-						return Err("chaining `if` or a newline");
+						Err("chaining `if` or a newline")?;
 					}
 				}
 				
@@ -299,7 +305,7 @@ impl Parser {
 				let assert = match self.peek() {
 					Some(Token::Newline) => cond.clone(),
 					Some(_) => self.parse_expr()?,
-					None => return Err("a newline or expression after `fi`"),
+					None => Err("a newline or expression after `fi`")?,
 				};
 				
 				Statement::If(cond, main_block, else_block, assert)
@@ -342,12 +348,12 @@ impl Parser {
 					    Statement::Swap(lval, rhs)
 					}
 					
-					_ => return Err("`:=`, `+=`, `-=`, or `<>`"),
+					_ => Err("`:=`, `+=`, `-=`, or `<>`")?,
 				}
 			}
 			
 			// TODO: handle newline here for empty statement
-			_ => return Err("a valid statement"),
+			_ => Err("a valid statement")?,
 		};
 				
 		// mandatory newline after statement
@@ -378,8 +384,7 @@ impl Statement {
 				
 				let (final_id, final_val) = t.pop().unwrap();
 				
-				println!("{}: {:?}", final_id, final_val);
-					assert_eq!(*id, final_id);
+				assert_eq!(*id, final_id);
 				assert_eq!(final_val, dest.eval(t)?,
 					"variable {:?} had unexpected value", id);
 			}

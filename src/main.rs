@@ -18,9 +18,11 @@ TODO:
 use std::env;
 use std::io;
 use std::io::prelude::*;
+use logos::Logos;
 
 //use crate::ast::Parse;
 //use crate::interpret;
+use crate::tokenize::Token;
 
 mod span;
 mod tokenize;
@@ -49,8 +51,7 @@ fn main() -> io::Result<()> {
 				stdout.flush()?;
 				stdin.read_line(&mut input)?;
 				
-				let tokens = tokenize::tokenize(&input)
-					.expect("Could not tokenize");
+				let tokens = Token::lexer(&input);
 				let mut parser = ast::Parser::new(tokens);
 				let line = parser.parse_repl_line();
 				
@@ -75,8 +76,7 @@ fn main() -> io::Result<()> {
 			let mut source = String::new();
 			io::stdin().read_to_string(&mut source)?;
 			
-			let mut tokens = tokenize::tokenize(&source)
-				.expect("Could not tokenize");
+			let mut tokens = Token::lexer(&source);
 			
 			match parse_file_module(&mut tokens) {
 				Ok(ast) => {
@@ -96,8 +96,7 @@ fn main() -> io::Result<()> {
 			use std::fs::read_to_string as open;
 			
 			let source = open(file)?;
-			let tokens = tokenize::tokenize(&source)
-				.expect("Lexer error");
+			let tokens = Token::lexer(&source);
 			let mut parser = ast::Parser::new(tokens);
 			
 			let ast = match parser.parse_file_module() {
@@ -105,7 +104,7 @@ fn main() -> io::Result<()> {
 				Err(e) => {
 					//let remaining_tokens = tokens.as_slice();
 					eprintln!("Error: expected {}.", e);
-					eprintln!("Remaining tokens: {:#?}", parser.tokens);
+					eprintln!("Remaining source:\n{}", parser.tokens.remainder());
 					return Ok(())
 				}
 			};
