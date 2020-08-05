@@ -52,21 +52,26 @@ impl fmt::Display for Value {
 }
 
 impl From<()> for Value {
+	#[inline]
 	fn from(_: ()) -> Self { Value::Nil }
 }
 
 impl From<bool> for Value {
+	#[inline]
 	fn from(b: bool) -> Self { Value::Bool(b) }
 }
 
 impl From<char> for Value {
+	#[inline]
 	fn from(c: char) -> Self { Value::Char(c) }
 }
 
 impl From<i64> for Value {
+	#[inline]
 	fn from(n: i64) -> Self { Value::Int(n) }
 }
 
 impl From<String> for Value {
+	#[inline]
 	fn from(s: String) -> Self { Value::String(s) }
 }

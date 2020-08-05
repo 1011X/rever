@@ -162,8 +162,11 @@ impl Parser<'_> {
 				// parse loop assertion
 				let assert = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
-					.ok_or("newline after `from` assertion")?;
+				match self.peek() {
+					Some(Token::Newline) => { self.next(); }
+					Some(_) => Err("newline after `from` assertion")?,
+					None => Err(ParseError::Eof)?,
+				}
 				
 				// eat empty lines
 				while self.expect(&Token::Newline).is_some() {}
@@ -259,8 +262,11 @@ impl Parser<'_> {
 				// parse if condition
 				let cond = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
-					.ok_or("newline after `if` predicate")?;
+				match self.peek() {
+					Some(Token::Newline) => { self.next(); }
+					Some(_) => Err("newline after `if` predicate")?,
+					None => Err(ParseError::Eof)?,
+				}
 				
 				// parse the main block
 				let mut main_block = Vec::new();

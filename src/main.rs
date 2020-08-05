@@ -37,38 +37,7 @@ fn main() -> io::Result<()> {
 	
 	match args.next() {
 		// start REPL
-		None => {
-			let stdin = io::stdin();
-			let mut input = String::new();
-			let mut stdout = io::stdout();
-			let mut scope = repl::Scope::new();
-			
-			println!("Rever 0.0.1");
-			println!("Type \"show x\" to display the value of x.");
-			
-			loop {
-				print!("< ");
-				stdout.flush()?;
-				stdin.read_line(&mut input)?;
-				
-				let tokens = Token::lexer(&input);
-				let mut parser = ast::Parser::new(tokens);
-				let line = parser.parse_repl_line();
-				
-				if let Err(e) = line {
-					eprintln!("! Error: expected {}.", e);
-					input.clear();
-					continue;
-				}
-				let line = line.unwrap();
-				
-				if scope.eval_line(line).is_ok() {
-					input.clear();
-				} else {
-					break;
-				}
-			}
-		}
+		None => repl::repl()?,
 		
 		// interpret stdin
 		/*

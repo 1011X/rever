@@ -50,6 +50,7 @@ pub type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
+	/// Parser reached an unexpected end-of-file.
 	Eof,
 	Empty,
 	Msg(&'static str),
@@ -137,6 +138,8 @@ impl<'src> Parser<'src> {
 		}
 	}
 	
+	/// Returns the given token if any, along with its span, and advances the
+	/// iterator if found.
 	pub fn expect(&mut self, tok: &Token) -> Option<Token> {
 		if self.peek() == Some(tok) {
 			self.next()
@@ -145,6 +148,7 @@ impl<'src> Parser<'src> {
 		}
 	}
 	
+	/// Returns the next identifier if any, and advances the iterator if found.
 	pub fn expect_ident(&mut self) -> Option<String> {
 		if let Some(Token::Ident(_)) = self.peek() {
 			self.next().map(|token| match token {
@@ -156,6 +160,15 @@ impl<'src> Parser<'src> {
 		}
 	}
 	/*
+	pub fn expect_nl(&mut self) -> Result<bool, ParseError> {
+		todo!();
+		match self.peek() {
+			Some(Token::Newline) => self.next(),
+			Some(_) => 
+			None => Err(ParseError::Eof),
+		}
+	}
+	
 	pub fn parse_with(&mut self, f: _) -> ParseResult<_> {
 		todo!()
 		// hint: u can use `peek()` and `next()` to track spans of consumed tokens

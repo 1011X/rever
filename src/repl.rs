@@ -1,10 +1,52 @@
-//use std::collections::HashMap;
-
 use crate::tokenize::Token;
 use crate::ast::{self, Expr, Item, Module, Statement};
-//use crate::hir;
 use crate::interpret::{self, Eval};
 
+
+pub fn repl() -> io::Result<()> {
+	let stdin = io::stdin();
+	let mut input = String::new();
+	let mut stdout = io::stdout();
+	let mut scope = Scope::new();
+	let mut continuing = false;
+	
+	println!("Rever 0.0.1");
+	println!("Type \"show x\" to display the value of x.");
+	
+	loop {
+		let prompt = if continuing { "|" } else { "<" };
+		print!("{} ", prompt);
+		stdout.flush()?;
+		stdin.read_line(&mut input)?;
+		
+		let tokens = tokenize::tokenize(&input)
+			.expect("Could not tokenize");
+		let mut parser = ast::Parser::new(tokens);
+		let line = parser.parse_repl_line();
+		
+		let line = match line {
+			Ok(line) => line,
+			Err(ast::ParseError::Eof) => {
+				continuing = true;
+				continue;
+			}
+			Err(e) => {
+				eprintln!("! Invalid input: {}.", e);
+				input.clear();
+				continuing = false;
+				continue;
+			}
+		};
+		
+		if scope.eval_line(line.0).is_ok() {
+			input.clear();
+		} else {
+			return Ok(());
+		}
+		
+		continuing = false;
+	}
+}
 
 pub struct Scope {
 	vars:  Vec<(String, interpret::Value)>,
@@ -42,7 +84,7 @@ impl Scope {
 		match line {
 			ReplLine::Show(var) => {
 				if let Some(val) = self.get(&var) {
-					println!(": {:?}", val);
+					println!(": {}", val);
 				}
 			}
 			
@@ -79,6 +121,8 @@ impl Scope {
 #[derive(Debug, Clone)]
 pub enum ReplLine {
 	Show(String),
+	//Expr(Expr),
+	
 	Var(String, Expr),
 	Drop(String),
 	

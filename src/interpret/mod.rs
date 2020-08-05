@@ -41,7 +41,7 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 			Item::Proc(Procedure { name, .. }) if name == "main"
 		));
 	
-	// run main procedure, if any
+	// run main procedure, if found
 	if let Some(main) = main {
 		if let Item::Proc(pr) = main {
 			println!("running `main`...");
