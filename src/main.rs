@@ -3,13 +3,8 @@ Stuff to consider adding:
 + Annotations?
   + Could be used like hashtags where an items gets "tagged".
   + `#final fn f(): ...`
-+ Use `.` for "alternatives"
-  + E.g. module paths, tagged unions, etc.
-+ Should "objects" have a prototype like in Javascript?
 + Should "objects" be more like a set of procedures/functions that data structs
   implement?
-+ Should everything just be "tuples" and "enums" that implement "interfaces"?
-+ Should i just go to sleep already???
 
 TODO:
 + Evaluation
@@ -23,14 +18,16 @@ TODO:
 use std::env;
 use std::io;
 use std::io::prelude::*;
+use logos::Logos;
 
 //use crate::ast::Parse;
 //use crate::interpret;
+use crate::tokenize::Token;
 
 mod span;
 mod tokenize;
 mod ast;
-mod hir;
+//mod hir;
 //mod compile;
 mod interpret;
 mod repl;
@@ -54,19 +51,18 @@ fn main() -> io::Result<()> {
 				stdout.flush()?;
 				stdin.read_line(&mut input)?;
 				
-				let tokens = tokenize::tokenize(&input)
-					.expect("Could not tokenize");
+				let tokens = Token::lexer(&input);
 				let mut parser = ast::Parser::new(tokens);
 				let line = parser.parse_repl_line();
 				
 				if let Err(e) = line {
-					eprintln!("! Invalid input: {}.", e);
+					eprintln!("! Error: expected {}.", e);
 					input.clear();
 					continue;
 				}
 				let line = line.unwrap();
 				
-				if scope.eval_line(line.0).is_ok() {
+				if scope.eval_line(line).is_ok() {
 					input.clear();
 				} else {
 					break;
@@ -80,8 +76,7 @@ fn main() -> io::Result<()> {
 			let mut source = String::new();
 			io::stdin().read_to_string(&mut source)?;
 			
-			let mut tokens = tokenize::tokenize(&source)
-				.expect("Could not tokenize");
+			let mut tokens = Token::lexer(&source);
 			
 			match parse_file_module(&mut tokens) {
 				Ok(ast) => {
@@ -101,15 +96,15 @@ fn main() -> io::Result<()> {
 			use std::fs::read_to_string as open;
 			
 			let source = open(file)?;
-			let tokens = tokenize::tokenize(&source)
-				.expect("Lexer error");
+			let tokens = Token::lexer(&source);
+			let mut parser = ast::Parser::new(tokens);
 			
-			let ast = match ast::parse_file_module(tokens) {
+			let ast = match parser.parse_file_module() {
 				Ok(ast) => ast,
 				Err(e) => {
 					//let remaining_tokens = tokens.as_slice();
-					eprintln!("{}", e);
-					//eprintln!("Tokens: {:#?}", remaining_tokens);
+					eprintln!("Error: expected {}.", e);
+					eprintln!("Remaining source:\n{}", parser.tokens.remainder());
 					return Ok(())
 				}
 			};

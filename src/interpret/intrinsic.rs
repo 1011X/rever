@@ -1,7 +1,7 @@
 use super::Value;
 use std::io::prelude::*;
 
-pub fn puts(args: Box<[Value]>) -> Box<[Value]> {
+pub fn puts(args: Box<[Value]>) {
 	assert!(args.len() == 1);
 	
 	let mut rstdout = super::io::RevStdout::new();
@@ -11,11 +11,9 @@ pub fn puts(args: Box<[Value]>) -> Box<[Value]> {
 	};
 	
 	rstdout.write(string);
-	
-	args
 }
 
-pub fn unputs(args: Box<[Value]>) -> Box<[Value]> {
+pub fn unputs(args: Box<[Value]>) {
 	assert!(args.len() == 1);
 	
 	let mut rstdout = super::io::RevStdout::new();
@@ -25,6 +23,4 @@ pub fn unputs(args: Box<[Value]>) -> Box<[Value]> {
 	};
 	
 	rstdout.unwrite(string, string.len());
-	
-	args
 }

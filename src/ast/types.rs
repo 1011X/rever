@@ -2,37 +2,39 @@ use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
+	Infer,
 	Never,
 	Unit,
 	Bool,
 	UInt, Int,
 	Char, String,
-	//Array(Box<(Type, Span)>, usize),
+	//Array(Box<Type>, usize),
 	Array(usize),
-	Fn(Vec<(Type, Span)>, Box<(Type, Span)>),
-	Proc(Vec<(bool, (Type, Span))>),
+	Fn(Vec<Type>, Box<Type>),
+	Proc(Vec<(bool, Type)>),
 	//Alternate(Vec<Type>),
 	//Composite(Vec<Type>),
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_type(&mut self) -> ParseResult<Type> {
 		Ok(match self.peek().ok_or("a type")? {
 			Token::Ident(_) => {
-				let (name, span) = self.expect_ident_span().unwrap();
+				let name = self.expect_ident().unwrap();
 				match name.as_str() {
-					"never" => (Type::Never, span),
-					"unit"  => (Type::Unit, span),
-					"bool"  => (Type::Bool, span),
-					"uint"  => (Type::UInt, span),
-					"int"   => (Type::Int, span),
-					"str"   => (Type::String, span),
-					id      => todo!(),
+					"_"    => Type::Infer,
+					"void" => Type::Never,
+					"unit" => Type::Unit,
+					"bool" => Type::Bool,
+					"uint" => Type::UInt,
+					"int"  => Type::Int,
+					"str"  => Type::String,
+					id     => todo!(),
 				}
 			}
 			
 			Token::Fn => {
-				let (_, start) = self.next().unwrap();
+				self.next();
 				
 				self.expect(&Token::LParen)
 					.ok_or("`(` for `fn` type")?;
@@ -59,13 +61,12 @@ impl Parser {
 					.ok_or("`:` to specify `fn` return type")?;
 				
 				let ret = self.parse_type()?;
-				let span = start.merge(&ret.1);
 				
-				(Type::Fn(params, Box::new(ret)), span)
+				Type::Fn(params, Box::new(ret))
 			}
 			
 			Token::Proc => {
-				let (_, start) = self.next().unwrap();
+				self.next();
 				
 				self.expect(&Token::LParen)
 					.ok_or("`(` for `proc` type")?;
@@ -89,12 +90,16 @@ impl Parser {
 						None => Err("`)` or `,` in proc param list")?,
 					}
 				}
-				let (_, end) = self.next().unwrap();
+				self.next();
 				
-				(Type::Proc(params), start.merge(&end))
+				Type::Proc(params)
 			}
 			
 			_ => Err("a valid type")?
 		})
 	}
+}
+
+impl Default for Type {
+	fn default() -> Self { Type::Infer }
 }

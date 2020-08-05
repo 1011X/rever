@@ -13,6 +13,16 @@ proc fib(x1: int, x2: int, n: int)
 	fi x1 = x2
 end
 
+fn fib(n: int): int
+	if n = 0
+		0
+	else if n = 1
+		1
+	else
+		fib(n - 1) + fib(n - 2)
+	fi
+end
+
 proc main
 	var x1 := 0
 	var x2 := 0

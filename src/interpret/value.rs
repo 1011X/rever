@@ -1,6 +1,3 @@
-use std::fmt;
-use crate::hir::Type;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
 	Nil,
@@ -14,6 +11,7 @@ pub enum Value {
 	//Proc(String),
 }
 
+use crate::ast::Type;
 impl Value {
 	pub fn get_type(&self) -> Type {
 		match self {

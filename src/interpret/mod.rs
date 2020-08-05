@@ -1,7 +1,6 @@
 //use std::io::prelude::*;
 
-use crate::ast;
-use crate::hir::{Item, Module};
+use crate::ast::{self, Item, Module, Procedure};
 
 mod io;
 mod value;
@@ -31,20 +30,24 @@ pub enum EvalError {
 
 pub fn interpret_file(items: Vec<ast::Item>) {
 	// create root module
-	let mut root = Module::from(items);
+	let mut root = Module::new("root".into(), items);
 		
-	root.0.insert(
-		String::from("puts"),
-		Item::InternProc(intrinsic::puts, intrinsic::unputs)
+	root.items.push(
+		Item::InternProc("puts", intrinsic::puts, intrinsic::unputs)
 	);
 	
+	let main = root.items.iter()
+		.find(|item| matches!(item,
+			Item::Proc(Procedure { name, .. }) if name == "main"
+		));
+	
 	// run main procedure, if any
-	if let Some(main) = root.0.get("main") {
+	if let Some(main) = main {
 		if let Item::Proc(pr) = main {
-			println!("running `proc main`...");
+			println!("running `main`...");
 			pr.call(Vec::new(), &root);
 		} else {
-			eprintln!("found `main`, but it's not a procedure");
+			eprintln!("no `proc main` found");
 		}
 	} else {
 		eprintln!("No main procedure found.");

@@ -6,13 +6,18 @@ use super::*;
 #[derive(Clone, Debug)]
 pub struct Module {
 	pub name: String,
-	pub items: Vec<(Item, Span)>,
+	pub items: Vec<Item>,
 }
 
-impl Parser {
+impl Module {
+	pub fn new(name: String, items: Vec<Item>) -> Self {
+		Module { name, items }
+	}
+}
+
+impl Parser<'_> {
 	pub fn parse_mod(&mut self) -> ParseResult<Module> {
-		let (_, start) = self.expect(&Token::Mod)
-			.ok_or("`mod`")?;
+		self.expect(&Token::Mod).ok_or("`mod`")?;
 		
 		let name = self.expect_ident()
 			.ok_or("module name")?;
@@ -24,19 +29,33 @@ impl Parser {
 		let mut items = Vec::new();
 		loop {
 			match self.peek() {
-				Some(Token::End) =>
-					break,
-				Some(_) =>
-					items.push(self.parse_item()?),
-				None =>
-					Err("an item or `end`")?,
+				Some(Token::End) => break,
+				Some(_) => items.push(self.parse_item()?),
+				None => Err("an item or `end`")?,
 			}
 		}
-		let (_, end) = self.next().unwrap();
+		self.next();
 		
-		// the likely newline afterwards
-		self.expect(&Token::Newline);
-		
-		Ok((Module { name, items }, start.merge(&end)))
+		Ok(Module { name, items })
 	}
 }
+
+
+/*
+impl From<Vec<ast::Item>> for Module {
+	fn from(items: Vec<ast::Item>) -> Self {
+		let mut map = HashMap::new();
+		for item in items {
+			match item {
+				ast::Item::Proc(p) =>
+					map.insert(p.name.clone(), Item::Proc(p.into())),
+				ast::Item::Mod(m) =>
+					map.insert(m.name.clone(), Item::Mod(m.into())),
+				ast::Item::Fn(f) =>
+					map.insert(f.name.clone(), Item::Fn(f.into())),
+			};
+		}
+		Module(map)
+	}
+}
+*/

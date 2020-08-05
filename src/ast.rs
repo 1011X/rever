@@ -17,8 +17,9 @@ List of state given to program:
 
 */
 use std::fmt;
-use crate::span::Span;
-use crate::tokenize::{Token, Tokens, TokenStream};
+
+use crate::tokenize::{Token, TokenStream};
+use crate::interpret::{Eval, EvalResult, Scope, Value};
 
 mod expr;
 mod function;
@@ -32,6 +33,7 @@ mod term;
 mod types;
 
 pub use self::expr::Expr;
+pub use self::expr::BlockExpr;
 pub use self::expr::BinOp;
 pub use self::function::Function;
 pub use self::item::Item;
@@ -44,12 +46,25 @@ pub use self::statement::Statement;
 pub use self::term::Term;
 pub use self::types::Type;
 
-pub type ParseResult<T> = Result<(T, Span), ParseError>;
+pub type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
 	Eof,
-	Expected(&'static str),
+	Empty,
+	Msg(&'static str),
+	InvalidChar,
+}
+
+impl fmt::Display for ParseError {
+	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			ParseError::Eof => fmt.write_str("not end-of-file"),
+			ParseError::Empty => todo!(),
+			ParseError::Msg(s) => fmt.write_str(s),
+			ParseError::InvalidChar => fmt.write_str("valid character literal"),
+		}
+	}
 }
 
 impl fmt::Display for ParseError {
@@ -64,55 +79,65 @@ impl fmt::Display for ParseError {
 		}
 	}
 }
-
-impl From<&'static str> for ParseError {
-	#[inline]
-	fn from(msg: &'static str) -> Self { ParseError::Expected(msg) }
+/*
+struct Span<T> {
+	data: T,
+	span: Range<usize>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Parser {
-	pub tokens: TokenStream,
+impl<T> Span<T> {
+	fn merge(&mut self, other: Span<T>) -> Span<T> {
+		
+	}
+}
+*/
+#[derive(Clone)]
+pub struct Parser<'src> {
+	pub tokens: TokenStream<'src>,
+	peek: Option<Token>,
 	line: usize,
-	col: usize,
 }
 
-impl Parser {
-	pub fn new(tokens: Tokens) -> Self {
-		Parser { tokens, line: 1, col: 1 }
+impl<'src> Parser<'src> {
+	pub fn new(tokens: TokenStream<'src>) -> Self {
+		Parser { tokens, peek: None, line: 1 }
 	}
 	
-	pub fn is_empty(&self) -> bool {
-		self.tokens.is_empty()
+	pub fn slice(&self) -> &str {
+		self.tokens.slice()
 	}
 	
-	pub fn peek(&self) -> Option<&Token> {
-		self.tokens.peek().map(|(t, _)| t)
+	pub fn peek(&mut self) -> Option<&Token> {
+		//self.tokens.peek()
+		if self.peek.is_none() {
+			self.peek = self.tokens.next();
+		}
+		self.peek.as_ref()
 	}
 	
-	pub fn next(&mut self) -> Option<(Token, Span)> {
+	pub fn next(&mut self) -> Option<Token> {
+		/*
 		let token = self.tokens.next();
 		// update parser location
-		if let Some((token, span)) = &token {
-			if *token == Token::Newline {
-				self.line += 1;
-				self.col = 1;
-			} else {
-				// FIXME
-				//self.col = span.end - span.start;
-			}
+		if let Some(Token::Newline) = token {
+			self.line += 1;
 		}
 		token
+		*/
+		match self.peek {
+			None => self.tokens.next(),
+			Some(_) => self.peek.take(),
+		}
 	}
 	
-	pub fn next_if(&mut self, f: impl FnOnce(&Token) -> bool) -> Option<(Token, Span)> {
+	pub fn next_if(&mut self, f: impl FnOnce(&Token) -> bool) -> Option<Token> {
 		match self.peek() {
 			Some(token) if f(&token) => self.next(),
 			_ => None,
 		}
 	}
 	
-	pub fn expect(&mut self, tok: &Token) -> Option<(Token, Span)> {
+	pub fn expect(&mut self, tok: &Token) -> Option<Token> {
 		if self.peek() == Some(tok) {
 			self.next()
 		} else {
@@ -121,13 +146,9 @@ impl Parser {
 	}
 	
 	pub fn expect_ident(&mut self) -> Option<String> {
-		self.expect_ident_span().map(|(id, _)| id)
-	}
-	
-	pub fn expect_ident_span(&mut self) -> Option<(String, Span)> {
 		if let Some(Token::Ident(_)) = self.peek() {
-			self.next().map(|(token, span)| match token {
-				Token::Ident(id) => (id, span),
+			self.next().map(|token| match token {
+				Token::Ident(id) => id,
 				_ => unreachable!(),
 			})
 		} else {
@@ -140,16 +161,20 @@ impl Parser {
 		// hint: u can use `peek()` and `next()` to track spans of consumed tokens
 	}
 	*/
-}
-
-pub fn parse_file_module(tokens: Tokens) -> Result<Vec<Item>, ParseError> {
-	let mut parser = Parser::new(tokens);
-	let mut items = Vec::new();
-	
-	while ! parser.is_empty() {
-		let (item, _) = parser.parse_item()?;
-		items.push(item);
+	pub fn parse_file_module(&mut self) -> ParseResult<Vec<Item>> {
+		let mut items = Vec::new();
+		
+		while self.peek().is_some() {
+			match self.peek().unwrap() {
+				Token::Newline => {
+					self.next();
+					continue;
+				}
+				_ => {}
+			}
+			items.push(self.parse_item()?);
+		}
+		
+		Ok(items)
 	}
-	
-	Ok(items)
 }

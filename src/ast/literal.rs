@@ -8,80 +8,134 @@ pub enum Literal {
 	UInt(u64),
 	Char(char),
 	String(String),
-	Array(Vec<(Expr, Span)>),
-	Fn(Vec<String>, Box<(Expr, Span)>),
+	Array(Vec<Expr>),
+	Fn(Vec<String>, Box<Expr>),
 }
 
-impl Parser {
+impl Parser<'_> {
 	pub fn parse_lit(&mut self) -> ParseResult<Literal> {
 		Ok(match self.peek() {
 			Some(Token::Ident(x)) if x == "nil" => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Nil, span)
+				self.next();
+				Literal::Nil
 			}
 			
 			Some(Token::Ident(x)) if x == "true" => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Bool(true), span)
+				self.next();
+				Literal::Bool(true)
 			}
 			
 			Some(Token::Ident(x)) if x == "false" => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Bool(false), span)
+				self.next();
+				Literal::Bool(false)
 			}
 			
-			Some(Token::Number(num)) =>
-				match i64::from_str_radix(num, 10) {
-					Ok(n) => {
-						let (_, span) = self.next().unwrap();
-						(Literal::Int(n), span)
-					}
+			Some(Token::Number) => {
+				self.next();
+				match i64::from_str_radix(self.slice(), 10) {
+					Ok(n) => Literal::Int(n),
 					Err(_) => Err("a smaller number")?,
 				}
-			
-			Some(&Token::Char(c)) => {
-				let (_, span) = self.next().unwrap();
-				(Literal::Char(c), span)
 			}
 			
-			Some(Token::String(_)) => {
-				let (s, span) = self.next().unwrap();
-				if let Token::String(s) = s {
-					(Literal::String(s), span)
-				} else {
-					unreachable!()
+			Some(Token::Char) => {
+				self.next();
+				
+				let mut chars = self.slice().chars();
+				chars.next();
+				
+				let c = match chars.next() {
+					Some('\\') => match chars.next() {
+						Some('\\') => '\\',
+						Some('\'') => '\'',
+						Some('n') => '\n',
+						Some('t') => '\t',
+						Some('r') => '\r',
+						Some('0') => '\0',
+						_ => return Err(ParseError::InvalidChar),
+					}
+					Some(c) if ! "\\\'\n\t\r\0".contains(c) => c,
+					_ => return Err(ParseError::InvalidChar),
+				};
+				
+				match chars.next() {
+					Some('\'') => {}
+					Some(c) => return Err(ParseError::InvalidChar),
+					None => return Err(ParseError::Eof),
 				}
+				
+				Literal::Char(c)
+			}
+			
+			Some(Token::String) => {
+				self.next();
+				
+				let mut chars = self.slice().chars();
+				let mut string = String::new();
+				
+				let dual = match chars.next().unwrap() {
+					'"' => '"',
+					'“' => '”',
+					'»' => '«',
+					'«' => '»',
+					_ => unreachable!()
+				};
+				
+				loop {
+					match chars.next() {
+						Some(c) if c == dual => break,
+						Some('\\') => string.push(match chars.next() {
+							Some('\\') => '\\',
+							Some('"')  => '"',
+							Some('”')  => '”',
+							Some('»')  => '»',
+							Some('«')  => '«',
+							
+							Some('n')  => '\n',
+							Some('t')  => '\t',
+							Some('r')  => '\r',
+							Some('0')  => '\0',
+							
+							Some(c) =>
+								return Err(ParseError::InvalidChar),
+							None =>
+								return Err(ParseError::Eof),
+						}),
+						Some(c) => string.push(c),
+						None => return Err(ParseError::Eof),
+					}
+				}
+				
+				string.shrink_to_fit();
+				Literal::String(string)
 			}
 			
 			Some(Token::LBracket) => {
-				let (_, start) = self.next().unwrap();
-				
+				self.next();
 				let mut elements = Vec::new();
 				
 				loop {
 					match self.peek() {
-						Some(Token::RBracket) =>
-							break,
+						Some(Token::RBracket) => break,
 						Some(_) => {
 							elements.push(self.parse_expr()?);
 							
 							match self.peek() {
 								Some(Token::Comma) => { self.next(); }
 								Some(Token::RBracket) => {}
-								_ => Err("`,` or `]` after element in array literal")?,
+								_ => Err("`,` or `]` after element in array")?,
 							}
 						}
-						None =>
-							Err("`,` or `]` after element in array literal")?,
+						None => Err("`,` or `]` after element in array")?,
 					}
 				}
-				let (_, end) = self.next().unwrap();
+				self.next();
 				
-				(Literal::Array(elements), start.merge(&end))
+				Literal::Array(elements)
 			}
 			
 			Some(Token::Fn) => {
-				let (_, start) = self.next().unwrap();
+				self.next();
 				
 				self.expect(&Token::LParen)
 					.ok_or("`(` at start of closure")?;
@@ -109,12 +163,33 @@ impl Parser {
 					.ok_or("`:` after arguments in closure")?;
 				
 				let expr = self.parse_expr()?;
-				let span = start.merge(&expr.1);
 				
-				(Literal::Fn(args, Box::new(expr)), span)
+				Literal::Fn(args, Box::new(expr))
 			}
 			
 			_ => Err("valid literal value")?
+		})
+	}
+}
+
+impl Eval for Literal {
+	fn eval(&self, t: &Scope) -> EvalResult {
+		Ok(match self {
+			Literal::Nil       => Value::Nil,
+			Literal::Bool(b)   => Value::Bool(*b),
+			Literal::Int(n)    => Value::Int(*n),
+			Literal::UInt(n)   => Value::Uint(*n),
+			Literal::Char(c)   => Value::Char(*c),
+			Literal::String(s) => Value::String(s.clone()),
+			
+			Literal::Array(arr) => Value::Array({
+				let mut vec = Vec::with_capacity(arr.len());
+				for expr in arr.iter() {
+					vec.push(expr.eval(t)?);
+				}
+				vec.into_boxed_slice()
+			}),
+			Literal::Fn(args, ret) => todo!(),
 		})
 	}
 }
