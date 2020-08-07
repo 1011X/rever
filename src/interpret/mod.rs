@@ -3,6 +3,7 @@
 use crate::ast::{self, Item, Module, Procedure, Type};
 
 pub use self::value::Value;
+pub use self::intrinsic::{InternProc, InternFn};
 
 mod io;
 mod value;

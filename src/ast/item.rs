@@ -1,5 +1,5 @@
 use super::*;
-use crate::interpret::intrinsic::InternProc;
+use crate::interpret::InternProc;
 
 #[derive(Clone)]
 pub enum Item {

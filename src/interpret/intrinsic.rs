@@ -1,4 +1,5 @@
 use super::{EvalResult, EvalError, Value};
+use crate::ast::Type;
 use std::io::prelude::*;
 
 pub type InternProc = fn(&mut [Value]) -> Result<(), EvalError>;
@@ -12,7 +13,7 @@ pub fn puts(args: &mut [Value]) -> Result<(), EvalError> {
 		Value::String(s) => s.as_bytes(),
 		_ => return Err(EvalError::TypeMismatch {
 			expected: Type::String,
-			got: &args[0].get_type(),
+			got: args[0].get_type(),
 		})
 	};
 	
@@ -20,7 +21,7 @@ pub fn puts(args: &mut [Value]) -> Result<(), EvalError> {
 	Ok(())
 }
 
-pub fn unputs(args: &mut [Value]) {
+pub fn unputs(args: &mut [Value]) -> Result<(), EvalError> {
 	assert!(args.len() == 1);
 	
 	let mut rstdout = super::io::RevStdout::new();
@@ -28,7 +29,7 @@ pub fn unputs(args: &mut [Value]) {
 		Value::String(s) => s.as_bytes(),
 		_ => return Err(EvalError::TypeMismatch {
 			expected: Type::String,
-			got: &args[0].get_type(),
+			got: args[0].get_type(),
 		})
 	};
 	
