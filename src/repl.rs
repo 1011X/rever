@@ -1,7 +1,9 @@
+use std::io::{self, prelude::*};
+use logos::Logos;
+
 use crate::tokenize::Token;
 use crate::ast::{self, Expr, Item, Module, Statement};
 use crate::interpret::{self, Eval};
-
 
 pub fn repl() -> io::Result<()> {
 	let stdin = io::stdin();
@@ -19,12 +21,10 @@ pub fn repl() -> io::Result<()> {
 		stdout.flush()?;
 		stdin.read_line(&mut input)?;
 		
-		let tokens = tokenize::tokenize(&input)
-			.expect("Could not tokenize");
+		let tokens = Token::lexer(&input);
 		let mut parser = ast::Parser::new(tokens);
-		let line = parser.parse_repl_line();
 		
-		let line = match line {
+		let line = match parser.parse_repl_line() {
 			Ok(line) => line,
 			Err(ast::ParseError::Eof) => {
 				continuing = true;
@@ -38,7 +38,7 @@ pub fn repl() -> io::Result<()> {
 			}
 		};
 		
-		if scope.eval_line(line.0).is_ok() {
+		if scope.eval_line(line).is_ok() {
 			input.clear();
 		} else {
 			return Ok(());

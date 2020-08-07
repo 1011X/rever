@@ -17,7 +17,6 @@ TODO:
 
 use std::env;
 use std::io;
-use std::io::prelude::*;
 use logos::Logos;
 
 //use crate::ast::Parse;
