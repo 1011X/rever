@@ -162,7 +162,7 @@ impl Parser<'_> {
 				Literal::Fn(args, Box::new(expr))
 			}
 			
-			_ => Err("valid literal value")?,
+			_ => Err("valid literal value")?
 		})
 	}
 }

@@ -66,7 +66,7 @@ impl Parser<'_> {
 						match self.peek() {
 							Some(Token::Comma) => { self.next(); }
 							Some(Token::RParen) => {}
-							_ => Err("`,` or `)` in parameter list")?,
+							_ => Err("`,` or `)` in parameter list")?
 						}
 					}
 					

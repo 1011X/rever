@@ -157,13 +157,13 @@ impl Parser<'_> {
 			    _ => break
 			};
 			self.next();
-		    
-		    let expr = self.parse_expr_add()?;
-		    exprs.push((op, expr));
+			
+			let expr = self.parse_expr_add()?;
+			exprs.push((op, expr));
 		}
 		
 		if exprs.is_empty() {
-		    return Ok(first);
+			return Ok(first);
 		}
 		
 		let expr = exprs.into_iter()
@@ -188,13 +188,13 @@ impl Parser<'_> {
 			    _ => break
 			};
 			self.next();
-		    
-		    let term = self.parse_expr_mul()?;
-		    terms.push((op, term));
+			
+			let term = self.parse_expr_mul()?;
+			terms.push((op, term));
 		}
 		
 		if terms.is_empty() {
-		    return Ok(first);
+			return Ok(first);
 		}
 		
 		let expr = terms.into_iter()
@@ -217,16 +217,16 @@ impl Parser<'_> {
 				Some(Token::FSlash) => BinOp::Div,
 				Some(Token::Mod)    => BinOp::Mod,
 				Some(Token::And)    => BinOp::And,
-			    _ => break
+				_ => break
 			};
 			self.next();
-		    
-		    let fact = self.parse_expr_exp()?;
-		    facts.push((op, fact));
+			
+			let fact = self.parse_expr_exp()?;
+			facts.push((op, fact));
 		}
 		
 		if facts.is_empty() {
-		    return Ok(first);
+			return Ok(first);
 		}
 		
 		let expr = facts.into_iter()
@@ -246,16 +246,16 @@ impl Parser<'_> {
 		loop {
 			let op = match self.peek() {
 				Some(Token::Caret) => {}
-			    _ => break
+				_ => break
 			};
 			self.next();
-		    
-		    let exp = self.parse_expr_atom()?;
-		    exps.push(exp);
+			
+			let exp = self.parse_expr_atom()?;
+			exps.push(exp);
 		}
 		
 		if exps.is_empty() {
-		    return Ok(first);
+			return Ok(first);
 		}
 		
 		let last = exps.pop().unwrap();

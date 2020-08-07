@@ -95,7 +95,7 @@ impl Parser<'_> {
 				Type::Proc(params)
 			}
 			
-			_ => Err("a valid type")?,
+			_ => Err("a valid type")?
 		})
 	}
 }

@@ -49,6 +49,7 @@ impl Parser<'_> {
 					};
 					
 					// ensure param name is unique
+					// TODO leave until hir translation?
 					for (name, _) in &params {
 						if *name == param_name {
 							eprintln!(

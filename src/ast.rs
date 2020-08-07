@@ -31,6 +31,7 @@ pub type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
+	/// Parser reached an unexpected end-of-file.
 	Eof,
 	Empty,
 	Msg(&'static str),
@@ -96,6 +97,7 @@ impl<'src> Parser<'src> {
 		}
 	}
 	
+	/// Returns the next identifier if any, and advances the iterator if found.
 	pub fn expect_ident(&mut self) -> Option<String> {
 		self.expect(Token::Ident)
 			.map(|_| self.slice().to_string())
