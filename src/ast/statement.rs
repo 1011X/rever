@@ -166,7 +166,7 @@ impl Parser<'_> {
 					.ok_or("newline after `from` assertion")?;
 				
 				// eat empty lines
-				while self.expect(Token::Newline).is_some() {}
+				self.skip_newlines();
 				
 				// parse the main loop block
 				let mut main_block = Vec::new();
@@ -185,7 +185,7 @@ impl Parser<'_> {
 				self.expect(Token::Newline)
 					.ok_or("newline after `until` expression")?;
 				
-				while self.expect(Token::Newline).is_some() {}
+				self.skip_newlines();
 				
 				// parse reverse loop block
 				let mut back_block = Vec::new();
@@ -226,7 +226,7 @@ impl Parser<'_> {
 					.ok_or("newline after variable declaration")?;
 				
 				// eat empty lines
-				while self.expect(Token::Newline).is_some() {}
+				self.skip_newlines();
 				
 				// get list of statements for which this variable is valid
 				let mut block = Vec::new();
@@ -365,7 +365,7 @@ impl Parser<'_> {
 			.ok_or("newline after statement")?;
 		
 		// eat all extra newlines
-		while self.expect(Token::Newline).is_some() {}
+		self.skip_newlines();
 		
 		Ok(stmt)
 	}

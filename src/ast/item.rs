@@ -1,4 +1,5 @@
 use super::*;
+use crate::interpret::intrinsic::InternProc;
 
 #[derive(Clone)]
 pub enum Item {
@@ -9,15 +10,15 @@ pub enum Item {
 	Fn(Function),
 	//Type(Type),
 	
-	InternProc(&'static str, fn(&mut [Value]), fn(&mut [Value])),
+	InternProc(&'static str, InternProc, InternProc),
 }
 
 impl Item {
 	pub fn get_name(&self) -> &str {
 		match self {
-			Item::Mod(m) => &m.name,
+			Item::Mod(m)  => &m.name,
 			Item::Proc(p) => &p.name,
-			Item::Fn(f) => &f.name,
+			Item::Fn(f)   => &f.name,
 			Item::InternProc(name, _, _) => name,
 		}
 	}
@@ -26,18 +27,10 @@ impl Item {
 impl Parser<'_> {
 	pub fn parse_item(&mut self) -> ParseResult<Item> {
 		let item = match self.peek() {
-			Some(Token::Proc) => {
-				let p = self.parse_proc()?;
-				Item::Proc(p)
-			}
-			Some(Token::Mod) => {
-				let m = self.parse_mod()?;
-				Item::Mod(m)
-			}
-			Some(Token::Fn) => {
-				let f = self.parse_fn()?;
-				Item::Fn(f)
-			}
+			Some(Token::Proc) => Item::Proc(self.parse_proc()?),
+			Some(Token::Mod)  => Item::Mod(self.parse_mod()?),
+			Some(Token::Fn)   => Item::Fn(self.parse_fn()?),
+			
 			_ => Err("a module, function, or procedure")?,
 		};
 		
@@ -48,7 +41,7 @@ impl Parser<'_> {
 		}
 		
 		// eat all extra newlines
-		while self.expect(Token::Newline).is_some() {}
+		self.skip_newlines();
 		
 		Ok(item)
 	}

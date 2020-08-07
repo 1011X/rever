@@ -2,11 +2,11 @@
 
 use crate::ast::{self, Item, Module, Procedure, Type};
 
+pub use self::value::Value;
+
 mod io;
 mod value;
 mod intrinsic;
-
-pub use self::value::Value;
 
 #[derive(Debug, Clone)]
 pub struct StackFrame {
@@ -23,7 +23,10 @@ pub trait Eval {
 }
 
 pub enum EvalError {
-	TypeMismatch(Type, Type),
+	TypeMismatch {
+		expected: Type,
+		got: Type,
+	},
 	UnknownIdent(String),
 }
 
@@ -37,9 +40,7 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 	);
 	
 	let main = root.items.iter()
-		.find(|item| matches!(item,
-			Item::Proc(Procedure { name, .. }) if name == "main"
-		));
+		.find(|item| matches!(item, Item::Proc(pr) if pr.name == "main"));
 	
 	// TODO set up stack
 	

@@ -97,6 +97,10 @@ impl<'src> Parser<'src> {
 		}
 	}
 	
+	pub fn skip_newlines(&mut self) {
+		while self.expect(Token::Newline).is_some() {}
+	}
+	
 	/// Returns the next identifier if any, and advances the iterator if found.
 	pub fn expect_ident(&mut self) -> Option<String> {
 		self.expect(Token::Ident)

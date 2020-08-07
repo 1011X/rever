@@ -128,7 +128,7 @@ impl Parser<'_> {
 		self.expect(Token::Newline)
 			.ok_or("newline after expression block")?;
 		
-		while self.expect(Token::Newline).is_some() {}
+		self.skip_newlines();
 		
 		Ok(block_expr)
 	}
