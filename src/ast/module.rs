@@ -17,12 +17,12 @@ impl Module {
 
 impl Parser<'_> {
 	pub fn parse_mod(&mut self) -> ParseResult<Module> {
-		self.expect(&Token::Mod).ok_or("`mod`")?;
+		self.expect(Token::Mod).ok_or("`mod`")?;
 		
 		let name = self.expect_ident()
 			.ok_or("module name")?;
 		
-		self.expect(&Token::Newline)
+		self.expect(Token::Newline)
 			.ok_or("newline after module name")?;
 		
 		// parse as many items as possible

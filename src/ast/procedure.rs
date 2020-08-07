@@ -22,7 +22,7 @@ pub struct Procedure {
 
 impl Parser<'_> {
 	pub fn parse_proc(&mut self) -> ParseResult<Procedure> {
-		self.expect(&Token::Proc).ok_or("`proc`")?;
+		self.expect(Token::Proc).ok_or("`proc`")?;
 		
 		let proc_name = self.expect_ident()
 			.ok_or("procedure name")?;
@@ -31,7 +31,7 @@ impl Parser<'_> {
 		
 		// parse parameter list
 		// starting '('
-		if self.expect(&Token::LParen).is_some() {
+		if self.expect(Token::LParen).is_some() {
 			loop {
 				// TODO add case for newline for multiline param declaration?
 				match self.peek() {
@@ -40,12 +40,12 @@ impl Parser<'_> {
 					
 					// parse as parameter
 					Some(_) => {
-						let mutable = self.expect(&Token::Var).is_some();
+						let mutable = self.expect(Token::Var).is_some();
 						
 						let param_name = self.expect_ident()
 							.ok_or("parameter name in procedure declaration")?;
 						
-						self.expect(&Token::Colon)
+						self.expect(Token::Colon)
 							.ok_or("`:` after parameter name")?;
 						
 						// get type
@@ -76,7 +76,7 @@ impl Parser<'_> {
 			self.next();
 		}
 		
-		self.expect(&Token::Newline)
+		self.expect(Token::Newline)
 			.ok_or("newline after parameter list")?;
 		
 		// code block section

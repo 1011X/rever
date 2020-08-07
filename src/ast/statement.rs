@@ -82,9 +82,9 @@ impl Parser<'_> {
 				// TODO check for parentheses. if so, go into multiline mode
 				let mut args = Vec::new();
 				
-				if self.expect(&Token::Newline).is_some() {
+				if self.expect(Token::Newline).is_some() {
 					// do nothing
-				} else if self.expect(&Token::Colon).is_some() {
+				} else if self.expect(Token::Colon).is_some() {
 					// TODO check for newline, in case expression is missing
 					let expr = self.parse_expr()?;
 					args.push(expr);
@@ -103,7 +103,7 @@ impl Parser<'_> {
 							_ => Err("`,` or newline")?,
 						}
 					}
-				} else if self.expect(&Token::LParen).is_some() {
+				} else if self.expect(Token::LParen).is_some() {
 					unimplemented!();
 				} else {
 					Err("`:`, or newline")?;
@@ -127,9 +127,9 @@ impl Parser<'_> {
 				// TODO check for parentheses. if so, go into multiline mode
 				let mut args = Vec::new();
 				
-				if self.expect(&Token::Newline).is_some() {
+				if self.expect(Token::Newline).is_some() {
 					// do nothing
-				} else if self.expect(&Token::Colon).is_some() {
+				} else if self.expect(Token::Colon).is_some() {
 					// TODO check for newline, in case expression is missing
 					let expr = self.parse_expr()?;
 					args.push(expr);
@@ -146,7 +146,7 @@ impl Parser<'_> {
 							_ => Err("`,` or newline")?,
 						}
 					}
-				} else if self.expect(&Token::LParen).is_some() {
+				} else if self.expect(Token::LParen).is_some() {
 					unimplemented!();
 				} else {
 					Err("`:`, or newline")?;
@@ -162,11 +162,11 @@ impl Parser<'_> {
 				// parse loop assertion
 				let assert = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline after `from` assertion")?;
 				
 				// eat empty lines
-				while self.expect(&Token::Newline).is_some() {}
+				while self.expect(Token::Newline).is_some() {}
 				
 				// parse the main loop block
 				let mut main_block = Vec::new();
@@ -182,10 +182,10 @@ impl Parser<'_> {
 				// parse the `until` test expression
 				let test = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline after `until` expression")?;
 				
-				while self.expect(&Token::Newline).is_some() {}
+				while self.expect(Token::Newline).is_some() {}
 				
 				// parse reverse loop block
 				let mut back_block = Vec::new();
@@ -210,23 +210,23 @@ impl Parser<'_> {
 					.ok_or("name in variable declaration")?;
 				
 				// get optional type
-				let typ = match self.expect(&Token::Colon) {
+				let typ = match self.expect(Token::Colon) {
 					Some(_) => self.parse_type()?,
 					None => Type::Infer,
 				};
 				
 				// check for assignment op
-				self.expect(&Token::Assign)
+				self.expect(Token::Assign)
 					.ok_or("`:=` in variable declaration")?;
 				
 				// get initialization expression
 				let init = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline after variable declaration")?;
 				
 				// eat empty lines
-				while self.expect(&Token::Newline).is_some() {}
+				while self.expect(Token::Newline).is_some() {}
 				
 				// get list of statements for which this variable is valid
 				let mut block = Vec::new();
@@ -240,11 +240,15 @@ impl Parser<'_> {
 				self.next();
 				
 				// assert name
-				let drop_name = self.expect(&Token::Ident(name.clone()))
-					.ok_or("same variable name as before")?;
+				let drop_name = self.expect_ident()
+					.ok_or("name after `drop`")?;
+				
+				if drop_name != name {
+					Err("same variable name as before")?;
+				}
 				
 				// get optional deinit value
-				let drop = match self.expect(&Token::Assign) {
+				let drop = match self.expect(Token::Assign) {
 					Some(_) => self.parse_expr()?,
 					None => init.clone(),
 				};
@@ -259,7 +263,7 @@ impl Parser<'_> {
 				// parse if condition
 				let cond = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline after `if` predicate")?;
 				
 				// parse the main block
@@ -278,8 +282,8 @@ impl Parser<'_> {
 				let mut else_block = Vec::new();
 				
 				// saw `else`
-				if self.expect(&Token::Else).is_some() {
-					if self.expect(&Token::Newline).is_some() {
+				if self.expect(Token::Else).is_some() {
+					if self.expect(Token::Newline).is_some() {
 						// parse a block
 						loop {
 							match self.peek() {
@@ -298,7 +302,7 @@ impl Parser<'_> {
 				}
 				
 				// expect ending `fi`
-				let fi = self.expect(&Token::Fi)
+				let fi = self.expect(Token::Fi)
 					.ok_or("`fi` to finish `if` statement")?;
 				
 				// parse `fi` assertion, if any
@@ -311,7 +315,7 @@ impl Parser<'_> {
 				Statement::If(cond, main_block, else_block, assert)
 			}
 			
-			Token::Ident(_) => {
+			Token::Ident => {
 				let lval = self.parse_lval()?;
 				
 				match self.peek().ok_or("modifying operator")? {
@@ -357,11 +361,11 @@ impl Parser<'_> {
 		};
 				
 		// mandatory newline after statement
-		self.expect(&Token::Newline)
+		self.expect(Token::Newline)
 			.ok_or("newline after statement")?;
 		
 		// eat all extra newlines
-		while self.expect(&Token::Newline).is_some() {}
+		while self.expect(Token::Newline).is_some() {}
 		
 		Ok(stmt)
 	}
@@ -487,7 +491,7 @@ impl Statement {
 						
 						Item::InternProc(name, pr, _)
 						if name == callee_name => {
-							pr(vals.into_boxed_slice());
+							pr(&mut vals);
 							break;
 						}
 						
@@ -510,7 +514,7 @@ impl Statement {
 						
 						Item::InternProc(name, _, pr)
 						if name == callee_name => {
-							pr(vals.into_boxed_slice());
+							pr(&mut vals);
 							break;
 						}
 						

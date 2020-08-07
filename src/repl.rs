@@ -96,7 +96,7 @@ impl ast::Parser<'_> {
 				let name = self.expect_ident()
 					.ok_or("variable name after `var`")?;
 				
-				self.expect(&Token::Assign)
+				self.expect(Token::Assign)
 					.ok_or("`:=` after variable name")?;
 				
 				let init = self.parse_expr()?;
@@ -111,15 +111,16 @@ impl ast::Parser<'_> {
 				
 				ReplLine::Drop(name)
 			}
-			Some(Token::Ident(id)) if id == "show" => {
-				self.expect_ident();
+			/*
+			Some(Token::Ident) if self.slice() == "show" => {
+				self.next();
 				
 				let name = self.expect_ident()
 					.ok_or("variable name after `show`")?;
 				
 				ReplLine::Show(name)
 			}
-			
+			*/
 			Some(Token::Fn)
 			| Some(Token::Proc)
 			| Some(Token::Mod) => {

@@ -72,13 +72,13 @@ impl Parser<'_> {
 				
 				let test = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline after `if` predicate")?;
 				
 				// parse main block
 				let main_expr = Box::new(self.parse_block_expr()?);
 				
-				self.expect(&Token::Else)
+				self.expect(Token::Else)
 					.ok_or("`else` in `if` expression")?;
 				
 				match self.peek() {
@@ -89,7 +89,7 @@ impl Parser<'_> {
 				
 				let else_block = Box::new(self.parse_block_expr()?);
 				
-				self.expect(&Token::Fi)
+				self.expect(Token::Fi)
 					.ok_or("`fi` in `if` expression")?;
 				
 				BlockExpr::If(test, main_expr, else_block)
@@ -101,18 +101,18 @@ impl Parser<'_> {
 					.ok_or("variable name for let binding")?;
 				
 				// get optional `: <type>`
-				let typ = match self.expect(&Token::Colon) {
+				let typ = match self.expect(Token::Colon) {
 					Some(_) => self.parse_type()?,
 					None => Type::Infer,
 				};
 				
 				// expect '='
-				self.expect(&Token::Eq)
+				self.expect(Token::Eq)
 					.ok_or("`=` at let binding")?;
 				
 				let val = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline at let binding")?;
 				
 				let scope = Box::new(self.parse_block_expr()?);
@@ -125,10 +125,10 @@ impl Parser<'_> {
 				todo!()
 		};
 		
-		self.expect(&Token::Newline)
+		self.expect(Token::Newline)
 			.ok_or("newline after expression block")?;
 		
-		while self.expect(&Token::Newline).is_some() {}
+		while self.expect(Token::Newline).is_some() {}
 		
 		Ok(block_expr)
 	}
@@ -269,11 +269,11 @@ impl Parser<'_> {
 	pub fn parse_expr_atom(&mut self) -> ParseResult<Expr> {
 		// check if there's an open parenthesis
 		let expr =
-			if self.expect(&Token::LParen).is_some() {
+			if self.expect(Token::LParen).is_some() {
 				let expr = self.parse_expr()?;
 				
 				// make sure there's a closing parenthesis
-				self.expect(&Token::RParen)
+				self.expect(Token::RParen)
 					.ok_or("`)` after subexpression")?;
 				
 				expr
@@ -282,7 +282,7 @@ impl Parser<'_> {
 				Expr::Term(self.parse_term()?)
 			};
 		
-		Ok(if self.expect(&Token::As).is_some() {
+		Ok(if self.expect(Token::As).is_some() {
 			Expr::Cast(Box::new(expr), self.parse_type()?)
 		} else {
 			expr
@@ -355,7 +355,7 @@ impl Eval for Expr {
 					// 4
 					(BinOp::Exp, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l.pow(r as u32))),
-					(BinOp::Exp, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Exp, _, _) =>
 						Err("tried to exponentiate non-integer values"),
 					
 					// 5
@@ -419,8 +419,6 @@ impl Eval for Expr {
 						Ok(Value::from(l >= r)),
 					(BinOp::Ge, _, _) =>
 						Err("tried comparing non-integer values"),
-					
-					_ => { dbg![self]; todo!() }
 				}
 			}
 		}

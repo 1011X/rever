@@ -1,7 +1,7 @@
 use super::Value;
 use std::io::prelude::*;
 
-pub fn puts(args: Box<[Value]>) {
+pub fn puts(args: &mut [Value]) {
 	assert!(args.len() == 1);
 	
 	let mut rstdout = super::io::RevStdout::new();
@@ -10,10 +10,10 @@ pub fn puts(args: Box<[Value]>) {
 		_ => panic!("not a string")
 	};
 	
-	rstdout.write(string);
+	rstdout.write(string).unwrap();
 }
 
-pub fn unputs(args: Box<[Value]>) {
+pub fn unputs(args: &mut [Value]) {
 	assert!(args.len() == 1);
 	
 	let mut rstdout = super::io::RevStdout::new();

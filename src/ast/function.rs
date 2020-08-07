@@ -17,7 +17,7 @@ pub struct Function {
 impl Parser<'_> {
 	pub fn parse_fn(&mut self) -> ParseResult<Function> {
 		// keyword `fn`
-		self.expect(&Token::Fn).ok_or("`fn`")?;
+		self.expect(Token::Fn).ok_or("`fn`")?;
 		
 		// function name
 		let fn_name = self.expect_ident()
@@ -27,7 +27,7 @@ impl Parser<'_> {
 		let mut params = Vec::new();
 		
 		// starting '('
-		self.expect(&Token::LParen)
+		self.expect(Token::LParen)
 			.ok_or("`(` before parameter list")?;
 		
 		loop {
@@ -43,7 +43,7 @@ impl Parser<'_> {
 						.ok_or("a parameter name")?;
 					
 					// get optional type
-					let typ = match self.expect(&Token::Colon) {
+					let typ = match self.expect(Token::Colon) {
 						Some(_) => self.parse_type()?,
 						None => Type::Infer,
 					};
@@ -75,7 +75,7 @@ impl Parser<'_> {
 		self.next();
 		
 		// get return type
-		self.expect(&Token::Colon)
+		self.expect(Token::Colon)
 			.ok_or("`:` after function parameters")?;
 		
 		let ret = self.parse_type()?;
@@ -90,11 +90,11 @@ impl Parser<'_> {
 				
 				let body = self.parse_block_expr()?;
 		
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline after function body")?;
 				
 				// reached `end`
-				self.expect(&Token::End)
+				self.expect(Token::End)
 					.ok_or("`end` after function body")?;
 				
 				body
@@ -106,7 +106,7 @@ impl Parser<'_> {
 				
 				let body = self.parse_expr()?;
 				
-				self.expect(&Token::Newline)
+				self.expect(Token::Newline)
 					.ok_or("newline after function body")?;
 				
 				BlockExpr::Expr(body)

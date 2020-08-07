@@ -39,12 +39,12 @@ impl Parser<'_> {
     						
 							let expr = self.parse_expr()?;
 							
-							self.expect(&Token::RParen)
+							self.expect(Token::RParen)
 								.ok_or("`)` after index expression")?;
 							
 							ops.push(Deref::Index(expr));
     					}
-    					Some(Token::Ident(_)) => {
+    					Some(Token::Ident) => {
     						let name = self.expect_ident().unwrap();
 	    					ops.push(Deref::Field(name));
     					}

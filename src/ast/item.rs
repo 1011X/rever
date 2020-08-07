@@ -1,6 +1,6 @@
 use super::*;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub enum Item {
 	//Use(Path, Option<String>),
 	//Static(bool, String, Type, ConstExpr),
@@ -9,7 +9,7 @@ pub enum Item {
 	Fn(Function),
 	//Type(Type),
 	
-	InternProc(&'static str, fn(Box<[Value]>), fn(Box<[Value]>)),
+	InternProc(&'static str, fn(&mut [Value]), fn(&mut [Value])),
 }
 
 impl Item {
@@ -48,8 +48,21 @@ impl Parser<'_> {
 		}
 		
 		// eat all extra newlines
-		while self.expect(&Token::Newline).is_some() {}
+		while self.expect(Token::Newline).is_some() {}
 		
 		Ok(item)
+	}
+}
+
+use std::fmt;
+impl fmt::Debug for Item {
+	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Item::Fn(f)   => f.fmt(fmt),
+			Item::Proc(p) => p.fmt(fmt),
+			Item::Mod(m)  => m.fmt(fmt),
+			Item::InternProc(name, _, _) =>
+				write!(fmt, "<internal proc: {}>", name),
+		}
 	}
 }

@@ -102,7 +102,6 @@ fn main() -> io::Result<()> {
 			let ast = match parser.parse_file_module() {
 				Ok(ast) => ast,
 				Err(e) => {
-					//let remaining_tokens = tokens.as_slice();
 					eprintln!("Error: expected {}.", e);
 					eprintln!("Remaining source:\n{}", parser.tokens.remainder());
 					return Ok(())

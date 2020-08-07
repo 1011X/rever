@@ -15,19 +15,14 @@ pub enum Literal {
 impl Parser<'_> {
 	pub fn parse_lit(&mut self) -> ParseResult<Literal> {
 		Ok(match self.peek() {
-			Some(Token::Ident(x)) if x == "nil" => {
+			Some(Token::Ident) => {
 				self.next();
-				Literal::Nil
-			}
-			
-			Some(Token::Ident(x)) if x == "true" => {
-				self.next();
-				Literal::Bool(true)
-			}
-			
-			Some(Token::Ident(x)) if x == "false" => {
-				self.next();
-				Literal::Bool(false)
+				match self.slice() {
+					"nil" => Literal::Nil,
+					"true" => Literal::Bool(true),
+					"false" => Literal::Bool(false),
+					_ => Err("`nil`, `true`, or `false`")?
+				}
 			}
 			
 			Some(Token::Number) => {
@@ -137,14 +132,14 @@ impl Parser<'_> {
 			Some(Token::Fn) => {
 				self.next();
 				
-				self.expect(&Token::LParen)
+				self.expect(Token::LParen)
 					.ok_or("`(` at start of closure")?;
 				
 				let mut args = Vec::new();
 				loop {
 					match self.peek() {
 						Some(Token::RParen) => break,
-						Some(Token::Ident(_)) => {
+						Some(Token::Ident) => {
 							let id = self.expect_ident().unwrap();
 							args.push(id);
 							
@@ -159,7 +154,7 @@ impl Parser<'_> {
 				}
 				self.next();
 				
-				self.expect(&Token::Colon)
+				self.expect(Token::Colon)
 					.ok_or("`:` after arguments in closure")?;
 				
 				let expr = self.parse_expr()?;

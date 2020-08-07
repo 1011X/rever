@@ -1,6 +1,6 @@
 //use std::io::prelude::*;
 
-use crate::ast::{self, Item, Module, Procedure};
+use crate::ast::{self, Item, Module, Procedure, Type};
 
 mod io;
 mod value;
@@ -23,8 +23,8 @@ pub trait Eval {
 }
 
 pub enum EvalError {
-	TypeMismatch,
-	
+	TypeMismatch(Type, Type),
+	UnknownIdent(String),
 }
 
 
@@ -41,10 +41,11 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 			Item::Proc(Procedure { name, .. }) if name == "main"
 		));
 	
+	// TODO set up stack
+	
 	// run main procedure, if any
 	if let Some(main) = main {
 		if let Item::Proc(pr) = main {
-			println!("running `main`...");
 			pr.call(Vec::new(), &root);
 		} else {
 			eprintln!("no `proc main` found");

@@ -19,7 +19,7 @@ pub enum Type {
 impl Parser<'_> {
 	pub fn parse_type(&mut self) -> ParseResult<Type> {
 		Ok(match self.peek().ok_or("a type")? {
-			Token::Ident(_) => {
+			Token::Ident => {
 				let name = self.expect_ident().unwrap();
 				match name.as_str() {
 					"_"    => Type::Infer,
@@ -29,14 +29,14 @@ impl Parser<'_> {
 					"uint" => Type::UInt,
 					"int"  => Type::Int,
 					"str"  => Type::String,
-					id     => todo!(),
+					id     => todo!("custom types not yet supported"),
 				}
 			}
 			
 			Token::Fn => {
 				self.next();
 				
-				self.expect(&Token::LParen)
+				self.expect(Token::LParen)
 					.ok_or("`(` for `fn` type")?;
 				
 				let mut params = Vec::new();
@@ -57,7 +57,7 @@ impl Parser<'_> {
 				}
 				self.next();
 				
-				self.expect(&Token::Colon)
+				self.expect(Token::Colon)
 					.ok_or("`:` to specify `fn` return type")?;
 				
 				let ret = self.parse_type()?;
@@ -68,7 +68,7 @@ impl Parser<'_> {
 			Token::Proc => {
 				self.next();
 				
-				self.expect(&Token::LParen)
+				self.expect(Token::LParen)
 					.ok_or("`(` for `proc` type")?;
 				
 				let mut params = Vec::new();
@@ -76,7 +76,7 @@ impl Parser<'_> {
 					match self.peek() {
 						Some(Token::RParen) => break,
 						Some(_) => {
-							let var = self.expect(&Token::Var).is_some();
+							let var = self.expect(Token::Var).is_some();
 							let t = self.parse_type()?;
 							
 							params.push((var, t));
