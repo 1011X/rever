@@ -36,7 +36,7 @@ fn main() -> io::Result<()> {
 	
 	match args.next() {
 		// start REPL
-		None => repl::repl()?,
+		None => repl::init()?,
 		
 		// interpret stdin
 		/*

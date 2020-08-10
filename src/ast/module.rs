@@ -13,6 +13,10 @@ impl Module {
 	pub fn new(name: String, items: Vec<Item>) -> Self {
 		Module { name, items }
 	}
+	
+	pub fn insert(&mut self, item: Item) {
+		self.items.push(item);
+	}
 }
 
 impl Parser<'_> {

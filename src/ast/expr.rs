@@ -299,7 +299,7 @@ impl Parser<'_> {
 //      -> expr 'as' type
 //      -> factor
 impl Eval for Expr {
-	fn eval(&self, t: &Scope) -> EvalResult {
+	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 		match self {
 			Expr::Term(term) => Ok(term.eval(t)?),
 			
@@ -315,37 +315,19 @@ impl Eval for Expr {
 				Value::Bool(b) => Ok(Value::Bool(!b)),
 				Value::Uint(n) => Ok(Value::Uint(!n)),
 				Value::Int(n) => Ok(Value::Int(!n)),
-				_ => Err("tried NOTting non-boolean or non-integer value")
+				val => Err(EvalError::TypeMismatch {
+					expected: Type::Bool,
+					got: val.get_type(),
+				})
 			}
 			
 			Expr::Neg(e) => match e.eval(t)? {
 				Value::Int(n) => Ok(Value::Int(n.wrapping_neg())),
-				_ => Err("tried negating non-integer value")
+				val => Err(EvalError::TypeMismatch {
+					expected: Type::Int,
+					got: val.get_type(),
+				})
 			}
-			
-			/*
-			Expr::Exp(base, exp) => {
-				let base = base.eval(t)?;
-				let exp = exp.eval(t)?;
-				
-				match (base, exp) {
-					(Value::Int(base), Value::Uint(exp)) =>
-						Ok(Value::Int(base.pow(exp as u32))),
-					(Value::Uint(base), Value::Uint(exp)) =>
-						Ok(Value::Uint(base.pow(exp as u32))),
-					_ => Err("tried to get power of non-integer values")
-				}
-			}
-			
-			Expr::Product(terms) => {
-				// there *should* be at least one term in the vector
-				let first = terms.remove(0);
-				
-				for term in terms {
-					
-				}
-			}
-			*/
 			
 			Expr::BinOp(left, op, right) => {
 				let left = left.eval(t)?;
@@ -355,47 +337,29 @@ impl Eval for Expr {
 					// 4
 					(BinOp::Exp, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l.pow(r as u32))),
-					(BinOp::Exp, _, _) =>
-						Err("tried to exponentiate non-integer values"),
 					
 					// 5
 					(BinOp::Mul, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l * r)),
-					(BinOp::Mul, _, _) =>
-						Err("tried multiplying non-integer values"),
 					(BinOp::Div, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l / r)),
-					(BinOp::Div, _, _) =>
-						Err("tried dividing non-integer values"),
 					(BinOp::Mod, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from((l % r + r) % r)),
-					(BinOp::Mod, _, _) =>
-						Err("tried getting remainder of non-integer values"),
 					(BinOp::And, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l && r)),
-					(BinOp::And, _, _) =>
-						Err("tried ANDing non-boolean values"),
 					
 					// 6
 					(BinOp::Add, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l + r)),
-					(BinOp::Add, _, _) =>
-						Err("tried adding non-integer values"),
 					(BinOp::Sub, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l - r)),
-					(BinOp::Sub, _, _) =>
-						Err("tried subtracting non-integer values"),
 					(BinOp::Or, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l || r)),
-					(BinOp::Or, _, _) =>
-						Err("tried ORing non-boolean values"),
 					/*
 					(BinOp::Xor, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l ^ r)),
 					(BinOp::Xor, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l ^ r)),
-					(BinOp::Xor, _, _) =>
-						Err("tried XORing non-boolean or non-integer values"),
 					*/
 					
 					// 7
@@ -405,20 +369,20 @@ impl Eval for Expr {
 						Ok(Value::from(l != r)),
 					(BinOp::Lt, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l < r)),
-					(BinOp::Lt, _, _) =>
-						Err("tried comparing non-integer values"),
 					(BinOp::Gt, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l > r)),
-					(BinOp::Gt, _, _) =>
-						Err("tried comparing non-integer values"),
 					(BinOp::Le, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l <= r)),
-					(BinOp::Le, _, _) =>
-						Err("tried comparing non-integer values"),
 					(BinOp::Ge, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l >= r)),
-					(BinOp::Ge, _, _) =>
-						Err("tried comparing non-integer values"),
+					
+					(op, left, right) =>
+						panic!(
+							"tried to do a {:?} operation with types {:?} and {:?}",
+							op,
+							left.get_type(),
+							right.get_type(),
+						),
 				}
 			}
 		}
@@ -426,7 +390,7 @@ impl Eval for Expr {
 }
 
 impl Eval for BlockExpr {
-	fn eval(&self, t: &Scope) -> EvalResult {
+	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 		match self {
 			BlockExpr::Expr(expr) => expr.eval(t),
 			
@@ -441,7 +405,7 @@ impl Eval for BlockExpr {
 			BlockExpr::Let(name, _, val, scope) => {
 				let val = val.eval(t)?;
 				let mut t_copy = t.clone();
-				t_copy.push((name.clone(), val));
+				t_copy.push(name.clone(), val);
 				scope.eval(&t_copy)
 			}
 		}

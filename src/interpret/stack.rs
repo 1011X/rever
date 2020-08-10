@@ -2,9 +2,14 @@ use std::collections::HashMap;
 
 use super::*;
 
+pub type Stack = Vec<StackFrame>;
+
+/// Stores values of parameters and local variables during a function or
+/// procedure call.
+#[derive(Debug, Clone)]
 pub struct StackFrame {
-	args:  HashMap<String, Value>,
-	vars:  Vec<(String, Value)>,
+	pub args:  HashMap<String, Value>,
+	pub vars:  Vec<(String, Value)>,
 	//items:  HashMap<String, Value>,
 }
 
@@ -32,9 +37,39 @@ impl StackFrame {
 			.map(|(i,_)| i)
 			.ok_or(EvalError::UnknownIdent(given_name.to_string()))?;
 		
-		self.vars.remove(idx)
+		Ok(self.vars.remove(idx).1)
 	}
-	
+	/*
+	pub fn swap(&mut self, left: &LValue, right: &LValue) {
+		todo!();
+		
+		/*
+		let left_idx = self.vars.iter()
+			.rposition(|(name, _)| *name == left.id)
+			.ok_or(EvalError::UnknownIdent(left.id.clone()))?;
+		let right_idx = self.vars.iter()
+			.rposition(|(name, _)| *name == right.id)
+			.ok_or(EvalError::UnknownIdent(right.id.clone()))?;
+		
+		// ensure types are the same
+		assert_eq!(
+			self.vars[left_idx].1.get_type(),
+			self.vars[right_idx].1.get_type(),
+			"tried to swap variables with different types"
+		);
+		
+		// get names of values being swapped for later
+		let left_name = self.vars[left_idx].clone();
+		let right_name = self.vars[right_idx].clone();
+		
+		self.vars.swap(left_idx, right_idx);
+		
+		// rectify names
+		self.vars[left_idx] = left_name;
+		self.vars[right_idx] = right_name;
+		*/
+	}
+	*/
 	pub fn get(&self, given_name: &str) -> EvalResult<&Value> {
 		self.vars.iter()
 			.rfind(|(var_name, _)| var_name == given_name)

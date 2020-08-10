@@ -28,7 +28,7 @@ impl Parser<'_> {
 }
 
 impl Eval for Term {
-	fn eval(&self, t: &Scope) -> EvalResult {
+	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 	    match self {
 	        Term::Lit(lit)   => lit.eval(t),
 	        Term::LVal(lval) => lval.eval(t),

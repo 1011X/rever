@@ -1,28 +1,24 @@
 //use std::io::prelude::*;
 
-use crate::ast::{self, Item, Module, Procedure, Type};
+use crate::ast::{self, Item, Module, Type};
 
 pub use self::value::Value;
 pub use self::intrinsic::{InternProc, InternFn};
+pub use self::stack::{Stack, StackFrame};
 
 mod io;
 mod value;
 mod intrinsic;
+mod stack;
 
-#[derive(Debug, Clone)]
-pub struct StackFrame {
-	args: Vec<Value>,
-	locals: Vec<(String, Value)>,
-}
-
-pub type Scope = Vec<(String, Value)>;
-pub type Stack = Vec<StackFrame>;
-pub type EvalResult = Result<Value, &'static str>;
+//pub type Scope = Vec<(String, Value)>;
+pub type EvalResult<T> = Result<T, EvalError>;
 
 pub trait Eval {
-	fn eval(&self, scope: &Scope) -> EvalResult;
+	fn eval(&self, scope: &StackFrame) -> EvalResult<Value>;
 }
 
+#[derive(Debug)]
 pub enum EvalError {
 	TypeMismatch {
 		expected: Type,

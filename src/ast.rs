@@ -3,7 +3,7 @@
 use std::fmt;
 
 use crate::tokenize::{Token, TokenStream};
-use crate::interpret::{Eval, EvalResult, Scope, Value};
+use crate::interpret::{Eval, EvalError, EvalResult, StackFrame, Value};
 
 mod expr;
 mod function;

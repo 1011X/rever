@@ -1,16 +1,21 @@
 use std::io::{self, prelude::*};
+use std::collections::HashMap;
 use logos::Logos;
 
 use crate::tokenize::Token;
 use crate::ast::{self, Expr, Item, Module, Statement};
-use crate::interpret::{self, Eval};
+use crate::interpret::{Eval, EvalResult, Stack, StackFrame, Value};
 
-pub fn repl() -> io::Result<()> {
+pub fn init() -> io::Result<()> {
 	let stdin = io::stdin();
 	let mut input = String::new();
 	let mut stdout = io::stdout();
-	let mut scope = Scope::new();
 	let mut continuing = false;
+	
+	let mut module = Module::new("repl".into(), Vec::new());
+	let mut stack = Stack::new();
+	let root_frame = StackFrame::new(HashMap::new());
+	stack.push(root_frame);
 	
 	println!("Rever 0.0.1");
 	println!("Type \"show x\" to display the value of x.");
@@ -21,6 +26,7 @@ pub fn repl() -> io::Result<()> {
 		stdout.flush()?;
 		stdin.read_line(&mut input)?;
 		
+		// read
 		let tokens = Token::lexer(&input);
 		let mut parser = ast::Parser::new(tokens);
 		
@@ -38,83 +44,14 @@ pub fn repl() -> io::Result<()> {
 			}
 		};
 		
-		if scope.eval_line(line).is_ok() {
+		// eval
+		if line.eval(stack.last_mut().unwrap(), &mut module).is_ok() {
 			input.clear();
 		} else {
 			return Ok(());
 		}
 		
 		continuing = false;
-	}
-}
-
-pub struct Scope {
-	vars:  Vec<(String, interpret::Value)>,
-	items: Vec<Item>,
-}
-
-impl Scope {
-	pub fn new() -> Self {
-		Self {
-			vars: Vec::new(),
-			items: Vec::new(),
-		}
-	}
-	
-	pub fn push(&mut self, name: String, val: interpret::Value) {
-		self.vars.push((name, val));
-	}
-	
-	pub fn pop(&mut self, name: String, val: interpret::Value) {
-		assert_eq!(self.vars.pop(), Some((name, val)));
-	}
-	
-	pub fn get(&self, name: &str) -> Option<&interpret::Value> {
-		let mut val = None;
-		for (k, v) in self.vars.iter().rev() {
-			if k == name {
-				val = Some(v);
-				break;
-			}
-		}
-		val
-	}
-	
-	pub fn eval_line(&mut self, line: ReplLine) -> Result<(), ()> {
-		match line {
-			ReplLine::Show(var) => {
-				if let Some(val) = self.get(&var) {
-					println!(": {}", val);
-				}
-			}
-			
-			ReplLine::Var(name, expr) => {
-				let val = expr.eval(&mut self.vars).unwrap();
-				self.vars.push((name.clone(), val));
-			}
-			
-			ReplLine::Drop(name) => {
-				let val = self.vars.iter()
-					.enumerate()
-					.rfind(|(_, (k,_))| *k == name)
-					.map(|(i,_)| i);
-				
-				match val {
-					Some(i) => println!(": {:?}", self.vars.remove(i).1),
-					None => return Err(()),
-				}
-			}
-			// TODO return Err for item and stmt when not enough input.
-			ReplLine::Item(item) => {
-				self.items.push(item);
-			}
-			
-			ReplLine::Stmt(stmt) => {
-				let module = Module::new("repl".into(), self.items.clone());
-				stmt.eval(&mut self.vars, &module).unwrap();
-			}
-		}
-		Ok(())
 	}
 }
 
@@ -175,6 +112,33 @@ impl ast::Parser<'_> {
 				self.parse_stmt()?.into()
 			}
 		})
+	}
+}
+
+impl ReplLine {
+	fn eval(self, t: &mut StackFrame, m: &mut Module) -> EvalResult<Value> {
+		match self {
+			ReplLine::Show(var) => {
+				println!(": {}", t.get(&var)?);
+			}
+			
+			ReplLine::Var(name, expr) => {
+				let val = expr.eval(t)?;
+				t.push(name, val);
+			}
+			
+			ReplLine::Drop(name) => {
+				t.remove(&name)?;
+			}
+			// TODO return Err for item and stmt when not enough input.
+			ReplLine::Item(item) => {
+				m.insert(item);
+			}
+			ReplLine::Stmt(stmt) => {
+				stmt.eval(t, m)?;
+			}
+		}
+		Ok(Value::Nil)
 	}
 }
 

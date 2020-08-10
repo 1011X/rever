@@ -168,7 +168,7 @@ impl Parser<'_> {
 }
 
 impl Eval for Literal {
-	fn eval(&self, t: &Scope) -> EvalResult {
+	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 		Ok(match self {
 			Literal::Nil       => Value::Nil,
 			Literal::Bool(b)   => Value::Bool(*b),

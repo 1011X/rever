@@ -372,7 +372,7 @@ impl Parser<'_> {
 }
 
 impl Statement {
-	pub fn eval(&self, t: &mut Scope, m: &Module) -> EvalResult {
+	pub fn eval(&self, t: &mut StackFrame, m: &Module) -> EvalResult<Value> {
 		use self::Statement::*;
 		
 		match self {
@@ -380,7 +380,7 @@ impl Statement {
 			
 			Let(id, _, init, block, dest) => {
 				let init = init.eval(t)?;
-				t.push((id.clone(), init));
+				t.push(id.clone(), init);
 				
 				for stmt in block {
 					stmt.eval(t, m)?;
@@ -393,82 +393,123 @@ impl Statement {
 					"variable {:?} had unexpected value", id);
 			}
 			
-			Xor(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => {
-					let pos = t.iter()
-						.rposition(|(name, _)| *name == lval.id)
-						.ok_or("variable name not found")?;
-					t[pos].1 = Value::Int(l ^ r);
+			Xor(lval, expr) => {
+				let expr = expr.eval(t)?;
+				match (lval.get_mut_ref(t)?, expr) {
+					(Value::Int(ref mut l), Value::Int(r)) =>
+						*l ^= r,
+					_ => panic!("tried to do something illegal")
 				}
-				_ => return Err("tried to do something illegal")
 			}
 			
 			Add(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (lval.get_mut_ref(t)?, expr) {
-					(Value::Int(l), Value::Int(r)) => {
-						/*let pos = t.iter()
-							.rposition(|(name, _)| *name == lval.id)
-							.expect("variable name not found");*/
-						*l = l.wrapping_add(r);
-						//t[pos].1 = Value::Int(l.wrapping_add(r));
-					}
-					_ => return Err("tried to do something illegal")
+					(Value::Int(ref mut l), Value::Int(r)) =>
+						*l = l.wrapping_add(r),
+					_ => panic!("tried to do something illegal")
 				}
-			}
-			Sub(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => {
-					let pos = t.iter()
-						.rposition(|(name, _)| *name == lval.id)
-						.expect("variable name not found");
-					t[pos].1 = Value::Int(l.wrapping_sub(r));
-				}
-				_ => return Err("tried to do something illegal")
 			}
 			
-			RotLeft(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => {
-					let pos = t.iter()
-						.rposition(|(name, _)| *name == lval.id)
-						.expect("variable name not found");
-					t[pos].1 = Value::Int(l.rotate_left(r as u32));
+			Sub(lval, expr) => {
+				let expr = expr.eval(t)?;
+				match (lval.get_mut_ref(t)?, expr) {
+					(Value::Int(ref mut l), Value::Int(r)) =>
+						*l = l.wrapping_sub(r),
+					_ => panic!("tried to do something illegal")
 				}
-				_ => return Err("tried to do something illegal")
-			}
-			RotRight(lval, expr) => match (lval.eval(t)?, expr.eval(t)?) {
-				(Value::Int(l), Value::Int(r)) => {
-					let pos = t.iter()
-						.rposition(|(name, _)| *name == lval.id)
-						.expect("variable name not found");
-					t[pos].1 = Value::Int(l.rotate_right(r as u32));
-				}
-				_ => return Err("tried to do something illegal")
 			}
 			
+			RotLeft(lval, expr) => {
+				let expr = expr.eval(t)?;
+				match (lval.get_mut_ref(t)?, expr) {
+					(Value::Int(ref mut l), Value::Int(r)) =>
+						*l = l.rotate_left(r as u32),
+					_ => panic!("tried to do something illegal")
+				}
+			}
+			
+			RotRight(lval, expr) => {
+				let expr = expr.eval(t)?;
+				match (lval.get_mut_ref(t)?, expr) {
+					(Value::Int(ref mut l), Value::Int(r)) =>
+						*l = l.rotate_right(r as u32),
+					_ => panic!("tried to do something illegal")
+				}
+			}
+			
+			// sighhhhhhhhhhhhhhhhh
 			Swap(left, right) => {
-				let left_idx = t.iter()
-					.rposition(|(name, _)| *name == left.id)
-					.expect("variable name not found");
-				let right_idx = t.iter()
-					.rposition(|(name, _)| *name == right.id)
-					.expect("variable name not found");
+				let args = &mut t.args;
+				let vars = &mut t.vars;
 				
+				let left_idx = vars.iter()
+					.rposition(|(name, _)| *name == left.id);
+				let right_idx = vars.iter()
+					.rposition(|(name, _)| *name == right.id);
+				
+				match (left_idx, right_idx) {
+					(Some(left_idx), Some(right_idx)) => {
+						let left  = &mut vars[left_idx];
+						let right = &mut vars[right_idx];
+						let left_name  = left.0.clone();
+						let right_name = right.0.clone();
+						assert_eq!(
+							left.1.get_type(),
+							right.1.get_type(),
+							"tried to swap variables with different types"
+						);
+						vars.swap(left_idx, right_idx);
+					}
+					(Some(left_idx), None) => {
+						let left = &mut vars[left_idx].1;
+						let right = &mut args[&right.id];
+						assert_eq!(
+							left.get_type(),
+							right.get_type(),
+							"tried to swap variables with different types"
+						);
+						std::mem::swap(left, right);
+					}
+					(None, Some(right_idx)) => {
+						let left = &mut args[&left.id];
+						let right = &mut vars[right_idx].1;
+						assert_eq!(
+							left.get_type(),
+							right.get_type(),
+							"tried to swap variables with different types"
+						);
+						std::mem::swap(left, right);
+					}
+					(None, None) => {
+						let left = &mut args[&left.id];
+						let right = &mut args[&right.id];
+						assert_eq!(
+							left.get_type(),
+							right.get_type(),
+							"tried to swap variables with different types"
+						);
+						std::mem::swap(left, right);
+					}
+				}
+				/*
 				// ensure types are the same
 				assert_eq!(
-					t[left_idx].1.get_type(),
-					t[right_idx].1.get_type(),
+					t.vars[left_idx].1.get_type(),
+					t.vars[right_idx].1.get_type(),
 					"tried to swap variables with different types"
 				);
 				
 				// get names of values being swapped for later
-				let left_name = t[left_idx].clone();
-				let right_name = t[right_idx].clone();
+				let left_name = t.vars[left_idx].clone();
+				let right_name = t.vars[right_idx].clone();
 				
-				t.swap(left_idx, right_idx);
+				t.vars.swap(left_idx, right_idx);
 				
 				// rectify names
-				t[left_idx] = left_name;
-				t[right_idx] = right_name;
+				t.vars[left_idx] = left_name;
+				t.vars[right_idx] = right_name;
+				*/
 			}
 			
 			// TODO find a way to call procedures.
@@ -491,7 +532,7 @@ impl Statement {
 						
 						Item::InternProc(name, pr, _)
 						if name == callee_name => {
-							pr(&mut vals);
+							pr(&mut vals)?;
 							break;
 						}
 						
@@ -514,7 +555,7 @@ impl Statement {
 						
 						Item::InternProc(name, _, pr)
 						if name == callee_name => {
-							pr(&mut vals);
+							pr(&mut vals)?;
 							break;
 						}
 						
@@ -537,7 +578,7 @@ impl Statement {
 						}
 						assert_eq!(assert.eval(t)?, Value::Bool(false));
 					}
-					_ => return Err("tried to do something illegal")
+					_ => panic!("tried to do something illegal")
 				}
 			}
 			

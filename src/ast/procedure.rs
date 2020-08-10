@@ -94,23 +94,24 @@ impl Parser<'_> {
 	}
 }
 
+
+use crate::interpret::StackFrame;
+//use std::collections::HashMap;
+
 impl Procedure {
-	// TODO perhaps the arguments should be stored in a HashMap, the local vars
-	// in a vector, and then turn the vector into a hashmap and compare keys at
-	// the end to verify everything is there.
-	fn call_base(&self, dir: Dir, mut args: Vec<Value>, m: &Module) -> Vec<Value> {
+	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> Vec<Value> {
 		// verify number of arguments and their types
-		debug_assert_eq!(args.len(), self.params.len());
+		assert_eq!(args.len(), self.params.len());
 		for (arg, param) in args.iter().zip(&self.params) {
-			debug_assert_eq!(arg.get_type(), param.typ);
+			assert_eq!(arg.get_type(), param.typ);
 		}
 		
-		let mut vars = Vec::new();
-		
-		// store args in scope stack
-		for param in &self.params {
-			vars.push((param.name.clone(), args.pop().unwrap()));
-		}
+		// make stack frame with parameter names bound to argument values
+		let mut vars = StackFrame::new(self.params.iter()
+			.map(|param| param.name.clone())
+			.zip(args.clone())
+			.collect()
+		);
 		
 		// execute actual code
 		if dir == Dir::Fore {
@@ -123,17 +124,13 @@ impl Procedure {
 			}
 		}
 		
-		// store arg values back in parameters
-		for param in &self.params {
-			args.push(vars.pop().unwrap().1);
-		}
-		
+		// TODO uhhhhh update args with the new values?
 		drop(vars);
 		
 		// verify number of arguments and their types again
-		debug_assert_eq!(args.len(), self.params.len());
+		assert_eq!(args.len(), self.params.len());
 		for (arg, param) in args.iter().zip(&self.params) {
-			debug_assert_eq!(arg.get_type(), param.typ);
+			assert_eq!(arg.get_type(), param.typ);
 		}
 		
 		args
