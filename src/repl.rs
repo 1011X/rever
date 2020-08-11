@@ -2,7 +2,7 @@ use std::io::{self, prelude::*};
 use std::collections::HashMap;
 use logos::Logos;
 
-use crate::tokenize::Token;
+use crate::token::Token;
 use crate::ast::{self, Expr, Item, Module, Statement};
 use crate::interpret::{Eval, EvalResult, Stack, StackFrame, Value};
 

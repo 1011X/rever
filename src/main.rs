@@ -21,10 +21,10 @@ use logos::Logos;
 
 //use crate::ast::Parse;
 //use crate::interpret;
-use crate::tokenize::Token;
+use crate::token::Token;
 
 mod span;
-mod tokenize;
+mod token;
 mod ast;
 //mod hir;
 //mod compile;

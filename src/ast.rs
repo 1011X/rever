@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use crate::tokenize::{Token, TokenStream};
+use crate::token::{Token, TokenStream};
 use crate::interpret::{Eval, EvalError, EvalResult, StackFrame, Value};
 
 mod expr;
