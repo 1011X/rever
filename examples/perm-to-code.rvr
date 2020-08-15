@@ -1,20 +1,22 @@
-/* Based on David Gries: The science of programming, 1987. pp.270 */
+~ Based on David Gries: The science of programming, 1987. pp.270
 
-/* Permutation to code
- * Given an array X that contains a permutation of the integers 0, 1, ...,
- * size(X)-1, it computes the array X' where X'[i] is the number of X[j < i] that
- * are smaller than X[i].
- */
+~ Permutation to code
+~ Given an array X that contains a permutation of the integers 0, 1, ...,
+~ size(X)-1, it computes the array X' where X'[i] is the number of X[j < i] that
+~ are smaller than X[i].
+
 proc perm_to_code(var x: int[])
-    from var k := size(x) until 0
+    from var k := size(x)
+    until drop k := 0
         k -= 1
-        from var j := 0 until k
+        from var j := 0
+        until drop j := k
             if x[j] > x[k]
                 x[j] -= 1
             fi x[j] >= x[k]
             j += 1
-        end
-    end
+        loop
+    loop
 end
 
 proc main

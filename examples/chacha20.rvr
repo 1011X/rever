@@ -1,4 +1,4 @@
-// see https://cr.yp.to/chacha/chacha-20080128.pdf
+~ see https://cr.yp.to/chacha/chacha-20080128.pdf
 
 proc rotate_left(var x: int, r: int)
     var rm := r mod 32
@@ -11,30 +11,30 @@ proc rotate_left(var x: int, r: int)
     drop rm := r mod 32
 end
 
-// This and the following procedure differ from Salsa
+~ This and the following procedure differ from Salsa
 proc quarterround(var seq: int[4])
     seq[0] += seq[1]
     seq[3] := seq[0]
-    //do rotate_left(seq[3], 16)
+    ~do rotate_left(seq[3], 16)
     seq[3] :< 16
     seq[2] += seq[3]
     seq[1] := seq[2]
-    //do rotate_left(seq[1], 12)
+    ~do rotate_left(seq[1], 12)
     seq[1] :< 12
     seq[0] += seq[1]
     seq[3] := seq[0]
-    //do rotate_left(seq[3], 8)
+    ~do rotate_left(seq[3], 8)
     seq[3] :< 8
     seq[2] += seq[3]
     seq[1] := seq[2]
-    //do rotate_left(seq[1], 7)
+    ~do rotate_left(seq[1], 7)
     seq[1] :< 7
 end
 
 proc doubleround(var seq: int[16])
-  // would be nice if we could get rid of the temporary array, somehow
+  ~ would be nice if we could get rid of the temporary array, somehow
   var tmp_seq := [0, 0, 0, 0]
-  // first column
+  ~ first column
   tmp_seq[0] <> seq[0]
   tmp_seq[1] <> seq[4]
   tmp_seq[2] <> seq[8]
@@ -44,7 +44,7 @@ proc doubleround(var seq: int[16])
   tmp_seq[1] <> seq[4]
   tmp_seq[2] <> seq[8]
   tmp_seq[3] <> seq[12]
-  // second column
+  ~ second column
   tmp_seq[0] <> seq[1]
   tmp_seq[1] <> seq[5]
   tmp_seq[2] <> seq[9]
@@ -54,7 +54,7 @@ proc doubleround(var seq: int[16])
   tmp_seq[1] <> seq[5]
   tmp_seq[2] <> seq[9]
   tmp_seq[3] <> seq[13]
-  // third column
+  ~ third column
   tmp_seq[0] <> seq[2]
   tmp_seq[1] <> seq[6]
   tmp_seq[2] <> seq[10]
@@ -64,7 +64,7 @@ proc doubleround(var seq: int[16])
   tmp_seq[1] <> seq[6]
   tmp_seq[2] <> seq[10]
   tmp_seq[3] <> seq[14]
-  // fourth column
+  ~ fourth column
   tmp_seq[0] <> seq[3]
   tmp_seq[1] <> seq[7]
   tmp_seq[2] <> seq[11]
@@ -74,7 +74,7 @@ proc doubleround(var seq: int[16])
   tmp_seq[1] <> seq[7]
   tmp_seq[2] <> seq[11]
   tmp_seq[3] <> seq[15]
-  // first diagonal
+  ~ first diagonal
   tmp_seq[0] <> seq[0]
   tmp_seq[1] <> seq[5]
   tmp_seq[2] <> seq[10]
@@ -84,7 +84,7 @@ proc doubleround(var seq: int[16])
   tmp_seq[1] <> seq[5]
   tmp_seq[2] <> seq[10]
   tmp_seq[3] <> seq[15]
-  // second diagonal
+  ~ second diagonal
   tmp_seq[0] <> seq[1]
   tmp_seq[1] <> seq[6]
   tmp_seq[2] <> seq[11]
@@ -94,7 +94,7 @@ proc doubleround(var seq: int[16])
   tmp_seq[1] <> seq[6]
   tmp_seq[2] <> seq[11]
   tmp_seq[3] <> seq[12]
-  // third diagonal
+  ~ third diagonal
   tmp_seq[0] <> seq[2]
   tmp_seq[1] <> seq[7]
   tmp_seq[2] <> seq[8]
@@ -104,7 +104,7 @@ proc doubleround(var seq: int[16])
   tmp_seq[1] <> seq[7]
   tmp_seq[2] <> seq[8]
   tmp_seq[3] <> seq[13]
-  // fourth diagonal
+  ~ fourth diagonal
   tmp_seq[0] <> seq[3]
   tmp_seq[1] <> seq[4]
   tmp_seq[2] <> seq[9]
@@ -134,20 +134,23 @@ end
 
 proc Chacha20_setup_seq(k0: int[4], k1: int[4], filler: int[4], n: int[4], var seq: int[16])
   seq[0] += filler[0]
-  from var i := 0 until 4
+  from var i := 0
     seq[i+1] += k0[i]
     i += 1
-  end
+  until drop i := 4
+  loop
   seq[5] += filler[1]
-  from var i := 0 until 4
+  from var i := 0
     seq[i+6] += n[i]
     i += 1
-  end
+  until drop i := 4
+  loop
   seq[10] += filler[2]
-  from var i := 0 until 4
+  from var i := 0
     seq[i+11] += k1[i]
     i += 1
-  end
+  until drop i := 4
+  loop
   seq[15] += filler[3]
 end
 
@@ -171,10 +174,10 @@ proc Chacha20_k16(k0: int[4], n: int[4], var out: int[16])
   drop tau := [1634760805, 824206446, 2036477238, 1797285236]
 end
 
-// So, the two procedures above are the minimum for Salsa20/Chacha20 encryption. 
-// The paper splits 'n' into a 64-bit nonce and a 64-bit byte sequence 
-// number (a byte ID from 0 to 2^64-1). Maximum message length is 2^70, 
-// possibly due to some crypto-related reason.
+~ So, the two procedures above are the minimum for Salsa20/Chacha20 encryption. 
+~ The paper splits 'n' into a 64-bit nonce and a 64-bit byte sequence 
+~ number (a byte ID from 0 to 2^64-1). Maximum message length is 2^70, 
+~ possibly due to some crypto-related reason.
 
 
 proc main

@@ -440,8 +440,7 @@ impl Statement {
 			
 			// sighhhhhhhhhhhhhhhhh
 			Swap(left, right) => {
-				let args = &mut t.args;
-				let vars = &mut t.vars;
+				let StackFrame { args, vars } = t;
 				
 				let left_idx = vars.iter()
 					.rposition(|(name, _)| *name == left.id);

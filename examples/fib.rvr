@@ -21,6 +21,7 @@ fn fib(n: int): int
 	else
 		fib(n - 1) + fib(n - 2)
 	fi
+	fi
 end
 
 proc main

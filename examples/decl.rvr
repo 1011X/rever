@@ -19,7 +19,7 @@ proc p
 		do z
 	fi
 	fi
-end proc p
+end
 
 proc print_file(path: int)
 	var bytes := 80
@@ -46,5 +46,5 @@ proc divmod(n: int, var x: int, var div: int)
         x -= n
         div += 1
     until x < n
-    end
+    loop
 end
