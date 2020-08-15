@@ -1,17 +1,18 @@
-/* Various stack operations */
+~ Various stack operations
 
-/* Move n stack elements from one stack to another */
+~ Move n stack elements from one stack to another
 proc move_stack(var src: stack, var dst: stack, n: int)
-    from var m := 0 until n
+    from var m := 0
         var x := 0
         do pop(x, src)
         do push(x, dst)
         drop x := 0
         m += 1
-    end
+    until drop m := n
+    loop
 end
 
-/* Reverse the elements of a stack */
+~ Reverse the elements of a stack
 proc reverse(var s: stack)
     if !empty(s)
         var x := 0
@@ -19,8 +20,8 @@ proc reverse(var s: stack)
 
         do pop(x, s)
         do reverse(s)
-        // Place x at the bottom of the stack
-        // by moving all elements to a temporary stack
+        ~ Place x at the bottom of the stack
+        ~ by moving all elements to a temporary stack
         var ss = nil
         do move_stack(s, ss, n_move)
         do push(x, s)

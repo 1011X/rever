@@ -1,60 +1,61 @@
-/* TEA encryption algorithm
- * data is an array of two words (64 bits)
- * key is an array of four words (128 bits)
- */
+~ TEA encryption algorithm
+~ data is an array of two words (64 bits)
+~ key is an array of four words (128 bits)
 proc TEA_encipher(var data: int[], key: int[])
     var delta := 2654435769
     var sum := 0
-    from var i := 0 until 32
+    from var i := 0
         sum += delta
         data[0] += ((data[1] * 16) + key[0]) ^ (data[1] + sum) ^ ((data[1] / 32) + key[1])
         data[1] += ((data[0] * 16) + key[2]) ^ (data[0] + sum) ^ ((data[0] / 32) + key[3])
         i += 1
-    end
-    drop sum := 32*delta
+    until drop i := 32
+    loop
+    drop sum := 32 * delta
     drop delta := 2654435769
 
-/* XTEA encryption algorithm
- * num_rounds is the number of encryption rounds to perform
- * data is an array of two words (64 bits)
- * key is an array of four words (128 bits)
- */
+~ XTEA encryption algorithm
+~ num_rounds is the number of encryption rounds to perform
+~ data is an array of two words (64 bits)
+~ key is an array of four words (128 bits)
 proc XTEA_encipher(num_rounds: int, var data: int[], key: int[])
     var delta := 2654435769
     var sum := 0
-    from var i := 0 until num_rounds
+    from var i := 0
         data[0] += (((data[1] * 16) ^ (data[1] / 32)) + data[1]) ^ (sum + key[sum & 3])
         sum += delta
         data[1] += (((data[0] * 16) ^ (data[0] / 32)) + data[0]) ^ (sum + key[(sum / 2048) & 3])
         i += 1
-    end
-    drop sum := num_rounds*delta
+    until drop i := num_rounds
+    loop
+    drop sum := num_rounds * delta
     drop delta := 2654435769
 end
 
-/* XXTEA encryption algorithm
- * data is an array of any number of words (finally a block)
- * key is an array of four words (128 bits)
- */
+~ XXTEA encryption algorithm
+~ data is an array of any number of words (finally a block)
+~ key is an array of four words (128 bits)
 proc XXTEA_encipher(var data: int[], key: int[])
     var delta := 2654435769
     var n := size(data)
     var sum := 0
     var e := 0
     var p := 1
-    from var q := 6 + 52 / n until 0
+    from var q := 6 + 52 / n
         sum += delta
         e += (sum / 4) & 3
         data[0] += ((((data[n-1] / 32) ^ (data[1] * 4)) + ((data[1] / 8) ^ (data[n-1] * 16))) ^ ((sum ^ data[1]) + (key[e] ^ data[n-1])))
-        from p = 1 until p = n-1
+        from p = 1
             data[p] += ((((data[p-1] / 32) ^ (data[p+1] * 4)) + ((data[p+1] / 8) ^ (data[p-1] * 16))) ^ ((sum ^ data[p+1]) + (key[(p & 3) ^ e] ^ data[p-1])))
             p += 1
-        end
+        until p = n - 1
+        loop
         data[n-1] += ((((data[n-2] / 32) ^ (data[0] * 4)) + ((data[0] / 8) ^ (data[n-2] * 16))) ^ ((sum ^ data[0]) + (key[(p & 3) ^ e] ^ data[n-2])))
         p -= (n-2)
         e -= (sum / 4) & 3
         q -= 1
-    end
+    until drop q := 0
+    loop
     drop p := 1
     drop e := 0
     drop sum := (6+52/n)*delta

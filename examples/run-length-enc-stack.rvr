@@ -1,7 +1,7 @@
-// Run-length encoding using stacks
+~ Run-length encoding using stacks
 
 proc encode(text: stack, arc: stack)
-    from !empty(text) and empty(arc)
+    from not empty(text) and empty(arc)
         var val := 0
         var n := 0
         val += top(text)
@@ -10,17 +10,19 @@ proc encode(text: stack, arc: stack)
             do pop: tmp, text
             drop tmp := val
             n += 1
-        until empty(text) or top(text) != val end
+        until empty(text) or top(text) != val
+        loop
         do push: val, arc
         do push: n, arc
         drop n := 0
         drop val := 0
-    until empty(text) end
+    until empty(text)
+    loop
 end
 
 proc main
-    var text: stack  // uncompressed text
-    var arc: stack   // compressed text as (n, char) pairs in reverse order
+    var text: stack  ~ uncompressed text
+    var arc: stack   ~ compressed text as (n, char) pairs in reverse order
 
     var x := 0
     x += 12

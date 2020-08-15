@@ -1,5 +1,7 @@
 use std::fmt;
 
+use crate::interpret::{EvalError, EvalResult};
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
 	Nil,
@@ -26,6 +28,32 @@ impl Value {
 			
 			Value::Array(_)  => todo!()
 		}
+	}
+	
+	pub fn swap(&mut self, val: &mut Value) -> EvalResult<()> {
+		// check that types are the same.
+		if self.get_type() != val.get_type() {
+			return Err(EvalError::TypeMismatch {
+				expected: self.get_type(),
+				got: val.get_type(),
+			});
+		}
+		
+		std::mem::swap(self, val);
+		Ok(())
+	}
+	
+	pub fn xor(&mut self, val: &Value) -> EvalResult<()> {
+		match (self, val) {
+			(Value::Nil, Value::Nil) => {}
+			
+			(Value::Bool(a), Value::Bool(b)) => *a ^= b,
+			
+			(Value::Int(a), Value::Int(b)) => *a ^= b,
+			
+			_ => todo!()
+		}
+		Ok(())
 	}
 }
 
