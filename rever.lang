@@ -3,7 +3,7 @@
 <language id="rever" _name="Rever" version="2.0" _section="Source">
   <metadata>
     <property name="globs">*.rvr;*.rever</property>
-    <property name="line-comment-start">~~</property>
+    <property name="line-comment-start">~</property>
     <!--
     <property name="block-comment-start">/*</property>
     <property name="block-comment-end">*/</property>
@@ -59,10 +59,12 @@
       <keyword>alias</keyword>
       <keyword>begin</keyword>
       <keyword>const</keyword>
+      <keyword>done</keyword>
       <keyword>for</keyword>
       <keyword>in</keyword>
       <keyword>macro</keyword>
       <keyword>match</keyword>
+      <keyword>priv</keyword>
       <keyword>pub</keyword>
       <keyword>return</keyword>
       <keyword>tag</keyword>
@@ -99,7 +101,7 @@
 
     <context id="types" style-ref="type">
       <match extended="true">
-        \b(bool|str|int|uint)\b
+        \b(bool|str|int|uint|void)\b
       </match>
     </context>
 
