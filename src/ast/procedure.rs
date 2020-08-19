@@ -17,7 +17,7 @@ pub struct Procedure {
 	/// List of parameters for the procedure.
 	pub params: Vec<Param>,
 	/// Sequence of statements that define the procedure.
-	pub code: Vec<Statement>,
+	pub code: Vec<Stmt>,
 }
 
 impl Parser<'_> {

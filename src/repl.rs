@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use logos::Logos;
 
 use crate::token::Token;
-use crate::ast::{self, Expr, Item, Module, Statement};
+use crate::ast::{self, Expr, Item, Module, Stmt};
 use crate::interpret::{Eval, EvalResult, Stack, StackFrame, Value};
 
 pub fn init() -> io::Result<()> {
@@ -64,7 +64,7 @@ pub enum ReplLine {
 	Drop(String),
 	
 	Item(Item),
-	Stmt(Statement),
+	Stmt(Stmt),
 }
 
 impl ast::Parser<'_> {
@@ -146,8 +146,8 @@ impl From<Item> for ReplLine {
 	fn from(item: Item) -> Self { ReplLine::Item(item) }
 }
 
-impl From<Statement> for ReplLine {
-	fn from(stmt: Statement) -> Self { ReplLine::Stmt(stmt) }
+impl From<Stmt> for ReplLine {
+	fn from(stmt: Stmt) -> Self { ReplLine::Stmt(stmt) }
 }
 
 enum Error {

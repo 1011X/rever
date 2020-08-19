@@ -5,7 +5,7 @@ use std::fmt;
 use crate::token::{Token, TokenStream};
 use crate::interpret::{Eval, EvalError, EvalResult, StackFrame, Value};
 
-mod expr;
+mod expression;
 mod function;
 mod item;
 mod literal;
@@ -15,14 +15,14 @@ mod procedure;
 mod statement;
 mod types;
 
-pub use self::expr::{Expr, BlockExpr, BinOp};
+pub use self::expression::{Expr, BlockExpr, BinOp};
 pub use self::function::Function;
 pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::{Deref, LValue};
 pub use self::module::Module;
 pub use self::procedure::{Param, Procedure};
-pub use self::statement::Statement;
+pub use self::statement::Stmt;
 pub use self::types::Type;
 
 pub type ParseResult<T> = Result<T, ParseError>;

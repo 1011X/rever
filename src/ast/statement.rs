@@ -1,7 +1,7 @@
 use super::*;
 
 #[derive(Debug, Clone)]
-pub enum Statement {
+pub enum Stmt {
 	Skip,
 	
 	//Not(LValue),
@@ -20,50 +20,51 @@ pub enum Statement {
 	Do(String, Vec<Expr>),
 	Undo(String, Vec<Expr>),
 	
-	Let(String, Type, Expr, Vec<Statement>, Expr),
-	If(Expr, Vec<Statement>, Vec<Statement>, Expr),
-	From(Expr, Vec<Statement>, Vec<Statement>, Expr),
-	//FromLet(String, Expr, Vec<Statement>, Vec<Statement>, Expr),
-	//Match(String, Vec<_, Vec<Statement>>),
-	//For(String, Expr, Vec<Statement>),
+	Var(String, Type, Expr, Vec<Stmt>, Expr),
+	If(Expr, Vec<Stmt>, Vec<Stmt>, Expr),
+	From(Expr, Vec<Stmt>, Vec<Stmt>, Expr),
+	//FromVar(String, Expr, Vec<Stmt>, Vec<Stmt>, Expr),
+	//Match(String, Vec<_, Vec<Stmt>>),
+	//For(String, Expr, Vec<Stmt>),
 }
 
-impl Statement {
+impl Stmt {
 	pub fn invert(self) -> Self {
-		use self::Statement::*;
 		match self {
-			Skip => self,
-			RotLeft(l, v) => RotRight(l, v),
-			RotRight(l, v) => RotLeft(l, v),
-			Add(l, v) => Sub(l, v),
-			Sub(l, v) => Add(l, v),
-			Xor(..) => self,
-			Swap(..) => self,
+			Stmt::Skip     => self,
+			Stmt::Xor(..)  => self,
+			Stmt::Swap(..) => self,
 			
-			Do(p, args) => Undo(p, args),
-			Undo(p, args) => Do(p, args),
+			Stmt::RotLeft(l, v) => Stmt::RotRight(l, v),
+			Stmt::RotRight(l, v) => Stmt::RotLeft(l, v),
 			
-			Let(n, t, init, s, dest) =>
-				Let(n, t, dest, s, init),
-			If(test, b, eb, assert) =>
-				If(assert, b, eb, test),
-			From(assert, b, lb, test) =>
-				From(test, b, lb, assert),
+			Stmt::Add(l, v) => Stmt::Sub(l, v),
+			Stmt::Sub(l, v) => Stmt::Add(l, v),
+			
+			Stmt::Do(p, args) => Stmt::Undo(p, args),
+			Stmt::Undo(p, args) => Stmt::Do(p, args),
+			
+			Stmt::Var(n, t, init, s, dest) =>
+				Stmt::Var(n, t, dest, s, init),
+			Stmt::If(test, b, eb, assert) =>
+				Stmt::If(assert, b, eb, test),
+			Stmt::From(assert, b, lb, test) =>
+				Stmt::From(test, b, lb, assert),
 		}
 	}
 }
 
 impl Parser<'_> {
-	pub fn parse_stmt(&mut self) -> ParseResult<Statement> {
-		let stmt = match self.peek().ok_or("a statement")? {
+	pub fn parse_stmt(&mut self) -> ParseResult<Stmt> {
+		let stmt = match *self.peek().ok_or("a statement")? {
 			// skip
 			// TODO use this keyword as a prefix to comment out statements?
 			Token::Skip => {
 				self.next();
-				Statement::Skip
+				Stmt::Skip
 			}
 			
-			/* do-call syntax accepts three forms:
+			/* do-call and undo-call syntax accept three forms:
 			   + `do something`
 			   + `do something: some, args` (1 arg min) TODO
 			   + `do something(
@@ -73,11 +74,15 @@ impl Parser<'_> {
 			   also has special syntax like:
 			   + do something: var new_var, drop used_var
 			*/
-			Token::Do => {
+			kw @ Token::Do | kw @ Token::Undo => {
 				self.next();
 				
 				let name = self.expect_ident()
-					.ok_or("procedure name after `do`")?;
+					.ok_or(match kw {
+						Token::Do => "procedure name after `do`",
+						Token::Undo => "procedure name after `undo`",
+						_ => unreachable!()
+					})?;
 				
 				// TODO check for parentheses. if so, go into multiline mode
 				let mut args = Vec::new();
@@ -109,50 +114,11 @@ impl Parser<'_> {
 					Err("`:`, or newline")?;
 				};
 				
-				Statement::Do(name, args)
-			}
-			
-			// undo
-			// accepts same forms as `do`.
-			// And no, you can't merge the `do` and `undo` branches by using
-			// `tok @ pattern` and matching at the end because it gives a
-			// "cannot borrow `*tokens` as mutable more than once at a time"
-			// error (as of rustc v1.42.0).
-			Token::Undo => {
-				self.next();
-				
-				let name = self.expect_ident()
-					.ok_or("procedure name after `undo`")?;
-				
-				// TODO check for parentheses. if so, go into multiline mode
-				let mut args = Vec::new();
-				
-				if self.expect(Token::Newline).is_some() {
-					// do nothing
-				} else if self.expect(Token::Colon).is_some() {
-					// TODO check for newline, in case expression is missing
-					let expr = self.parse_expr()?;
-					args.push(expr);
-					
-					loop {
-						match self.peek() {
-							Some(Token::Newline)
-							| None => 
-								break,
-							Some(Token::Comma) => {
-								self.next();
-								args.push(self.parse_expr()?);
-							}
-							_ => Err("`,` or newline")?,
-						}
-					}
-				} else if self.expect(Token::LParen).is_some() {
-					unimplemented!();
-				} else {
-					Err("`:`, or newline")?;
-				};
-				
-				Statement::Undo(name, args)
+				match kw {
+					Token::Do   => Stmt::Do(name, args),
+					Token::Undo => Stmt::Undo(name, args),
+					_ => unreachable!()
+				}
 			}
 			
 			// from-until
@@ -198,7 +164,7 @@ impl Parser<'_> {
 				}
 				self.next();
 				
-				Statement::From(assert, main_block, back_block, test)
+				Stmt::From(assert, main_block, back_block, test)
 			}
 			
 			// var-drop
@@ -253,7 +219,7 @@ impl Parser<'_> {
 					None => init.clone(),
 				};
 				
-				Statement::Let(name, typ, init, block, drop)
+				Stmt::Var(name, typ, init, block, drop)
 			}
 			
 			// if-else
@@ -281,7 +247,7 @@ impl Parser<'_> {
 				// parse else section
 				let mut else_block = Vec::new();
 				
-				// saw `else`
+				// saw `else` instead of `fi`
 				if self.expect(Token::Else).is_some() {
 					if self.expect(Token::Newline).is_some() {
 						// parse a block
@@ -312,7 +278,7 @@ impl Parser<'_> {
 					None => Err("a newline or expression after `fi`")?,
 				};
 				
-				Statement::If(cond, main_block, else_block, assert)
+				Stmt::If(cond, main_block, else_block, assert)
 			}
 			
 			Token::Ident => {
@@ -322,34 +288,34 @@ impl Parser<'_> {
 					Token::Assign => {
 						self.next();
 						let expr = self.parse_expr()?;
-					    Statement::Xor(lval, expr)
+					    Stmt::Xor(lval, expr)
 					}
 					Token::AddAssign => {
 						self.next();
 						let expr = self.parse_expr()?;
-					    Statement::Add(lval, expr)
+					    Stmt::Add(lval, expr)
 					}
 					Token::SubAssign => {
 						self.next();
 						let expr = self.parse_expr()?;
-					    Statement::Sub(lval, expr)
+					    Stmt::Sub(lval, expr)
 					}
 					
 					Token::Rol => {
 						self.next();
 						let expr = self.parse_expr()?;
-					    Statement::RotLeft(lval, expr)
+					    Stmt::RotLeft(lval, expr)
 					}
 					Token::Ror => {
 						self.next();
 						let expr = self.parse_expr()?;
-					    Statement::RotRight(lval, expr)
+					    Stmt::RotRight(lval, expr)
 					}
 					
 					Token::Swap => {
 						self.next();
 						let rhs = self.parse_lval()?;
-					    Statement::Swap(lval, rhs)
+					    Stmt::Swap(lval, rhs)
 					}
 					
 					_ => Err("`:=`, `+=`, `-=`, or `<>`")?,
@@ -371,14 +337,12 @@ impl Parser<'_> {
 	}
 }
 
-impl Statement {
+impl Stmt {
 	pub fn eval(&self, t: &mut StackFrame, m: &Module) -> EvalResult<Value> {
-		use self::Statement::*;
-		
 		match self {
-			Skip => {}
+			Stmt::Skip => {}
 			
-			Let(id, _, init, block, dest) => {
+			Stmt::Var(id, _, init, block, dest) => {
 				let init = init.eval(t)?;
 				t.push(id.clone(), init);
 				
@@ -393,7 +357,7 @@ impl Statement {
 					"variable {:?} had unexpected value", id);
 			}
 			
-			Xor(lval, expr) => {
+			Stmt::Xor(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (lval.get_mut_ref(t)?, expr) {
 					(Value::Int(ref mut l), Value::Int(r)) =>
@@ -402,7 +366,7 @@ impl Statement {
 				}
 			}
 			
-			Add(lval, expr) => {
+			Stmt::Add(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (lval.get_mut_ref(t)?, expr) {
 					(Value::Int(ref mut l), Value::Int(r)) =>
@@ -411,7 +375,7 @@ impl Statement {
 				}
 			}
 			
-			Sub(lval, expr) => {
+			Stmt::Sub(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (lval.get_mut_ref(t)?, expr) {
 					(Value::Int(ref mut l), Value::Int(r)) =>
@@ -420,7 +384,7 @@ impl Statement {
 				}
 			}
 			
-			RotLeft(lval, expr) => {
+			Stmt::RotLeft(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (lval.get_mut_ref(t)?, expr) {
 					(Value::Int(ref mut l), Value::Int(r)) =>
@@ -429,7 +393,7 @@ impl Statement {
 				}
 			}
 			
-			RotRight(lval, expr) => {
+			Stmt::RotRight(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (lval.get_mut_ref(t)?, expr) {
 					(Value::Int(ref mut l), Value::Int(r)) =>
@@ -439,7 +403,7 @@ impl Statement {
 			}
 			
 			// sighhhhhhhhhhhhhhhhh
-			Swap(left, right) => {
+			Stmt::Swap(left, right) => {
 				let StackFrame { args, vars } = t;
 				
 				let left_idx = vars.iter()
@@ -516,7 +480,7 @@ impl Statement {
 			the "path" of the current module with the procedure, but for now
 			just having the items of the current module is good enough. So find
 			a way to make that available. */
-			Do(callee_name, args) => {
+			Stmt::Do(callee_name, args) => {
 				let mut vals = Vec::new();
 				for arg in args {
 					vals.push(arg.eval(t)?);
@@ -539,7 +503,7 @@ impl Statement {
 					}
 				}
 			}
-			Undo(callee_name, args) => {
+			Stmt::Undo(callee_name, args) => {
 				let mut vals = Vec::new();
 				for arg in args {
 					vals.push(arg.eval(t)?);
@@ -563,7 +527,7 @@ impl Statement {
 				}
 			}
 			
-			If(test, block, else_block, assert) => {
+			Stmt::If(test, block, else_block, assert) => {
 				match test.eval(t)? {
 					Value::Bool(true) => {
 						for stmt in block {
@@ -581,7 +545,7 @@ impl Statement {
 				}
 			}
 			
-			From(assert, do_block, loop_block, test) => {
+			Stmt::From(assert, do_block, loop_block, test) => {
 				assert_eq!(assert.eval(t)?, Value::Bool(true));
 				loop {
 					for stmt in do_block {

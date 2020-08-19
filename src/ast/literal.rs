@@ -105,13 +105,16 @@ impl Parser<'_> {
 				Literal::String(string)
 			}
 			
+			// array literal
 			Some(Token::LBracket) => {
 				self.next();
 				let mut elements = Vec::new();
 				
 				loop {
 					match self.peek() {
+						// found ']'
 						Some(Token::RBracket) => break,
+						// element in array
 						Some(_) => {
 							elements.push(self.parse_expr()?);
 							
@@ -129,6 +132,7 @@ impl Parser<'_> {
 				Literal::Array(elements)
 			}
 			
+			// function/closure literal
 			Some(Token::Fn) => {
 				self.next();
 				
