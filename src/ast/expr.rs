@@ -35,7 +35,9 @@ pub enum BinOp {
 #[derive(Debug, Clone)]
 pub enum Expr {
 	// precedence 1
-	Term(Term),
+	Lit(Literal),
+	LVal(LValue),
+	//Term(Term),
 	Cast(Box<Expr>, Type),
 	
 	// precedence 3
@@ -279,9 +281,17 @@ impl Parser<'_> {
 				expr
 			} else {
 				// otherwise, treat it as a Term.
-				Expr::Term(self.parse_term()?)
+				
+				let mut clone = self.clone();
+				
+				if clone.parse_lit().is_ok() {
+					Expr::Lit(self.parse_lit()?)
+				} else {
+					Expr::LVal(self.parse_lval()?)
+				}
 			};
 		
+		// check for `as` casting
 		Ok(if self.expect(Token::As).is_some() {
 			Expr::Cast(Box::new(expr), self.parse_type()?)
 		} else {
@@ -301,7 +311,8 @@ impl Parser<'_> {
 impl Eval for Expr {
 	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 		match self {
-			Expr::Term(term) => Ok(term.eval(t)?),
+			Expr::Lit(lit) => lit.eval(t),
+			Expr::LVal(lval) => lval.eval(t),
 			
 			Expr::Cast(e, typ) => match (typ, e.eval(t)?) {
 				(Type::Unit, _) => Ok(Value::Nil),
