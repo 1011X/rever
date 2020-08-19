@@ -24,7 +24,6 @@ pub use self::lvalue::{Deref, LValue};
 pub use self::module::Module;
 pub use self::procedure::{Param, Procedure};
 pub use self::statement::Statement;
-pub use self::term::Term;
 pub use self::types::Type;
 
 pub type ParseResult<T> = Result<T, ParseError>;
