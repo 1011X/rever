@@ -270,7 +270,7 @@ impl Parser<'_> {
 	
 	pub fn parse_expr_atom(&mut self) -> ParseResult<Expr> {
 		// check if there's an open parenthesis
-		let expr =
+		let mut expr =
 			if self.expect(Token::LParen).is_some() {
 				let expr = self.parse_expr()?;
 				
@@ -281,7 +281,6 @@ impl Parser<'_> {
 				expr
 			} else {
 				// otherwise, treat it as a Term.
-				
 				let mut clone = self.clone();
 				
 				if clone.parse_lit().is_ok() {
@@ -292,10 +291,12 @@ impl Parser<'_> {
 			};
 		
 		// check for `as` casting
-		Ok(if self.expect(Token::As).is_some() {
-			Expr::Cast(Box::new(expr), self.parse_type()?)
-		} else {
-			expr
+		Ok(loop {
+			if self.expect(Token::As).is_some() {
+				expr = Expr::Cast(Box::new(expr), self.parse_type()?)
+			} else {
+				break expr
+			}
 		})
 	}
 }
@@ -319,6 +320,8 @@ impl Eval for Expr {
 				(Type::Int, Value::Uint(u))  => Ok(Value::Int(u as i64)),
 				(Type::UInt, Value::Bool(b)) => Ok(Value::Uint(b as u64)),
 				(Type::UInt, Value::Int(i))  => Ok(Value::Uint(i as u64)),
+				(Type::Char, Value::Uint(i)) => Ok(Value::Char(i as u8 as char)),
+				(Type::String, Value::Char(c)) => Ok(Value::String(c.to_string())),
 				_ => unimplemented!()
 			}
 			

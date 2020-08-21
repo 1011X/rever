@@ -259,8 +259,8 @@ impl Parser<'_> {
 							}
 						}
 					} else if self.peek() == Some(&Token::If) {
-						// check if it's a single `if` statement. this allows
-						// "embedding" of chained `if` statements.
+						// check if immediately followed by an `if` token.
+						// allows "embedding" of chained `if` statements.
 						else_block.push(self.parse_stmt()?);
 					} else {
 						Err("chaining `if` or a newline")?;
@@ -435,6 +435,7 @@ impl Stmt {
 				for arg in args {
 					vals.push(arg.eval(t)?);
 				}
+				// TODO error handling for when a procedure does not exist.
 				for item in &m.items {
 					match item {
 						Item::Proc(pr) if pr.name == *callee_name => {

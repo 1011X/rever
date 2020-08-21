@@ -28,6 +28,7 @@ impl Parser<'_> {
 					"bool" => Type::Bool,
 					"uint" => Type::UInt,
 					"int"  => Type::Int,
+					"char" => Type::Char,
 					"str"  => Type::String,
 					id     => todo!("custom types not yet supported"),
 				}

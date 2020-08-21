@@ -9,7 +9,6 @@ pub struct StackFrame {
 	names: Vec<String>,
 	values: Vec<Value>,
 }
-//pub struct StackFrame(Vec<(String, Value)>);
 
 impl StackFrame {
 	pub fn new(args: Vec<(String, Value)>) -> Self {

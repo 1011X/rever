@@ -33,7 +33,7 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 	let mut root = Module::new("root".into(), items);
 		
 	root.items.push(
-		Item::InternProc("puts", intrinsic::puts, intrinsic::unputs)
+		Item::InternProc("show", intrinsic::show, intrinsic::unshow)
 	);
 	
 	let main = root.items.iter()

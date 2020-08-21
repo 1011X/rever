@@ -1,5 +1,5 @@
 proc main
-	var prog := "+"
+	var prog := "+++++++++++++++++++++++++++++++++,"
 	var mem := [0, 0, 0, 0, 0, 0, 0, 0]
 	var ptr := 0
 	var pc := 0
@@ -16,7 +16,7 @@ proc main
 		else if prog.(pc) = '.'
 			do get_char: mem.(ptr)
 		else if prog.(pc) = ','
-			do print: mem.(ptr)
+			do show: mem.(ptr) as char as str
 		else if prog.(pc) = '['
 			if mem.(ptr) = 0
 				var count := 0

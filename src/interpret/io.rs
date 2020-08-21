@@ -8,8 +8,9 @@ use std::io::prelude::*;
 
 /** A handle to a reversible standard output stream.
 
-To allow retrieving data from stdout (e.g. when backtracking), a backup buffer
-is kept of all the data that was passed.
+To allow retrieving data from stdout (e.g. when backtracking or going in
+reverse), a backup buffer is kept of all the data that was passed. When
+"unwriting", data is drawn from the end of the backup buffer.
 */
 #[derive(Debug)]
 pub struct RevStdout {
@@ -25,20 +26,19 @@ impl RevStdout {
 		}
 	}
 	
-	pub fn unwrite(&mut self, buf: &[u8], bytes_read: usize) {
-		assert!(self.history.ends_with(&buf[..bytes_read]));
-		let new_len = self.history.len() - bytes_read;
-		self.history.truncate(new_len);
+	pub fn unwrite(&mut self, bytes_read: usize) -> Vec<u8> {
+		let len = self.history.len() - bytes_read;
+		self.history.split_off(len)
 	}
 	
 	/// When this function is called, all data will be lost, and we won't be
 	/// able to go any further in reverse if something goes wrong.
-	// Should stdout be written to immediately? or be flushable?
 	pub fn reset(&mut self) {
 		self.history.clear();
 	}
 }
 
+// TODO: Should stdout be written to immediately? or only when flushing?
 impl Write for RevStdout {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 		let bytes_read = self.stdout.write(buf)?;
