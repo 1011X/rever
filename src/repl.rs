@@ -1,5 +1,4 @@
 use std::io::{self, prelude::*};
-use std::collections::HashMap;
 use logos::Logos;
 
 use crate::token::Token;
@@ -14,7 +13,7 @@ pub fn init() -> io::Result<()> {
 	
 	let mut module = Module::new("repl".into(), Vec::new());
 	let mut stack = Stack::new();
-	let root_frame = StackFrame::new(HashMap::new());
+	let root_frame = StackFrame::new(Vec::new());
 	stack.push(root_frame);
 	
 	println!("Rever 0.0.1");

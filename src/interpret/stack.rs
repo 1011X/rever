@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use super::*;
 
 pub type Stack = Vec<StackFrame>;
@@ -8,83 +6,79 @@ pub type Stack = Vec<StackFrame>;
 /// procedure call.
 #[derive(Debug, Clone)]
 pub struct StackFrame {
-	pub args:  HashMap<String, Value>,
-	pub vars:  Vec<(String, Value)>,
-	//items:  HashMap<String, Value>,
+	names: Vec<String>,
+	values: Vec<Value>,
 }
+//pub struct StackFrame(Vec<(String, Value)>);
 
 impl StackFrame {
-	pub fn new(args: HashMap<String, Value>) -> Self {
-		Self {
-			args,
-			vars: Vec::new(),
-			//items: module,
-		}
+	pub fn new(args: Vec<(String, Value)>) -> Self {
+		let (names, values) = args.into_iter()
+			.unzip(); // owo
+		Self { names, values }
+	}
+	
+	pub fn values(&mut self) -> &mut [Value] {
+		&mut self.values
+	}
+	
+	pub fn into_inner(self) -> Vec<Value> {
+		self.values
 	}
 	
 	pub fn push(&mut self, name: String, val: Value) {
-		self.vars.push((name, val));
+		self.names.push(name);
+		self.values.push(val);
 	}
 	
 	pub fn pop(&mut self) -> Option<(String, Value)> {
-		self.vars.pop()
+		let name = self.names.pop();
+		let value = self.values.pop();
+		match (name, value) {
+			(Some(name), Some(value)) => Some((name, value)),
+			_ => None,
+		}
 	}
 	
 	pub fn remove(&mut self, given_name: &str) -> EvalResult<Value> {
-		let idx = self.vars.iter()
-			.enumerate()
-			.rfind(|(_, (var_name, _))| *var_name == given_name)
-			.map(|(i,_)| i)
+		let idx = self.names.iter()
+			.rposition(|var_name| *var_name == given_name)
 			.ok_or(EvalError::UnknownIdent(given_name.to_string()))?;
-		
-		Ok(self.vars.remove(idx).1)
+		self.names.remove(idx);
+		Ok(self.values.remove(idx))
 	}
-	/*
-	pub fn swap(&mut self, left: &LValue, right: &LValue) {
-		todo!();
-		
-		/*
-		let left_idx = self.vars.iter()
-			.rposition(|(name, _)| *name == left.id)
-			.ok_or(EvalError::UnknownIdent(left.id.clone()))?;
-		let right_idx = self.vars.iter()
-			.rposition(|(name, _)| *name == right.id)
-			.ok_or(EvalError::UnknownIdent(right.id.clone()))?;
+	
+	pub fn swap(&mut self, left: &str, right: &str) -> EvalResult<()> {
+		let left_idx = self.names.iter()
+			.rposition(|name| *name == left)
+			.ok_or(EvalError::UnknownIdent(left.to_string()))?;
+		let right_idx = self.names.iter()
+			.rposition(|name| *name == right)
+			.ok_or(EvalError::UnknownIdent(right.to_string()))?;
 		
 		// ensure types are the same
 		assert_eq!(
-			self.vars[left_idx].1.get_type(),
-			self.vars[right_idx].1.get_type(),
+			self.values[left_idx].get_type(),
+			self.values[right_idx].get_type(),
 			"tried to swap variables with different types"
 		);
 		
-		// get names of values being swapped for later
-		let left_name = self.vars[left_idx].clone();
-		let right_name = self.vars[right_idx].clone();
+		self.values.swap(left_idx, right_idx);
 		
-		self.vars.swap(left_idx, right_idx);
-		
-		// rectify names
-		self.vars[left_idx] = left_name;
-		self.vars[right_idx] = right_name;
-		*/
+		Ok(())
 	}
-	*/
+	
 	pub fn get(&self, given_name: &str) -> EvalResult<&Value> {
-		self.vars.iter()
-			.rfind(|(var_name, _)| var_name == given_name)
-			.map(|(_, value)| value)
-			.or_else(|| self.args.get(given_name))
-			.ok_or(EvalError::UnknownIdent(given_name.to_string()))
+		let pos = self.names.iter()
+			.rposition(|var_name| var_name == given_name)
+			.ok_or(EvalError::UnknownIdent(given_name.to_string()))?;
+		Ok(&self.values[pos])
 	}
 	
 	pub fn get_mut(&mut self, given_name: &str) -> EvalResult<&mut Value> {
-		self.vars.iter_mut()
-			.rfind(|(var_name, _)| var_name == given_name)
-			.map(|(_, value)| value)
-			// not .or_else() bcuz the closure would have to borrow more than
-			// one mutable reference.
-			.or(self.args.get_mut(given_name))
-			.ok_or(EvalError::UnknownIdent(given_name.to_string()))
+		let pos = self.names.iter()
+			.rposition(|var_name| var_name == given_name)
+			.ok_or(EvalError::UnknownIdent(given_name.to_string()))?;
+		Ok(&mut self.values[pos])
 	}
 }

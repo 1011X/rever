@@ -404,57 +404,7 @@ impl Stmt {
 			
 			// sighhhhhhhhhhhhhhhhh
 			Stmt::Swap(left, right) => {
-				let StackFrame { args, vars } = t;
-				
-				let left_idx = vars.iter()
-					.rposition(|(name, _)| *name == left.id);
-				let right_idx = vars.iter()
-					.rposition(|(name, _)| *name == right.id);
-				
-				match (left_idx, right_idx) {
-					(Some(left_idx), Some(right_idx)) => {
-						let left  = &mut vars[left_idx];
-						let right = &mut vars[right_idx];
-						let left_name  = left.0.clone();
-						let right_name = right.0.clone();
-						assert_eq!(
-							left.1.get_type(),
-							right.1.get_type(),
-							"tried to swap variables with different types"
-						);
-						vars.swap(left_idx, right_idx);
-					}
-					(Some(left_idx), None) => {
-						let left = &mut vars[left_idx].1;
-						let right = &mut args[&right.id];
-						assert_eq!(
-							left.get_type(),
-							right.get_type(),
-							"tried to swap variables with different types"
-						);
-						std::mem::swap(left, right);
-					}
-					(None, Some(right_idx)) => {
-						let left = &mut args[&left.id];
-						let right = &mut vars[right_idx].1;
-						assert_eq!(
-							left.get_type(),
-							right.get_type(),
-							"tried to swap variables with different types"
-						);
-						std::mem::swap(left, right);
-					}
-					(None, None) => {
-						let left = &mut args[&left.id];
-						let right = &mut args[&right.id];
-						assert_eq!(
-							left.get_type(),
-							right.get_type(),
-							"tried to swap variables with different types"
-						);
-						std::mem::swap(left, right);
-					}
-				}
+				todo!("swapping is not currently supported");
 				/*
 				// ensure types are the same
 				assert_eq!(
@@ -487,14 +437,12 @@ impl Stmt {
 				}
 				for item in &m.items {
 					match item {
-						Item::Proc(pr)
-						if pr.name == *callee_name => {
+						Item::Proc(pr) if pr.name == *callee_name => {
 							pr.call(vals, m);
 							break;
 						}
 						
-						Item::InternProc(name, pr, _)
-						if name == callee_name => {
+						Item::InternProc(name, pr, _) if name == callee_name => {
 							pr(&mut vals)?;
 							break;
 						}

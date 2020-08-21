@@ -10,14 +10,35 @@ pub struct Param {
 	pub typ: Type,
 }
 
+#[derive(Clone)]
+pub enum ProcDef {
+	/// Sequence of statements defining a user-provided procedure.
+	User(Vec<Stmt>),
+	/// Pair of irreversible functions defining an internal procedure.
+	Internal {
+		fore: fn(&mut [Value]),
+		back: fn(&mut [Value]),
+	},
+	External,
+}
+
+use std::fmt;
+impl fmt::Debug for ProcDef {
+	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt.write_str(match self {
+			ProcDef::User(_) => "<user-defined>",
+			ProcDef::Internal { .. } => "<internal proc>",
+			ProcDef::External => "<external proc>",
+		})
+	}
+}
+
 #[derive(Debug, Clone)]
 pub struct Procedure {
-	/// Name of the procedure.
 	pub name: String,
-	/// List of parameters for the procedure.
 	pub params: Vec<Param>,
-	/// Sequence of statements that define the procedure.
-	pub code: Vec<Stmt>,
+	/// How and where a procedure is defined.
+	pub code: ProcDef,
 }
 
 impl Parser<'_> {
@@ -87,23 +108,30 @@ impl Parser<'_> {
 				Some(_) => code.push(self.parse_stmt()?),
 				None => Err("a statement or `end`")?,
 			}
-		};
+		}
 		self.next();
 		
-		Ok(Procedure { name: proc_name, params, code })
+		Ok(Procedure {
+			name: proc_name,
+			params,
+			code: ProcDef::User(code),
+		})
 	}
 }
 
 
 use crate::interpret::StackFrame;
-//use std::collections::HashMap;
 
 impl Procedure {
 	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> Vec<Value> {
 		// verify number of arguments and their types
-		assert_eq!(args.len(), self.params.len());
+		assert_eq!(args.len(), self.params.len(),
+			"wrong number of parameters before calling proc {}", self.name
+		);
 		for (arg, param) in args.iter().zip(&self.params) {
-			assert_eq!(arg.get_type(), param.typ);
+			assert_eq!(arg.get_type(), param.typ,
+				"value with wrong type passed before calling proc {}", self.name
+			);
 		}
 		
 		// make stack frame with parameter names bound to argument values
@@ -113,24 +141,37 @@ impl Procedure {
 			.collect()
 		);
 		
-		// execute actual code
-		if dir == Dir::Fore {
-			for stmt in &self.code {
-				stmt.eval(&mut vars, m);
+		// execute the actual code
+		match (dir, &self.code) {
+			(Dir::Fore, ProcDef::User(code)) => {
+				for stmt in code {
+					stmt.eval(&mut vars, m);
+				}
 			}
-		} else {
-			for stmt in &self.code {
-				stmt.clone().invert().eval(&mut vars, m);
+			(Dir::Back, ProcDef::User(code)) => {
+				for stmt in code {
+					stmt.clone().invert().eval(&mut vars, m);
+				}
 			}
+			(Dir::Fore, ProcDef::Internal { fore, .. }) => {
+				fore(vars.values());
+			}
+			(Dir::Back, ProcDef::Internal { back, .. }) => {
+				back(vars.values());
+			}
+			_ => todo!()
 		}
 		
-		// TODO uhhhhh update args with the new values?
-		drop(vars);
+		let args = vars.into_inner();
 		
 		// verify number of arguments and their types again
-		assert_eq!(args.len(), self.params.len());
+		assert_eq!(args.len(), self.params.len(),
+			"wrong number of parameters after calling proc {}", self.name
+		);
 		for (arg, param) in args.iter().zip(&self.params) {
-			assert_eq!(arg.get_type(), param.typ);
+			assert_eq!(arg.get_type(), param.typ,
+				"value with wrong type received after calling proc {}", self.name
+			);
 		}
 		
 		args
