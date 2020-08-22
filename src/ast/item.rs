@@ -1,5 +1,4 @@
 use super::*;
-use crate::interpret::InternProc;
 
 #[derive(Clone)]
 pub enum Item {
@@ -9,8 +8,6 @@ pub enum Item {
 	Proc(Procedure),
 	Fn(Function),
 	//Type(Type),
-	
-	InternProc(&'static str, InternProc, InternProc),
 }
 
 impl Item {
@@ -19,7 +16,6 @@ impl Item {
 			Item::Mod(m)  => &m.name,
 			Item::Proc(p) => &p.name,
 			Item::Fn(f)   => &f.name,
-			Item::InternProc(name, _, _) => name,
 		}
 	}
 }
@@ -54,8 +50,6 @@ impl fmt::Debug for Item {
 			Item::Fn(f)   => f.fmt(fmt),
 			Item::Proc(p) => p.fmt(fmt),
 			Item::Mod(m)  => m.fmt(fmt),
-			Item::InternProc(name, _, _) =>
-				write!(fmt, "<internal proc: {}>", name),
 		}
 	}
 }

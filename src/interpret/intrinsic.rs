@@ -2,9 +2,6 @@ use super::{EvalResult, EvalError, Value};
 use crate::ast::Type;
 use std::io::prelude::*;
 
-pub type InternProc = fn(&mut [Value]) -> EvalResult<()>;
-pub type InternFn = fn(&[Value]) -> EvalResult<Value>;
-
 pub fn show(args: &mut [Value]) -> EvalResult<()> {
 	assert!(args.len() == 1);
 	

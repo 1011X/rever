@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::interpret::EvalResult;
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Dir { Fore, Back }
 
@@ -16,8 +18,8 @@ pub enum ProcDef {
 	User(Vec<Stmt>),
 	/// Pair of irreversible functions defining an internal procedure.
 	Internal {
-		fore: fn(&mut [Value]),
-		back: fn(&mut [Value]),
+		fore: fn(&mut [Value]) -> EvalResult<()>,
+		back: fn(&mut [Value]) -> EvalResult<()>,
 	},
 	External,
 }
@@ -162,6 +164,7 @@ impl Procedure {
 			_ => todo!()
 		}
 		
+		//println!("{:#?}", vars);
 		let args = vars.into_inner();
 		
 		// verify number of arguments and their types again

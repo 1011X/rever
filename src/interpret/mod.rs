@@ -1,9 +1,8 @@
 //use std::io::prelude::*;
 
-use crate::ast::{self, Item, Module, Type};
+use crate::ast::{self, Item, Module, Type, Procedure, Param, ProcDef};
 
 pub use self::value::Value;
-pub use self::intrinsic::{InternProc, InternFn};
 pub use self::stack::{Stack, StackFrame};
 
 mod io;
@@ -33,7 +32,18 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 	let mut root = Module::new("root".into(), items);
 		
 	root.items.push(
-		Item::InternProc("show", intrinsic::show, intrinsic::unshow)
+		Item::Proc(Procedure {
+			name: "show".to_string(),
+			params: vec![Param {
+				name: "string".to_string(),
+				mutable: false,
+				typ: Type::String,
+			}],
+			code: ProcDef::Internal {
+				fore: intrinsic::show,
+				back: intrinsic::unshow
+			},
+		})
 	);
 	
 	let main = root.items.iter()

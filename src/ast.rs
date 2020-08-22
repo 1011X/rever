@@ -21,7 +21,7 @@ pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::{Deref, LValue};
 pub use self::module::Module;
-pub use self::procedure::{Param, Procedure};
+pub use self::procedure::{Param, Procedure, ProcDef};
 pub use self::statement::Stmt;
 pub use self::types::Type;
 

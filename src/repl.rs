@@ -2,7 +2,7 @@ use std::io::{self, prelude::*};
 use logos::Logos;
 
 use crate::token::Token;
-use crate::ast::{self, Expr, Item, Module, Stmt};
+use crate::ast::{self, LValue, Expr, Item, Module, Stmt};
 use crate::interpret::{Eval, EvalResult, Stack, StackFrame, Value};
 
 pub fn init() -> io::Result<()> {
@@ -56,7 +56,7 @@ pub fn init() -> io::Result<()> {
 
 #[derive(Debug, Clone)]
 pub enum ReplLine {
-	Show(String),
+	Show(LValue),
 	//Expr(Expr),
 	
 	Var(String, Expr),
@@ -117,8 +117,8 @@ impl ast::Parser<'_> {
 impl ReplLine {
 	fn eval(self, t: &mut StackFrame, m: &mut Module) -> EvalResult<Value> {
 		match self {
-			ReplLine::Show(var) => {
-				println!(": {}", t.get(&var)?);
+			ReplLine::Show(lval) => {
+				println!(": {}", t.get(&lval)?);
 			}
 			
 			ReplLine::Var(name, expr) => {

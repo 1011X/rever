@@ -57,8 +57,8 @@ proc main
 		fi
 		pc += 1
 	loop
-	do print: ptr
-	do print: mem
+	~do print: ptr
+	~do print: mem
 	drop pc := prog.len
 	drop ptr
 	drop mem

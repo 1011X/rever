@@ -359,45 +359,48 @@ impl Stmt {
 			
 			Stmt::Xor(lval, expr) => {
 				let expr = expr.eval(t)?;
-				match (lval.get_mut_ref(t)?, expr) {
-					(Value::Int(ref mut l), Value::Int(r)) =>
-						*l ^= r,
+				match (t.get_mut(&lval)?, &expr) {
+					(Value::Int(l), Value::Int(r)) =>
+						*l ^= *r,
 					_ => panic!("tried to do something illegal")
 				}
 			}
 			
 			Stmt::Add(lval, expr) => {
 				let expr = expr.eval(t)?;
-				match (lval.get_mut_ref(t)?, expr) {
+				match (t.get_mut(&lval)?, &expr) {
 					(Value::Int(ref mut l), Value::Int(r)) =>
-						*l = l.wrapping_add(r),
-					_ => panic!("tried to do something illegal")
+						*l = l.wrapping_add(*r),
+					(l, r) => panic!(
+						"tried to increment a {:?} with a {:?}",
+						l, r
+					)
 				}
 			}
 			
 			Stmt::Sub(lval, expr) => {
 				let expr = expr.eval(t)?;
-				match (lval.get_mut_ref(t)?, expr) {
-					(Value::Int(ref mut l), Value::Int(r)) =>
-						*l = l.wrapping_sub(r),
+				match (t.get_mut(&lval)?, &expr) {
+					(Value::Int(l), Value::Int(r)) =>
+						*l = l.wrapping_sub(*r),
 					_ => panic!("tried to do something illegal")
 				}
 			}
 			
 			Stmt::RotLeft(lval, expr) => {
 				let expr = expr.eval(t)?;
-				match (lval.get_mut_ref(t)?, expr) {
-					(Value::Int(ref mut l), Value::Int(r)) =>
-						*l = l.rotate_left(r as u32),
+				match (t.get_mut(&lval)?, &expr) {
+					(Value::Int(l), Value::Int(r)) =>
+						*l = l.rotate_left(*r as u32),
 					_ => panic!("tried to do something illegal")
 				}
 			}
 			
 			Stmt::RotRight(lval, expr) => {
 				let expr = expr.eval(t)?;
-				match (lval.get_mut_ref(t)?, expr) {
-					(Value::Int(ref mut l), Value::Int(r)) =>
-						*l = l.rotate_right(r as u32),
+				match (t.get_mut(&lval)?, &expr) {
+					(Value::Int(l), Value::Int(r)) =>
+						*l = l.rotate_right(*r as u32),
 					_ => panic!("tried to do something illegal")
 				}
 			}
@@ -425,7 +428,6 @@ impl Stmt {
 				*/
 			}
 			
-			// TODO find a way to call procedures.
 			/* Clearly we need more info here. Eventually we'll need to store
 			the "path" of the current module with the procedure, but for now
 			just having the items of the current module is good enough. So find
@@ -442,12 +444,6 @@ impl Stmt {
 							pr.call(vals, m);
 							break;
 						}
-						
-						Item::InternProc(name, pr, _) if name == callee_name => {
-							pr(&mut vals)?;
-							break;
-						}
-						
 						_ => {}
 					}
 				}
@@ -464,13 +460,6 @@ impl Stmt {
 							pr.uncall(vals, m);
 							break;
 						}
-						
-						Item::InternProc(name, _, pr)
-						if name == callee_name => {
-							pr(&mut vals)?;
-							break;
-						}
-						
 						_ => {}
 					}
 				}

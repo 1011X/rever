@@ -60,20 +60,9 @@ impl Parser<'_> {
 	}
 }
 
-impl LValue {
-	pub fn get_ref<'var>(&self, t: &'var StackFrame) -> EvalResult<&'var Value> {
-		t.get(&self.id)
-	}
-	
-	pub fn get_mut_ref<'var>(&self, t: &'var mut StackFrame) -> EvalResult<&'var mut Value> {
-		t.get_mut(&self.id)
-	}
-}
-
-
 impl Eval for LValue {
 	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
-		let mut var = t.get(&self.id)?.clone();
+		let mut var = t.get(self)?.clone();
 		
 		for op in &self.ops {
 			var = match op {
@@ -88,7 +77,8 @@ impl Eval for LValue {
 				}
 				Deref::Field(field) => match (var, field.as_str()) {
 					(Value::String(s), "len") => (s.len() as i64).into(),
-					_ => todo!()
+					(Value::Array(arr), "len") => Value::Uint(arr.len() as u64),
+					(l, r) => todo!("{:?} {:?}", l, r)
 				}
 				Deref::Direct => todo!()
 			};
