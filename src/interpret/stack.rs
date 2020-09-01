@@ -78,16 +78,38 @@ impl StackFrame {
 		let mut value = self.values[pos].clone();
 		
 		for deref in &deref_path.ops {
-			match (value, deref) {
+			// TODO move all this into Value.
+			value = match (&value, deref) {
 				// TODO copy (array, index) case from get_mut
-				(Value::Array(arr), Deref::Field(field)) if field == "len" => {
-					value = Value::Uint(arr.len() as u64);
-				}
-				(Value::String(s), Deref::Field(field)) if field == "len" => {
-					value = Value::Uint(s.len() as u64);
-				}
-				(l, r) => todo!("{:?} {:?}", l, r)
-			}
+				(Value::Array(arr), Deref::Field(field)) if field == "len" =>
+					Value::Int(arr.len() as i64),
+				
+				(Value::Array(a), Deref::Index(expr)) =>
+					match expr.eval(self)? {
+						Value::Int(i) =>
+							a.get(i as usize).unwrap().clone(),
+						
+						value => todo!("{:?}.({})", a, value),
+					}
+				
+				(Value::String(s), Deref::Field(field)) if field == "len" =>
+					Value::Int(s.len() as i64),
+				
+				(Value::String(s), Deref::Index(expr)) =>
+					match expr.eval(self)? {
+						Value::Int(i) => {
+							let c = s.chars().nth(i as usize);
+							match c {
+								Some(c) => c.into(),
+								None => panic!("XX str: {:?}, i: {}, len: {}", s, i, s.len()),
+							}
+						}
+						
+						value => todo!("{}.({})", s, value)
+					}
+				
+				(l, r) => todo!("{} {:?}", l, r)
+			};
 		}
 		
 		Ok(value.clone())
@@ -106,6 +128,9 @@ impl StackFrame {
 				(Value::Array(array), Deref::Index(expr)) =>
 					match expr.eval(&clone)? {
 						Value::Uint(idx) => {
+							value = &mut array[idx as usize];
+						}
+						Value::Int(idx) => {
 							value = &mut array[idx as usize];
 						}
 						value => return Err(EvalError::TypeMismatch {

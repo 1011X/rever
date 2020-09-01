@@ -323,7 +323,10 @@ impl Parser<'_> {
 			}
 			
 			// TODO: handle newline here for empty statement
-			_ => Err("a valid statement")?,
+			token => {
+				eprintln!("Got {:?}: {}", token, self.slice());
+				Err("a valid statement")?
+			}
 		};
 				
 		// mandatory newline after statement
@@ -338,7 +341,7 @@ impl Parser<'_> {
 }
 
 impl Stmt {
-	pub fn eval(&self, t: &mut StackFrame, m: &Module) -> EvalResult<Value> {
+	pub fn eval(&self, t: &mut StackFrame, m: &Module) -> EvalResult<()> {
 		match self {
 			Stmt::Skip => {}
 			
@@ -347,7 +350,10 @@ impl Stmt {
 				t.push(id.clone(), init);
 				
 				for stmt in block {
-					stmt.eval(t, m)?;
+					if let Err(e) = stmt.eval(t, m) {
+						eprintln!("{:?}", stmt);
+						panic!("var {}: {:?}", id, e);
+					}
 				}
 				
 				let (final_id, final_val) = t.pop().unwrap();
@@ -368,7 +374,7 @@ impl Stmt {
 			
 			Stmt::Add(lval, expr) => {
 				let expr = expr.eval(t)?;
-				match (t.get_mut(&lval)?, &expr) {
+				match (t.get_mut(&lval).unwrap(), &expr) {
 					(Value::Int(ref mut l), Value::Int(r)) =>
 						*l = l.wrapping_add(*r),
 					(l, r) => panic!(
@@ -441,7 +447,7 @@ impl Stmt {
 				for item in &m.items {
 					match item {
 						Item::Proc(pr) if pr.name == *callee_name => {
-							pr.call(vals, m);
+							pr.call(vals, m)?;
 							break;
 						}
 						_ => {}
@@ -457,7 +463,7 @@ impl Stmt {
 					match item {
 						Item::Proc(pr)
 						if pr.name == *callee_name => {
-							pr.uncall(vals, m);
+							pr.uncall(vals, m)?;
 							break;
 						}
 						_ => {}
@@ -469,13 +475,19 @@ impl Stmt {
 				match test.eval(t)? {
 					Value::Bool(true) => {
 						for stmt in block {
-							stmt.eval(t, m)?;
+							if let Err(e) = stmt.eval(t, m) {
+								eprintln!("{:?}", stmt);
+								panic!("{:?}", e);
+							}
 						}
 						assert_eq!(assert.eval(t)?, Value::Bool(true));
 					}
 					Value::Bool(false) => {
 						for stmt in else_block {
-							stmt.eval(t, m)?;
+							if let Err(e) = stmt.eval(t, m) {
+								eprintln!("{:?}", stmt);
+								panic!("{:?}", e);
+							}
 						}
 						assert_eq!(assert.eval(t)?, Value::Bool(false));
 					}
@@ -494,7 +506,10 @@ impl Stmt {
 						Value::Bool(true) => break,
 						Value::Bool(false) =>
 							for stmt in loop_block {
-								stmt.eval(t, m)?;
+								if let Err(e) = stmt.eval(t, m) {
+									eprintln!("{:?}", stmt);
+									panic!("{:?}", e);
+								}
 							}
 						_ => panic!("tried to do something illegal")
 					}
@@ -504,6 +519,6 @@ impl Stmt {
 			}
 		}
 		
-		Ok(Value::Nil)
+		Ok(())
 	}
 }

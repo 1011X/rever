@@ -24,6 +24,7 @@ pub enum EvalError {
 		got: Type,
 	},
 	UnknownIdent(String),
+	IrreversibleState,
 }
 
 
@@ -52,12 +53,8 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 	// TODO set up stack
 	
 	// run main procedure, if any
-	if let Some(main) = main {
-		if let Item::Proc(pr) = main {
-			pr.call(Vec::new(), &root);
-		} else {
-			eprintln!("no `proc main` found");
-		}
+	if let Some(Item::Proc(pr)) = main {
+		pr.call(Vec::new(), &root).unwrap();
 	} else {
 		eprintln!("No main procedure found.");
 	}

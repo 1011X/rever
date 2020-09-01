@@ -37,7 +37,6 @@ pub enum Expr {
 	// precedence 1
 	Lit(Literal),
 	LVal(LValue),
-	//Term(Term),
 	Cast(Box<Expr>, Type),
 	
 	// precedence 3
@@ -320,9 +319,10 @@ impl Eval for Expr {
 				(Type::Int, Value::Uint(u))  => Ok(Value::Int(u as i64)),
 				(Type::UInt, Value::Bool(b)) => Ok(Value::Uint(b as u64)),
 				(Type::UInt, Value::Int(i))  => Ok(Value::Uint(i as u64)),
+				(Type::Char, Value::Int(i)) => Ok(Value::Char(i as u8 as char)),
 				(Type::Char, Value::Uint(i)) => Ok(Value::Char(i as u8 as char)),
 				(Type::String, Value::Char(c)) => Ok(Value::String(c.to_string())),
-				_ => unimplemented!()
+				(typ, value) => panic!("tried casting {} to {:?}", value, typ),
 			}
 			
 			Expr::Not(e) => match e.eval(t)? {

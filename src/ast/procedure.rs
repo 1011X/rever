@@ -27,11 +27,11 @@ pub enum ProcDef {
 use std::fmt;
 impl fmt::Debug for ProcDef {
 	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-		fmt.write_str(match self {
-			ProcDef::User(_) => "<user-defined>",
-			ProcDef::Internal { .. } => "<internal proc>",
-			ProcDef::External => "<external proc>",
-		})
+		match self {
+			ProcDef::Internal { .. } => fmt.write_str("<internal proc>"),
+			ProcDef::External => fmt.write_str("<external proc>"),
+			ProcDef::User(stmts) => stmts.fmt(fmt),
+		}
 	}
 }
 
@@ -102,6 +102,8 @@ impl Parser<'_> {
 		self.expect(Token::Newline)
 			.ok_or("newline after parameter list")?;
 		
+		self.skip_newlines();
+		
 		// code block section
 		let mut code = Vec::new();
 		loop {
@@ -125,7 +127,7 @@ impl Parser<'_> {
 use crate::interpret::StackFrame;
 
 impl Procedure {
-	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> Vec<Value> {
+	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> EvalResult<Vec<Value>> {
 		// verify number of arguments and their types
 		assert_eq!(args.len(), self.params.len(),
 			"wrong number of parameters before calling proc {}", self.name
@@ -147,25 +149,24 @@ impl Procedure {
 		match (dir, &self.code) {
 			(Dir::Fore, ProcDef::User(code)) => {
 				for stmt in code {
-					stmt.eval(&mut vars, m);
+					stmt.eval(&mut vars, m)?;
 				}
 			}
 			(Dir::Back, ProcDef::User(code)) => {
 				for stmt in code {
-					stmt.clone().invert().eval(&mut vars, m);
+					stmt.clone().invert().eval(&mut vars, m)?;
 				}
 			}
 			(Dir::Fore, ProcDef::Internal { fore, .. }) => {
-				fore(vars.values());
+				fore(vars.values())?;
 			}
 			(Dir::Back, ProcDef::Internal { back, .. }) => {
-				back(vars.values());
+				back(vars.values())?;
 			}
 			_ => todo!()
 		}
 		
-		//println!("{:#?}", vars);
-		let args = vars.into_inner();
+		let args = dbg![vars.into_inner()];
 		
 		// verify number of arguments and their types again
 		assert_eq!(args.len(), self.params.len(),
@@ -177,14 +178,14 @@ impl Procedure {
 			);
 		}
 		
-		args
+		Ok(args)
 	}
 	
-	pub fn call(&self, args: Vec<Value>, m: &Module) -> Vec<Value> {
+	pub fn call(&self, args: Vec<Value>, m: &Module) -> EvalResult<Vec<Value>> {
 		self.call_base(Dir::Fore, args, m)
 	}
 	
-	pub fn uncall(&self, args: Vec<Value>, m: &Module) -> Vec<Value> {
+	pub fn uncall(&self, args: Vec<Value>, m: &Module) -> EvalResult<Vec<Value>> {
 		self.call_base(Dir::Back, args, m)
 	}
 	/*

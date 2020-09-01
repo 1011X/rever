@@ -62,9 +62,9 @@ impl Parser<'_> {
 
 impl Eval for LValue {
 	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
-		let mut var = t.get(self)?.clone();
+		let var = t.get(self)?.clone();
 		
-		for op in &self.ops {
+		/*for op in &self.ops {
 			var = match op {
 				Deref::Index(expr) => match (var, expr.eval(t)?) {
 					(Value::String(s), Value::Int(i)) =>
@@ -73,16 +73,20 @@ impl Eval for LValue {
 					(Value::Array(a), Value::Int(i)) =>
 						a.get(i as usize).unwrap().clone(),
 					
-					(_, index) => todo!("{:?}.({:?})", self.id, index)
+					(_, index) => todo!("{}.({})", self.id, index)
 				}
 				Deref::Field(field) => match (var, field.as_str()) {
 					(Value::String(s), "len") => (s.len() as i64).into(),
 					(Value::Array(arr), "len") => Value::Uint(arr.len() as u64),
-					(l, r) => todo!("{:?} {:?}", l, r)
+					(l, r) => {
+						eprintln!("ops for {}: {:?}", &self.id, &self.ops);
+						eprintln!("{:#?}", t);
+						todo!("{}.{}", l, r);
+					}
 				}
 				Deref::Direct => todo!()
 			};
-		}
+		}*/
 		
 		Ok(var)
 	}

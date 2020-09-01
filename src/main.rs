@@ -76,6 +76,7 @@ fn main() -> io::Result<()> {
 				}
 			};
 			
+//			println!("{:#?}", ast);
 			interpret::interpret_file(ast.into());
 		}
 	}

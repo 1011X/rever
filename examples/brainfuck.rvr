@@ -1,5 +1,5 @@
 proc main
-	var prog := "+++++++++++++++++++++++++++++++++,"
+	var prog := "++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++.+."
 	var mem := [0, 0, 0, 0, 0, 0, 0, 0]
 	var ptr := 0
 	var pc := 0
@@ -13,9 +13,9 @@ proc main
 			mem.(ptr) += 1
 		else if prog.(pc) = '-'
 			mem.(ptr) -= 1
-		else if prog.(pc) = '.'
-			do get_char: mem.(ptr)
 		else if prog.(pc) = ','
+			do get_char: mem.(ptr)
+		else if prog.(pc) = '.'
 			do show: mem.(ptr) as char as str
 		else if prog.(pc) = '['
 			if mem.(ptr) = 0
@@ -47,8 +47,10 @@ proc main
 				loop
 				drop count
 			fi prog.(pc) = '['
-		fi
-		fi
+		~ TODO double-check post-conditions for '[' and ']', since pc gets modified in
+		~ those blocks so pre-conditions will not necessarily be true anymore.
+		fi ~ TODO
+		fi ~ TODO
 		fi
 		fi
 		fi
