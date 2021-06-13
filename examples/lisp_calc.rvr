@@ -1,0 +1,55 @@
+proc expression(curr: int, input: [int], ret: int)
+	~ (operator expression expression)
+	if input.(curr) = '('
+		curr += 1
+		var op := input.(curr)
+		curr += 1
+		var a := 0
+		var b := 0
+		do expression(curr, input, a)
+		do expression(curr, input, b)
+		
+		if op = 43
+			ret += a + b
+		else if op = 45
+			ret += a - b
+		else if op = 42
+			ret += a * b
+		else if op = 47
+			ret += a / b
+		else
+			error("unrecognized op")
+		fi
+		fi
+		fi
+		fi
+			
+		undo expression(curr, input, b)
+		undo expression(curr, input, a)
+		drop b := 0
+		drop a := 0
+		curr -= 1
+		drop op := input.(curr)
+		
+		curr += 3
+	~ number
+	else if input.(curr) >= 48 && input.(curr) < 58
+		ret += input.(curr) - 48
+	~ error
+	else
+		error("neither a group nor a number")
+	fi
+	fi input.(curr) = ')'
+	curr += 1
+end
+
+proc main
+	var curr = 0
+	var input[] = {open, divide, n3, n3, close}
+	var result = 0
+	do expression(curr, input, result)
+	show(result)
+	drop result
+	drop input
+	drop curr = 5
+end

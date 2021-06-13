@@ -1,3 +1,5 @@
+use std::error;
+
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -16,22 +18,36 @@ pub enum Type {
 	//Composite(Vec<Type>),
 }
 
+#[derive(Debug, Clone)]
+pub struct TypeErr;
+
+impl fmt::Display for TypeErr {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str("type error")
+	}
+}
+
+impl error::Error for TypeErr {
+}
+
 impl Parser<'_> {
 	pub fn parse_type(&mut self) -> ParseResult<Type> {
-		Ok(match self.peek().ok_or("a type")? {
-			Token::Ident => {
-				let name = self.expect_ident().unwrap();
-				match name.as_str() {
-					"_"    => Type::Infer,
-					"void" => Type::Never,
-					"unit" => Type::Unit,
-					"bool" => Type::Bool,
-					"uint" => Type::UInt,
-					"int"  => Type::Int,
-					"char" => Type::Char,
-					"str"  => Type::String,
-					id     => todo!("custom types not yet supported"),
-				}
+		let typ = match self.peek().ok_or("a type")? {
+			Token::Underscore => Type::Infer,
+			
+			Token::ConIdent => {
+				let t = match self.slice() {
+					"Void" => Type::Never,
+					"Unit" => Type::Unit,
+					"Bool" => Type::Bool,
+					"Num"  => Type::UInt,
+					"Char" => Type::Char,
+					"Str"  => Type::String,
+					id     => todo!("custom types not yet supported: {:?}", id)
+				};
+				self.next();
+				
+				t
 			}
 			
 			Token::Fn => {
@@ -97,7 +113,9 @@ impl Parser<'_> {
 			}
 			
 			_ => Err("a valid type")?
-		})
+		};
+		
+		Ok(typ)
 	}
 }
 

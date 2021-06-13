@@ -20,8 +20,11 @@ impl Parser<'_> {
 		self.expect(Token::Fn).ok_or("`fn`")?;
 		
 		// function name
-		let fn_name = self.expect_ident()
-			.ok_or("function name")?;
+		let fn_name = match self.peek() {
+			Some(Token::VarIdent) => self.slice().to_string(),
+			_ => Err("function name")?,
+		};
+		self.next();
 		
 		// parse parameter list
 		let mut params = Vec::new();
@@ -39,8 +42,11 @@ impl Parser<'_> {
 				// parse as parameter
 				Some(_) => {
 					// get parameter name
-					let param_name = self.expect_ident()
-						.ok_or("a parameter name")?;
+					let param_name = match self.peek() {
+						Some(Token::VarIdent) => self.slice().to_string(),
+						_ => Err("a parameter name")?,
+					};
+					self.next();
 					
 					// get optional type
 					let typ = match self.expect(Token::Colon) {

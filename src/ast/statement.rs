@@ -77,27 +77,30 @@ impl Parser<'_> {
 			kw @ Token::Do | kw @ Token::Undo => {
 				self.next();
 				
-				let name = self.expect_ident()
-					.ok_or(match kw {
+				let name = match self.peek() {
+					Some(Token::VarIdent) => self.slice().to_string(),
+					_ => Err(match kw {
 						Token::Do => "procedure name after `do`",
 						Token::Undo => "procedure name after `undo`",
 						_ => unreachable!()
-					})?;
+					})?
+				};
+				self.next();
 				
 				// TODO check for parentheses. if so, go into multiline mode
 				let mut args = Vec::new();
 				
-				if self.expect(Token::Newline).is_some() {
-					// do nothing
-				} else if self.expect(Token::Colon).is_some() {
-					// TODO check for newline, in case expression is missing
+				if self.peek() == Some(&Token::Newline) {
+					// do nothing on final newline
+				} else if self.peek() == Some(&Token::Colon) {
+					self.next();
+					// TODO check for newline in case expression was forgotten
 					let expr = self.parse_expr()?;
 					args.push(expr);
 					
 					loop {
 						match self.peek() {
-							Some(Token::Newline)
-							| None =>
+							Some(Token::Newline) | None =>
 								break,
 							Some(Token::Comma) => {
 								self.next();
@@ -108,11 +111,12 @@ impl Parser<'_> {
 							_ => Err("`,` or newline")?,
 						}
 					}
-				} else if self.expect(Token::LParen).is_some() {
+				} else if self.peek() == Some(&Token::LParen) {
+					self.next();
 					unimplemented!();
 				} else {
-					Err("`:`, or newline")?;
-				};
+					return Err("`:`, or newline")?;
+				}
 				
 				match kw {
 					Token::Do   => Stmt::Do(name, args),
@@ -172,8 +176,11 @@ impl Parser<'_> {
 				self.next();
 				
 				// get name
-				let name = self.expect_ident()
-					.ok_or("name in variable declaration")?;
+				let name = match self.peek() {
+					Some(Token::VarIdent) => self.slice().to_string(),
+					_ => Err("name in variable declaration")?,
+				};
+				self.next();
 				
 				// get optional type
 				let typ = match self.expect(Token::Colon) {
@@ -206,10 +213,13 @@ impl Parser<'_> {
 				self.next();
 				
 				// assert name
-				let drop_name = self.expect_ident()
-					.ok_or("name after `drop`")?;
+				let drop_name = match self.peek() {
+					Some(Token::VarIdent) => self.slice().to_string(),
+					_ => Err("name after `drop`")?,
+				};
+				self.next();
 				
-				if drop_name != name {
+				if name != drop_name {
 					Err("same variable name as before")?;
 				}
 				
@@ -281,7 +291,7 @@ impl Parser<'_> {
 				Stmt::If(cond, main_block, else_block, assert)
 			}
 			
-			Token::Ident => {
+			Token::VarIdent => {
 				let lval = self.parse_lval()?;
 				
 				match self.peek().ok_or("modifying operator")? {
@@ -375,7 +385,7 @@ impl Stmt {
 			Stmt::Add(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval).unwrap(), &expr) {
-					(Value::Int(ref mut l), Value::Int(r)) =>
+					(Value::Uint(ref mut l), Value::Uint(r)) =>
 						*l = l.wrapping_add(*r),
 					(l, r) => panic!(
 						"tried to increment a {:?} with a {:?}",

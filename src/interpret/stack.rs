@@ -86,7 +86,7 @@ impl StackFrame {
 				
 				(Value::Array(a), Deref::Index(expr)) =>
 					match expr.eval(self)? {
-						Value::Int(i) =>
+						Value::Uint(i) =>
 							a.get(i as usize).unwrap().clone(),
 						
 						value => todo!("{:?}.({})", a, value),
@@ -97,7 +97,7 @@ impl StackFrame {
 				
 				(Value::String(s), Deref::Index(expr)) =>
 					match expr.eval(self)? {
-						Value::Int(i) => {
+						Value::Uint(i) => {
 							let c = s.chars().nth(i as usize);
 							match c {
 								Some(c) => c.into(),
@@ -105,7 +105,7 @@ impl StackFrame {
 							}
 						}
 						
-						value => todo!("{}.({})", s, value)
+						value => todo!("{:?}.({:?})", s, value)
 					}
 				
 				(l, r) => todo!("{} {:?}", l, r)

@@ -1,3 +1,7 @@
+use std::fmt;
+use std::error;
+use std::ops::Range;
+
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -11,52 +15,100 @@ pub enum Deref {
 pub struct LValue {
 	pub id: String,
 	pub ops: Vec<Deref>,
+	pub span: Range<usize>,
 }
 
-// TODO ponder: is `var name` and `drop name` within statements part of a bigger pattern?
+#[derive(Debug, Clone)]
+pub enum LValErr {
+	Name,
+	EndParen,
+	//InvalidDeref,
+	
+	Index(Box<ExprErr>),
+}
+
+impl fmt::Display for LValErr {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			Self::Name => f.write_str("variable name in left-value expression"),
+			Self::EndParen => f.write_str("`)` after index expression"),
+			//Self::InvalidDeref => f.write_str("`*`, `(`, or field name"),
+			
+			Self::Index(_) => f.write_str("invalid indexing expression"),
+		}
+	}
+}
+
+impl error::Error for LValErr {
+	fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+		if let Self::Index(err) = self {
+			Some(err)
+		} else {
+			None
+		}
+	}
+}
+
 impl Parser<'_> {
 	pub fn parse_lval(&mut self) -> ParseResult<LValue> {
-	    let mut ops = Vec::new();
-	    
-	    // get lval name
-	    let name = self.expect_ident()
-	    	.ok_or("variable name in left-value expression")?;
-    	
-	    loop {
-	    	match self.peek() {
-	    		// '!'
-	    		Some(Token::Bang) => {
-	    			self.next();
-	    			ops.push(Deref::Direct);
-    			}
-    			// '.'
-    			Some(Token::Period) => {
-    				self.next();
-    				
-    				match self.peek() {
-    					Some(Token::LParen) => {
-    						self.next();
-    						
-							let expr = self.parse_expr()?;
-							
-							self.expect(Token::RParen)
-								.ok_or("`)` after index expression")?;
-							
-							ops.push(Deref::Index(expr));
-    					}
-    					Some(Token::Ident) => {
-    						let name = self.expect_ident().unwrap();
-	    					ops.push(Deref::Field(name));
-    					}
-    					_ => Err("field name or `(`")?,
-    				}
-    			}
-    			
-    			_ => break,
+		
+		// get lval name
+		let name = match self.peek() {
+			Some(Token::VarIdent) => self.slice().to_string(),
+			_ => Err("variable name in left-value expression")?,
+			//_ => return Err(LValErr::Name),
+		};
+		let name_span = self.span();
+		self.next();
+		
+		let mut end_span = name_span.clone();
+		
+		let mut ops = Vec::new();
+		while self.peek() == Some(&Token::Period) {
+			self.next();
+			
+			match self.peek() {
+				// .*
+				Some(Token::Star) => {
+					self.next();
+					end_span = self.span();
+					ops.push(Deref::Direct);
+				}
+				
+				// .(expr)
+				Some(Token::LParen) => {
+					self.next();
+					
+					let expr = self.parse_expr()?;
+						//.map_err(|e| LValErr::Index(Box::new(e)))?;
+					
+					self.expect(Token::RParen)
+						.ok_or("`)` after index expression")?;
+						//.ok_or(LValErr::EndParen)?;
+					
+					end_span = self.span();
+					
+					ops.push(Deref::Index(expr));
+				}
+				
+				// .field
+				Some(Token::VarIdent) => {
+					let name = self.slice().to_string();
+					end_span = self.span();
+					self.next();
+					
+					ops.push(Deref::Field(name));
+				}
+				
+				_ => return Err("`*`, `(`, or field name")?,
 			}
 		}
-        
-        Ok(LValue { id: name, ops })
+		
+		Ok(LValue {
+			id: name,
+			ops,
+			span: name_span.start .. end_span.end,
+		})
 	}
 }
 

@@ -59,8 +59,8 @@ pub enum ReplLine {
 	Show(LValue),
 	//Expr(Expr),
 	
-	Var(String, Expr),
-	Drop(String),
+	//Var(String, Expr),
+	//Drop(String),
 	
 	Item(Item),
 	Stmt(Stmt),
@@ -70,35 +70,16 @@ impl ast::Parser<'_> {
 	pub fn parse_repl_line(&mut self) -> ast::ParseResult<ReplLine> {
 		Ok(match self.peek() {
 			None => todo!(),
-			Some(Token::Var) => {
-				self.next();
-				
-				let name = self.expect_ident()
-					.ok_or("variable name after `var`")?;
-				
-				self.expect(Token::Assign)
-					.ok_or("`:=` after variable name")?;
-				
-				let init = self.parse_expr()?;
-				
-				ReplLine::Var(name, init)
-			}
-			Some(Token::Drop) => {
-				self.next();
-				
-				let name = self.expect_ident()
-					.ok_or("variable name after `drop`")?;
-				
-				ReplLine::Drop(name)
-			}
 			/*
 			Some(Token::Ident) if self.slice() == "show" => {
 				self.next();
 				
-				let name = self.expect_ident()
-					.ok_or("variable name after `show`")?;
+				let name = match self.peek() {
+					Some(Token::VarIdent) => self.slice().to_string(),
+					_ => Err("variable name after `show`")?,
+				};
 				
-				ReplLine::Show(name)
+				ReplLine::Show(LValue { id: name, ops: Vec::new() })
 			}
 			*/
 			Some(Token::Fn)
@@ -120,7 +101,7 @@ impl ReplLine {
 			ReplLine::Show(lval) => {
 				println!(": {}", t.get(&lval)?);
 			}
-			
+			/*
 			ReplLine::Var(name, expr) => {
 				let val = expr.eval(t)?;
 				t.push(name, val);
@@ -129,6 +110,7 @@ impl ReplLine {
 			ReplLine::Drop(name) => {
 				t.remove(&name)?;
 			}
+			*/
 			// TODO return Err for item and stmt when not enough input.
 			ReplLine::Item(item) => {
 				m.insert(item);

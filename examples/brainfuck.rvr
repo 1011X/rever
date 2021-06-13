@@ -3,6 +3,7 @@ proc main
 	var mem := [0, 0, 0, 0, 0, 0, 0, 0]
 	var ptr := 0
 	var pc := 0
+	
 	from pc = 0
 	until pc = prog.len
 		if prog.(pc) = '>'
@@ -16,7 +17,7 @@ proc main
 		else if prog.(pc) = ','
 			do get_char: mem.(ptr)
 		else if prog.(pc) = '.'
-			do show: mem.(ptr) as char as str
+			do show: mem.(ptr) as Char as Str
 		else if prog.(pc) = '['
 			if mem.(ptr) = 0
 				var count := 0
@@ -30,7 +31,7 @@ proc main
 				until count = 0
 					pc += 1
 				loop
-				drop count
+				drop count := 0
 			fi prog.(pc) = ']'
 		else if prog.(pc) = ']'
 			if mem.(ptr) != 0
@@ -45,7 +46,7 @@ proc main
 				until count = 0
 					pc += 1
 				loop
-				drop count
+				drop count := 0
 			fi prog.(pc) = '['
 		~ TODO double-check post-conditions for '[' and ']', since pc gets modified in
 		~ those blocks so pre-conditions will not necessarily be true anymore.
@@ -62,7 +63,7 @@ proc main
 	~do print: ptr
 	~do print: mem
 	drop pc := prog.len
-	drop ptr
-	drop mem
+	drop ptr := 0
+	drop mem := [0, 0, 0, 0, 0, 0, 0, 0]
 	drop prog
 end

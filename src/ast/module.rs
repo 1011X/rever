@@ -23,8 +23,11 @@ impl Parser<'_> {
 	pub fn parse_mod(&mut self) -> ParseResult<Module> {
 		self.expect(Token::Mod).ok_or("`mod`")?;
 		
-		let name = self.expect_ident()
-			.ok_or("module name")?;
+		let name = match self.peek() {
+			Some(Token::VarIdent) => self.slice().to_string(),
+			_ => Err("module name")?,
+		};
+		self.next();
 		
 		self.expect(Token::Newline)
 			.ok_or("newline after module name")?;

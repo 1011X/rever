@@ -68,19 +68,20 @@ pub enum Token {
 	#[token("/=")] DivAssign,
 	
 	// multi-purpose
-	#[token(":")]  Colon,
-	#[token(",")]  Comma,
-	#[token(";")]  Semicolon,
+	#[token(":")] Colon,
+	#[token(",")] Comma,
+	#[token(";")] Semicolon,
 	
-	#[token("+")]  Plus,
-	#[token("-")]  Minus,
-	#[token(".")]  Period,
-	#[token("*")]  Star,
-	#[token("/")]  FSlash,
-	#[token("%")]  Percent,
-	#[token("!")]  Bang,
-	#[token("^")]  Caret,
-	#[token("#")]  Hash,
+	#[token("+")] Plus,
+	#[token("-")] Minus,
+	#[token(".")] Period,
+	#[token("*")] Star,
+	#[token("/")] FSlash,
+	#[token("%")] Percent,
+	#[token("!")] Bang,
+	#[token("^")] Caret,
+	#[token("#")] Hash,
+	#[token("_")] Underscore,
 	
 	// unused
 	#[token("..")] Range,
@@ -92,13 +93,18 @@ pub enum Token {
 	#[token("\n")] Newline,
 	
 	// identifiers
-	#[regex("[A-Za-z_][A-Za-z0-9_]*")]
-	Ident,
+	#[regex("[a-z_][A-Za-z0-9_]*")]
+	VarIdent,
+	#[regex("[A-Z][A-Za-z0-9_]*")]
+	ConIdent,
 	
 	// literals
-	//#[regex("[0-9][0-9']*")]
-	#[regex("[0-9]+")]
+	#[regex("0|[1-9][0-9']*")]
+	#[regex("0d[1-9aA']*")]
+	#[regex("0b[01']*[01]")]
+	#[regex("0x[0-9a-fA-F']*[0-9a-fA-F]")]
 	Number,
+	
 	#[regex(r#""(\\[ntr0"\\]|[^"\\])*""#)]
 	String,
 	#[regex(r"'(\\[ntr0'\\]|[^'\\])'")]

@@ -47,14 +47,18 @@ impl Parser<'_> {
 	pub fn parse_proc(&mut self) -> ParseResult<Procedure> {
 		self.expect(Token::Proc).ok_or("`proc`")?;
 		
-		let proc_name = self.expect_ident()
-			.ok_or("procedure name")?;
+		let proc_name = match self.peek() {
+			Some(Token::VarIdent) => self.slice().to_string(),
+			_ => Err("procedure name")?,
+		};
+		self.next();
 		
 		let mut params = Vec::new();
 		
 		// parse parameter list
 		// starting '('
-		if self.expect(Token::LParen).is_some() {
+		if self.peek() == Some(&Token::LParen) {
+			self.next();
 			loop {
 				// TODO add case for newline for multiline param declaration?
 				match self.peek() {
@@ -65,8 +69,10 @@ impl Parser<'_> {
 					Some(_) => {
 						let mutable = self.expect(Token::Var).is_some();
 						
-						let param_name = self.expect_ident()
-							.ok_or("parameter name in procedure declaration")?;
+						let param_name = match self.peek() {
+							Some(Token::VarIdent) => self.slice().to_string(),
+							_ => Err("parameter name in procedure declaration")?,
+						};
 						
 						self.expect(Token::Colon)
 							.ok_or("`:` after parameter name")?;

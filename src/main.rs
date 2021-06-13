@@ -15,9 +15,10 @@ TODO:
 #![allow(unused_variables)]
 #![allow(dead_code)]
 
+use logos::Logos;
+
 use std::env;
 use std::io;
-use logos::Logos;
 
 //use crate::ast::Parse;
 //use crate::interpret;
@@ -70,8 +71,18 @@ fn main() -> io::Result<()> {
 			let ast = match parser.parse_file_module() {
 				Ok(ast) => ast,
 				Err(e) => {
+					/*
 					eprintln!("Error: expected {}.", e);
 					eprintln!("Remaining source:\n{}", parser.tokens.remainder());
+					*/
+					eprintln!(
+						"rever: Parser error at line {}, column {}!",
+						parser.line(),
+						parser.column()
+					);
+					eprintln!("rever: Expected {}, got {:?}", e, parser.slice());
+					eprintln!("rever: Remaining source:\n{}", parser.remainder());
+					
 					return Ok(())
 				}
 			};

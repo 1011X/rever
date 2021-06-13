@@ -2,11 +2,16 @@
 
 use std::fmt;
 
+use logos::Span;
+
 use crate::token::{Token, TokenStream};
-use crate::interpret::{Eval, EvalError, EvalResult, StackFrame, Value};
+use crate::interpret::{
+	Eval, EvalError, EvalResult,
+	StackFrame, Value,
+};
 
 mod expression;
-mod function;
+//mod function;
 mod item;
 mod literal;
 mod lvalue;
@@ -15,17 +20,23 @@ mod procedure;
 mod statement;
 mod types;
 
-pub use self::expression::{Expr, BlockExpr, BinOp};
-pub use self::function::Function;
+pub use self::expression::{BinOp, Expr, /*BlockExpr,*/ ExprErr};
+//pub use self::function::Function;
 pub use self::item::Item;
 pub use self::literal::Literal;
-pub use self::lvalue::{Deref, LValue};
+pub use self::lvalue::{Deref, LValue, LValErr};
 pub use self::module::Module;
 pub use self::procedure::{Param, Procedure, ProcDef};
 pub use self::statement::Stmt;
-pub use self::types::Type;
+pub use self::types::{Type, TypeErr};
 
 pub type ParseResult<T> = Result<T, ParseError>;
+
+pub trait AstNode: Sized {
+	type Error: std::error::Error;
+	
+	fn parse(p: &mut Parser) -> Result<Self, Self::Error>;
+}
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
@@ -51,40 +62,69 @@ impl From<&'static str> for ParseError {
 	fn from(msg: &'static str) -> Self { ParseError::Msg(msg) }
 }
 
+
+/**
+This parser makes a deliberate decision to deviate from the usual iterator.
+ 
+This is mostly a result of wanting easier error-handling; I didn't want to keep
+storing the unexpected token in the error node, which I had to do since the
+lexer has already moved on and forgotten about it by the time I call `.next()`.
+
+Then it came to me: Why keep moving the token around when I could just... 
+leave it there? That way you still have access to `logos`'s `Lexer`
+information, including the source string.
+
+This "not consuming the token immediately" approach would likely fare well with
+token enums with payloads. Rever's tokens don't have payloads.
+*/
 #[derive(Clone)]
 pub struct Parser<'src> {
-	pub tokens: TokenStream<'src>,
-	peek: Option<Token>,
+	lexer: TokenStream<'src>,
+	curr: Option<Token>,
 	line: usize,
+	last_nl: usize,
 }
 
 impl<'src> Parser<'src> {
-	pub fn new(tokens: TokenStream<'src>) -> Self {
-		Parser { tokens, peek: None, line: 1 }
+	pub fn new(mut lexer: TokenStream<'src>) -> Self {
+		let curr = lexer.next();
+		Parser { lexer, curr, line: 1, last_nl: 0 }
 	}
 	
 	pub fn slice(&self) -> &str {
-		self.tokens.slice()
+		self.lexer.slice()
 	}
 	
-	pub fn peek(&mut self) -> Option<&Token> {
-		if self.peek.is_none() {
-			self.peek = self.tokens.next();
-		}
-		self.peek.as_ref()
+	pub fn span(&self) -> Span {
+		self.lexer.span()
+	}
+	
+	pub fn remainder(&self) -> &str {
+		self.lexer.remainder()
+	}
+	
+	pub fn peek(&self) -> Option<&Token> {
+		self.curr.as_ref()
+	}
+	
+	pub fn line(&self) -> usize {
+		self.line
+	}
+	
+	pub fn column(&self) -> usize {
+		self.span().end - self.last_nl
 	}
 	
 	pub fn next(&mut self) -> Option<Token> {
-		let token = match self.peek {
-			None => self.tokens.next(),
-			Some(_) => self.peek.take(),
-		};
+		self.curr = self.lexer.next();
 		
-		if token == Some(Token::Newline) {
+		// adjust location state
+		if self.curr == Some(Token::Newline) {
 			self.line += 1;
+			self.last_nl = self.span().end;
 		}
 		
-		token
+		self.curr.clone()
 	}
 	
 	pub fn expect(&mut self, tok: Token) -> Option<Token> {
@@ -97,12 +137,6 @@ impl<'src> Parser<'src> {
 	
 	pub fn skip_newlines(&mut self) {
 		while self.expect(Token::Newline).is_some() {}
-	}
-	
-	/// Returns the next identifier if any, and advances the iterator if found.
-	pub fn expect_ident(&mut self) -> Option<String> {
-		self.expect(Token::Ident)
-			.map(|_| self.slice().to_string())
 	}
 	
 	pub fn parse_file_module(&mut self) -> ParseResult<Vec<Item>> {
@@ -120,5 +154,9 @@ impl<'src> Parser<'src> {
 		}
 		
 		Ok(items)
+	}
+	
+	pub fn debug(&self) {
+		eprintln!("{},{}: {:?}", self.line(), self.column(), self.slice());
 	}
 }

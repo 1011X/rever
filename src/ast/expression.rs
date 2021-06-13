@@ -18,6 +18,9 @@ TODO:
 + Add precedences 2, 
 */
 
+use std::fmt;
+use std::error;
+
 use super::*;
 
 #[derive(Debug, Clone)]
@@ -46,7 +49,7 @@ pub enum Expr {
 	// binary op, precendeces 4-7
 	BinOp(Box<Expr>, BinOp, Box<Expr>),
 }
-
+/*
 #[derive(Debug, Clone)]
 pub enum BlockExpr {
 	Expr(Expr),
@@ -55,17 +58,46 @@ pub enum BlockExpr {
 	
 	Let(String, Type, Expr, Box<BlockExpr>),
 }
+*/
 
-impl Expr {
-	pub fn get_type(&self) -> Option<Type> {
+#[derive(Debug, Clone)]
+pub enum ExprErr {
+	// Inner parenthesized expression did not have terminating closing parenthesis.
+	UnclosedSubexpr,
+	
+	// Expected l-value or literal.
+	NotAtom(LValErr),
+	
+	// Malformed type expression in cast.
+	BadCast(TypeErr),
+}
+
+impl fmt::Display for ExprErr {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Expr::Cast(_, t) => Some(t.clone()),
-			_ => None // TODO
+			Self::UnclosedSubexpr =>
+				f.write_str("`)` after subexpression"),
+			
+			Self::NotAtom(_) =>
+				f.write_str("literal or l-value"),
+			Self::BadCast(_) =>
+				f.write_str("valid type expression in cast"),
+		}
+	}
+}
+
+impl error::Error for ExprErr {
+	fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+		match self {
+			Self::NotAtom(e) => Some(e),
+			Self::BadCast(e) => Some(e),
+			_ => None,
 		}
 	}
 }
 
 impl Parser<'_> {
+	/*
 	pub fn parse_block_expr(&mut self) -> ParseResult<BlockExpr> {
 		let block_expr = match self.peek() {
 			Some(Token::If) => {
@@ -98,8 +130,10 @@ impl Parser<'_> {
 			Some(Token::Let) => {
 				self.next();
 				
-				let name = self.expect_ident()
-					.ok_or("variable name for let binding")?;
+				let name = match self.peek() {
+					Some(Token::VarIdent) => self.slice().to_string(),
+					_ => Err("variable name for let binding")?,
+				};
 				
 				// get optional `: <type>`
 				let typ = match self.expect(Token::Colon) {
@@ -115,6 +149,8 @@ impl Parser<'_> {
 				
 				self.expect(Token::Newline)
 					.ok_or("newline at let binding")?;
+				
+				self.skip_newlines();
 				
 				let scope = Box::new(self.parse_block_expr()?);
 				
@@ -133,7 +169,7 @@ impl Parser<'_> {
 		
 		Ok(block_expr)
 	}
-	
+	*/
 	// rel  -> expr {(=|≠|<|>|≤|≥|in) expr}
 	// expr -> term {(+|-|or) term}
 	// term -> exp {(*|/|mod|and) exp}
@@ -269,34 +305,41 @@ impl Parser<'_> {
 	
 	pub fn parse_expr_atom(&mut self) -> ParseResult<Expr> {
 		// check if there's an open parenthesis
-		let mut expr =
-			if self.expect(Token::LParen).is_some() {
+		let mut expr = match self.peek() {
+			Some(Token::LParen) => {
 				let expr = self.parse_expr()?;
 				
 				// make sure there's a closing parenthesis
 				self.expect(Token::RParen)
 					.ok_or("`)` after subexpression")?;
+					//.ok_or(ExprErr::UnclosedSubexpr)?;
 				
 				expr
-			} else {
-				// otherwise, treat it as a Term.
-				let mut clone = self.clone();
-				
-				if clone.parse_lit().is_ok() {
-					Expr::Lit(self.parse_lit()?)
-				} else {
-					Expr::LVal(self.parse_lval()?)
-				}
-			};
+			}
+			
+			Some(Token::VarIdent) => {
+				Expr::LVal(self.parse_lval()?)
+				//Expr::LVal(self.parse_lval().ok_or(ExprErr::NotAtom)?)
+			}
+			
+			Some(_) => {
+				Expr::Lit(self.parse_lit()?)
+			}
+			
+			None => Err("`(`, l-value, or literal")?,
+		};
 		
 		// check for `as` casting
-		Ok(loop {
-			if self.expect(Token::As).is_some() {
-				expr = Expr::Cast(Box::new(expr), self.parse_type()?)
-			} else {
-				break expr
-			}
-		})
+		while self.peek() == Some(&Token::As) {
+			self.next();
+			
+			let ty = self.parse_type()?;
+			//.ok_or(ExprErr::BadCast)?
+			
+			expr = Expr::Cast(Box::new(expr), ty);
+		}
+		
+		Ok(expr)
 	}
 }
 
@@ -402,7 +445,7 @@ impl Eval for Expr {
 		}
 	}
 }
-
+/*
 impl Eval for BlockExpr {
 	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 		match self {
@@ -424,4 +467,4 @@ impl Eval for BlockExpr {
 			}
 		}
 	}
-}
+}*/
