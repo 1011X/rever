@@ -10,7 +10,6 @@ pub enum Token {
 	#[token("as")]     As,
 	#[token("begin")]  Begin,
 	#[token("do")]     Do,
-	#[token("done")]   Done,
 	#[token("drop")]   Drop,
 	#[token("else")]   Else,
 	#[token("end")]    End,
@@ -31,15 +30,15 @@ pub enum Token {
 	#[token("var")]    Var,
 	
 	// reserved keywords
-	#[token("alias")] Alias,
-	#[token("for")]   For,
-	#[token("match")] Match,
-	#[token("when")]  When,
+	#[token("alias")]  Alias,
+	#[token("done")]   Done,
+	#[token("for")]    For,
+	#[token("match")]  Match,
+	#[token("when")]   When,
+	#[token("return")] Return,
 //	#[token("struct")] Struct,
-	#[token("tag")]   Tag,
+	#[token("tag")]    Tag,
 //	#[token("union")]  Union,
-	//Goto,
-	//ComeFrom,
 	
 	// brackets
 	#[token("(")] LParen,
@@ -93,16 +92,18 @@ pub enum Token {
 	#[token("\n")] Newline,
 	
 	// identifiers
+	
 	#[regex("[a-z_][A-Za-z0-9_]*")]
 	VarIdent,
 	#[regex("[A-Z][A-Za-z0-9_]*")]
 	ConIdent,
 	
 	// literals
+	
 	#[regex("0|[1-9][0-9']*")]
 	#[regex("0d[1-9aA']*")]
-	#[regex("0b[01']*[01]")]
-	#[regex("0x[0-9a-fA-F']*[0-9a-fA-F]")]
+	#[regex("0b[01']+")]
+	#[regex("0x[0-9a-fA-F']+")]
 	Number,
 	
 	#[regex(r#""(\\[ntr0"\\]|[^"\\])*""#)]

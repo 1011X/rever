@@ -11,7 +11,8 @@ use crate::interpret::{
 };
 
 mod expression;
-//mod function;
+mod block_expr;
+mod function;
 mod item;
 mod literal;
 mod lvalue;
@@ -20,8 +21,9 @@ mod procedure;
 mod statement;
 mod types;
 
-pub use self::expression::{BinOp, Expr, /*BlockExpr,*/ ExprErr};
-//pub use self::function::Function;
+pub use self::expression::{BinOp, Expr, ExprErr};
+pub use self::block_expr::{BlockExpr, BlockExprErr};
+pub use self::function::Function;
 pub use self::item::Item;
 pub use self::literal::Literal;
 pub use self::lvalue::{Deref, LValue, LValErr};

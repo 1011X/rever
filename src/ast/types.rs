@@ -10,12 +10,12 @@ pub enum Type {
 	Bool,
 	UInt, Int,
 	Char, String,
-	//Array(Box<Type>, usize),
+	//Array(Box<Self>, usize),
 	Array(usize),
-	Fn(Vec<Type>, Box<Type>),
-	Proc(Vec<(bool, Type)>),
-	//Alternate(Vec<Type>),
-	//Composite(Vec<Type>),
+	Fn(Vec<Self>, Box<Self>),
+	Proc(Vec<(bool, Self)>),
+	//Alternate(Vec<Self>),
+	//Composite(Vec<Self>),
 }
 
 #[derive(Debug, Clone)]

@@ -40,25 +40,15 @@ pub enum Expr {
 	// precedence 1
 	Lit(Literal),
 	LVal(LValue),
-	Cast(Box<Expr>, Type),
+	Cast(Box<Self>, Type),
 	
 	// precedence 3
-	Neg(Box<Expr>),
-	Not(Box<Expr>),
+	Neg(Box<Self>),
+	Not(Box<Self>),
 	
 	// binary op, precendeces 4-7
-	BinOp(Box<Expr>, BinOp, Box<Expr>),
+	BinOp(Box<Self>, BinOp, Box<Self>),
 }
-/*
-#[derive(Debug, Clone)]
-pub enum BlockExpr {
-	Expr(Expr),
-	
-	If(Expr, Box<BlockExpr>, Box<BlockExpr>),
-	
-	Let(String, Type, Expr, Box<BlockExpr>),
-}
-*/
 
 #[derive(Debug, Clone)]
 pub enum ExprErr {
@@ -97,79 +87,6 @@ impl error::Error for ExprErr {
 }
 
 impl Parser<'_> {
-	/*
-	pub fn parse_block_expr(&mut self) -> ParseResult<BlockExpr> {
-		let block_expr = match self.peek() {
-			Some(Token::If) => {
-				self.next();
-				
-				let test = self.parse_expr()?;
-				
-				self.expect(Token::Newline)
-					.ok_or("newline after `if` predicate")?;
-				
-				// parse main block
-				let main_expr = Box::new(self.parse_block_expr()?);
-				
-				self.expect(Token::Else)
-					.ok_or("`else` in `if` expression")?;
-				
-				match self.peek() {
-					Some(Token::If) => {}
-					Some(Token::Newline) => { self.next(); }
-					_ => Err("`if` or newline after `else`")?,
-				}
-				
-				let else_block = Box::new(self.parse_block_expr()?);
-				
-				self.expect(Token::Fi)
-					.ok_or("`fi` in `if` expression")?;
-				
-				BlockExpr::If(test, main_expr, else_block)
-			}
-			Some(Token::Let) => {
-				self.next();
-				
-				let name = match self.peek() {
-					Some(Token::VarIdent) => self.slice().to_string(),
-					_ => Err("variable name for let binding")?,
-				};
-				
-				// get optional `: <type>`
-				let typ = match self.expect(Token::Colon) {
-					Some(_) => self.parse_type()?,
-					None => Type::Infer,
-				};
-				
-				// expect '='
-				self.expect(Token::Eq)
-					.ok_or("`=` at let binding")?;
-				
-				let val = self.parse_expr()?;
-				
-				self.expect(Token::Newline)
-					.ok_or("newline at let binding")?;
-				
-				self.skip_newlines();
-				
-				let scope = Box::new(self.parse_block_expr()?);
-				
-				BlockExpr::Let(name, typ, val, scope)
-			}
-			Some(_) =>
-				BlockExpr::Expr(self.parse_expr()?),
-			None =>
-				todo!()
-		};
-		
-		self.expect(Token::Newline)
-			.ok_or("newline after expression block")?;
-		
-		self.skip_newlines();
-		
-		Ok(block_expr)
-	}
-	*/
 	// rel  -> expr {(=|≠|<|>|≤|≥|in) expr}
 	// expr -> term {(+|-|or) term}
 	// term -> exp {(*|/|mod|and) exp}
@@ -247,13 +164,13 @@ impl Parser<'_> {
 		let first = self.parse_expr_exp()?;
 		let mut facts: Vec<(BinOp, Expr)> = Vec::new();
 		
-		// { ('*' | '/' | 'mod' | 'and') <fact> }
+		// { ('*' | '/' | '%' | 'and') <fact> }
 		loop {
 			let op = match self.peek() {
-				Some(Token::Star)   => BinOp::Mul,
-				Some(Token::FSlash) => BinOp::Div,
-				Some(Token::Mod)    => BinOp::Mod,
-				Some(Token::And)    => BinOp::And,
+				Some(Token::Star)    => BinOp::Mul,
+				Some(Token::FSlash)  => BinOp::Div,
+				Some(Token::Percent) => BinOp::Mod,
+				Some(Token::And)     => BinOp::And,
 				_ => break
 			};
 			self.next();
@@ -307,6 +224,8 @@ impl Parser<'_> {
 		// check if there's an open parenthesis
 		let mut expr = match self.peek() {
 			Some(Token::LParen) => {
+				self.next();
+				
 				let expr = self.parse_expr()?;
 				
 				// make sure there's a closing parenthesis
@@ -400,13 +319,13 @@ impl Eval for Expr {
 						Ok(Value::from(l * r)),
 					(BinOp::Div, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l / r)),
-					(BinOp::Mod, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Mod, Value::Uint(l), Value::Uint(r)) =>
 						Ok(Value::from((l % r + r) % r)),
 					(BinOp::And, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l && r)),
 					
 					// 6
-					(BinOp::Add, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Add, Value::Uint(l), Value::Uint(r)) =>
 						Ok(Value::from(l + r)),
 					(BinOp::Sub, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l - r)),
@@ -435,36 +354,14 @@ impl Eval for Expr {
 					
 					(op, left, right) =>
 						panic!(
-							"tried to do a {:?} operation with types {:?} and {:?}",
+							"tried to do {:?} with types {:?} and {:?}: {:#?}",
 							op,
 							left.get_type(),
 							right.get_type(),
+							self
 						),
 				}
 			}
 		}
 	}
 }
-/*
-impl Eval for BlockExpr {
-	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
-		match self {
-			BlockExpr::Expr(expr) => expr.eval(t),
-			
-			BlockExpr::If(test, expr, else_expr) => {
-				if test.eval(t)? == Value::Bool(true) {
-					expr.eval(t)
-				} else {
-					else_expr.eval(t)
-				}
-			}
-			
-			BlockExpr::Let(name, _, val, scope) => {
-				let val = val.eval(t)?;
-				let mut t_copy = t.clone();
-				t_copy.push(name.clone(), val);
-				scope.eval(&t_copy)
-			}
-		}
-	}
-}*/

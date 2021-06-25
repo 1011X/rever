@@ -95,6 +95,11 @@ impl From<char> for Value {
 	fn from(c: char) -> Self { Value::Char(c) }
 }
 
+impl From<u64> for Value {
+	#[inline]
+	fn from(n: u64) -> Self { Value::Uint(n) }
+}
+
 impl From<i64> for Value {
 	#[inline]
 	fn from(n: i64) -> Self { Value::Int(n) }

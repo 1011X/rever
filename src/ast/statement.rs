@@ -20,9 +20,9 @@ pub enum Stmt {
 	Do(String, Vec<Expr>),
 	Undo(String, Vec<Expr>),
 	
-	Var(String, Type, Expr, Vec<Stmt>, Expr),
-	If(Expr, Vec<Stmt>, Vec<Stmt>, Expr),
-	From(Expr, Vec<Stmt>, Vec<Stmt>, Expr),
+	Var(String, Type, Expr, Vec<Self>, Expr),
+	If(Expr, Vec<Self>, Vec<Self>, Expr),
+	From(Expr, Vec<Self>, Vec<Self>, Expr),
 	//FromVar(String, Expr, Vec<Stmt>, Vec<Stmt>, Expr),
 	//Match(String, Vec<_, Vec<Stmt>>),
 	//For(String, Expr, Vec<Stmt>),

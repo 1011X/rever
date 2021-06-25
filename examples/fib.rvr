@@ -1,7 +1,7 @@
 ~ Fibnoacci example
 ~ Calculates a fibonacci pair using recursion
 
-proc fib(x1: int, x2: int, n: int)
+proc fib(var x1: Uint, var x2: Uint, var n: Uint)
 	if n = 0
 		x1 += 1
 		x2 += 1
@@ -11,18 +11,15 @@ proc fib(x1: int, x2: int, n: int)
 		x1 += x2
 		x1 <> x2
 	fi x1 = x2
-end
+return
 
-fn fib(n: int): int
+fn fib(n: Uint): Uint
 	if n = 0
 		0
 	else if n = 1
 		1
 	else
 		fib(n - 1) + fib(n - 2)
-	fi
-	fi
-end
 
 proc main
 	var x1 := 0
@@ -32,4 +29,4 @@ proc main
 	drop n := 0
 	drop x2 := 5
 	drop x1 := 8
-end
+return

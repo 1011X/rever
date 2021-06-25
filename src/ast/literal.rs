@@ -11,6 +11,7 @@ pub enum Literal {
 	Char(char),
 	String(String),
 	Array(Vec<Expr>),
+	//Data(String),
 	//Fn(Vec<String>, Box<Expr>),
 }
 
@@ -141,9 +142,9 @@ impl Parser<'_> {
 			
 			// array literal
 			Some(Token::LBracket) => {
-				let mut elements = Vec::new();
 				self.next();
 				
+				let mut elements = Vec::new();
 				loop {
 					match self.peek() {
 						// found ']'
@@ -195,7 +196,8 @@ impl Parser<'_> {
 				// TODO `:` with return type should be optional here
 				
 				self.expect(Token::Equal)
-					.ok_or("`=` after arguments in closure")?;
+					.ok_or("`=` after closure arguments")?;
+					//.ok_or(LitErr::
 				
 				let expr = self.parse_expr()?;
 				

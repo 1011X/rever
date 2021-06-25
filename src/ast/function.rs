@@ -84,14 +84,14 @@ impl Parser<'_> {
 		// get return type
 		self.expect(Token::Colon)
 			.ok_or("`:` after function parameters")?;
+			//.ok_or(FuncErr::NoRetType)?;
 		
 		let ret = self.parse_type()?;
 		
 		// choose parsing style based on next token
 		let body = match self.peek() {
-			// fn f(): _
+			// fn f(x): _
 			//     <block-expr>
-			// end
 			Some(Token::Newline) => {
 				self.next();
 				
@@ -100,14 +100,10 @@ impl Parser<'_> {
 				self.expect(Token::Newline)
 					.ok_or("newline after function body")?;
 				
-				// reached `end`
-				self.expect(Token::End)
-					.ok_or("`end` after function body")?;
-				
 				body
 			}
 			
-			// fn f(): _ = <inline-expr>
+			// fn f(x): _ = <inline-expr>
 			Some(Token::Eq) => {
 				self.next();
 				
@@ -116,7 +112,7 @@ impl Parser<'_> {
 				self.expect(Token::Newline)
 					.ok_or("newline after function body")?;
 				
-				BlockExpr::Expr(body)
+				BlockExpr::Inline(body)
 			}
 			
 			_ => Err("`=` or newline after function declaration")?,

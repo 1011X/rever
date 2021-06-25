@@ -1,0 +1,22 @@
+proc main
+	var i := 0
+	
+	from i = 0
+		if (i % 3 = 0) and (i % 5 = 0)
+			do show: "fizzbuzz"
+		else if i % 3 = 0
+			do show: "fizz"
+		else if i % 5 = 0
+			do show: "buzz"
+		else
+			do show: (i + 48) as Char as Str
+		fi
+		fi
+		fi
+		do show: "\n"
+	until i = 10
+		i += 1
+	loop
+	
+	drop i := 10
+return

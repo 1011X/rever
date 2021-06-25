@@ -114,7 +114,7 @@ impl Parser<'_> {
 		let mut code = Vec::new();
 		loop {
 			match self.peek() {
-				Some(Token::End) => break,
+				Some(Token::Return) => break,
 				Some(_) => code.push(self.parse_stmt()?),
 				None => Err("a statement or `end`")?,
 			}
@@ -172,7 +172,7 @@ impl Procedure {
 			_ => todo!()
 		}
 		
-		let args = dbg![vars.into_inner()];
+		let args = vars.into_inner();
 		
 		// verify number of arguments and their types again
 		assert_eq!(args.len(), self.params.len(),

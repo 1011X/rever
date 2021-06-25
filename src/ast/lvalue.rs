@@ -5,10 +5,17 @@ use std::ops::Range;
 use super::*;
 
 #[derive(Debug, Clone)]
-pub enum Deref {
-	Direct,
-	Field(String),
-	Index(Expr),
+pub struct Deref {
+	pub name: Option<String>,
+	// "why not just use Vec<Expr>?"
+	// because there's a diff between `.field` and `.method()`.
+	pub args: Option<Vec<Expr>>,
+	
+	// "what if both are None? what should just `ident.` do?"
+	// so, i'm thinking of having suffix `.` be like a "specialized field", the
+	// same way `.()` is a "specialized method". biggest difference would be
+	// that methods are run (and their result calculated) at runtime, while for
+	// fields the result 
 }
 
 #[derive(Debug, Clone)]
@@ -53,7 +60,7 @@ impl Parser<'_> {
 	pub fn parse_lval(&mut self) -> ParseResult<LValue> {
 		
 		// get lval name
-		let name = match self.peek() {
+		let id = match self.peek() {
 			Some(Token::VarIdent) => self.slice().to_string(),
 			_ => Err("variable name in left-value expression")?,
 			//_ => return Err(LValErr::Name),
@@ -63,50 +70,57 @@ impl Parser<'_> {
 		
 		let mut end_span = name_span.clone();
 		
+		// get deref ops
 		let mut ops = Vec::new();
 		while self.peek() == Some(&Token::Period) {
 			self.next();
 			
-			match self.peek() {
-				// .*
-				Some(Token::Star) => {
-					self.next();
-					end_span = self.span();
-					ops.push(Deref::Direct);
-				}
-				
-				// .(expr)
-				Some(Token::LParen) => {
-					self.next();
-					
-					let expr = self.parse_expr()?;
-						//.map_err(|e| LValErr::Index(Box::new(e)))?;
-					
-					self.expect(Token::RParen)
-						.ok_or("`)` after index expression")?;
-						//.ok_or(LValErr::EndParen)?;
-					
-					end_span = self.span();
-					
-					ops.push(Deref::Index(expr));
-				}
-				
-				// .field
+			// .access_name
+			let name = match self.peek() {
 				Some(Token::VarIdent) => {
 					let name = self.slice().to_string();
 					end_span = self.span();
 					self.next();
-					
-					ops.push(Deref::Field(name));
+					Some(name)
 				}
+				_ => None,
+			};
+			
+			// ( args, )
+			let args = if self.peek() == Some(&Token::LParen) {
+				let mut args = Vec::new();
+				self.next();
 				
-				_ => return Err("`*`, `(`, or field name")?,
-			}
+				loop {
+					match self.peek() {
+						Some(Token::RParen) => break,
+						
+						Some(_) => {
+							args.push(self.parse_expr()?);
+							
+							match self.peek() {
+								Some(Token::Comma) => { self.next(); }
+								Some(Token::RParen) => {}
+								_ => todo!()
+							}
+						}
+						
+						None => todo!(),
+					}
+				}
+				end_span = self.span();
+				self.next();
+				
+				Some(args)
+			} else {
+				None
+			};
+			
+			ops.push(Deref { name, args });
 		}
 		
 		Ok(LValue {
-			id: name,
-			ops,
+			id, ops,
 			span: name_span.start .. end_span.end,
 		})
 	}

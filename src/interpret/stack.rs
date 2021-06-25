@@ -81,22 +81,24 @@ impl StackFrame {
 			// TODO move all this into Value.
 			value = match (&value, deref) {
 				// TODO copy (array, index) case from get_mut
-				(Value::Array(arr), Deref::Field(field)) if field == "len" =>
+				(Value::Array(arr), Deref { name: Some(field), args: None })
+				if field == "len" =>
 					Value::Int(arr.len() as i64),
 				
-				(Value::Array(a), Deref::Index(expr)) =>
-					match expr.eval(self)? {
+				(Value::Array(a), Deref { name: None, args: Some(args) }) =>
+					match args[0].eval(self)? {
 						Value::Uint(i) =>
 							a.get(i as usize).unwrap().clone(),
 						
 						value => todo!("{:?}.({})", a, value),
 					}
 				
-				(Value::String(s), Deref::Field(field)) if field == "len" =>
+				(Value::String(s), Deref { name: Some(field), args: None })
+				if field == "len" =>
 					Value::Int(s.len() as i64),
 				
-				(Value::String(s), Deref::Index(expr)) =>
-					match expr.eval(self)? {
+				(Value::String(s), Deref { name: None, args: Some(args) }) =>
+					match args[0].eval(self)? {
 						Value::Uint(i) => {
 							let c = s.chars().nth(i as usize);
 							match c {
@@ -125,8 +127,8 @@ impl StackFrame {
 		
 		for deref in &deref_path.ops {
 			match (value, deref) {
-				(Value::Array(array), Deref::Index(expr)) =>
-					match expr.eval(&clone)? {
+				(Value::Array(array), Deref { name: None, args: Some(args) }) =>
+					match args[0].eval(&clone)? {
 						Value::Uint(idx) => {
 							value = &mut array[idx as usize];
 						}
