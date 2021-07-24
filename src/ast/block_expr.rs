@@ -95,10 +95,11 @@ impl Parser<'_> {
 			_ => BlockExpr::Inline(self.parse_expr()?)
 		};
 		
-		self.expect(Token::Newline)
-			.ok_or("newline after block expression")?;
-		
-		self.skip_newlines();
+		// check for newline(s) but *don't consume them*.
+		// final newlines are for statements, not expressions.
+		if self.peek() != Some(&Token::Newline) {
+			Err("newline after block expression")?;
+		}
 		
 		Ok(block_expr)
 	}

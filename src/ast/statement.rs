@@ -311,12 +311,12 @@ impl Parser<'_> {
 					    Stmt::Sub(lval, expr)
 					}
 					
-					Token::Rol => {
+					Token::RolAssign => {
 						self.next();
 						let expr = self.parse_expr()?;
 					    Stmt::RotLeft(lval, expr)
 					}
-					Token::Ror => {
+					Token::RorAssign => {
 						self.next();
 						let expr = self.parse_expr()?;
 					    Stmt::RotRight(lval, expr)
@@ -384,9 +384,13 @@ impl Stmt {
 			
 			Stmt::Add(lval, expr) => {
 				let expr = expr.eval(t)?;
-				match (t.get_mut(&lval).unwrap(), &expr) {
-					(Value::Uint(ref mut l), Value::Uint(r)) =>
+				match (t.get_mut(&lval)?, &expr) {
+					(Value::Int(l), Value::Int(r)) =>
 						*l = l.wrapping_add(*r),
+					(Value::Uint(l), Value::Uint(r)) =>
+						*l = l.wrapping_add(*r),
+					(Value::String(l), Value::String(r)) =>
+						*l += r,
 					(l, r) => panic!(
 						"tried to increment a {:?} with a {:?}",
 						l, r
@@ -399,7 +403,20 @@ impl Stmt {
 				match (t.get_mut(&lval)?, &expr) {
 					(Value::Int(l), Value::Int(r)) =>
 						*l = l.wrapping_sub(*r),
-					_ => panic!("tried to do something illegal")
+					(Value::Uint(l), Value::Uint(r)) =>
+						*l = l.wrapping_sub(*r),
+					(Value::String(l), Value::String(r)) => {
+						assert!(
+							l.ends_with(r),
+							"string {:?} does not end with {:?}",
+							l, r
+						);
+						*l = l.strip_suffix(r).unwrap().to_string();
+					}
+					(l, r) => panic!(
+						"tried to decrement a {:?} with a {:?}",
+						l.get_type(), r.get_type()
+					)
 				}
 			}
 			
@@ -407,6 +424,8 @@ impl Stmt {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval)?, &expr) {
 					(Value::Int(l), Value::Int(r)) =>
+						*l = l.rotate_left(*r as u32),
+					(Value::Uint(l), Value::Uint(r)) =>
 						*l = l.rotate_left(*r as u32),
 					_ => panic!("tried to do something illegal")
 				}
@@ -416,6 +435,8 @@ impl Stmt {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval)?, &expr) {
 					(Value::Int(l), Value::Int(r)) =>
+						*l = l.rotate_right(*r as u32),
+					(Value::Uint(l), Value::Uint(r)) =>
 						*l = l.rotate_right(*r as u32),
 					_ => panic!("tried to do something illegal")
 				}

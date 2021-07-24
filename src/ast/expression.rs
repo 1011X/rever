@@ -352,6 +352,10 @@ impl Eval for Expr {
 					(BinOp::Ge, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l >= r)),
 					
+					
+					(BinOp::Lt, Value::Uint(l), Value::Uint(r)) =>
+						Ok(Value::from(l < r)),
+					
 					(op, left, right) =>
 						panic!(
 							"tried to do {:?} with types {:?} and {:?}: {:#?}",

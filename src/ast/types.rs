@@ -40,7 +40,7 @@ impl Parser<'_> {
 					"Void" => Type::Never,
 					"Unit" => Type::Unit,
 					"Bool" => Type::Bool,
-					"Num"  => Type::UInt,
+					"Uint"  => Type::UInt,
 					"Char" => Type::Char,
 					"Str"  => Type::String,
 					id     => todo!("custom types not yet supported: {:?}", id)

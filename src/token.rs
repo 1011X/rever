@@ -23,6 +23,7 @@ pub enum Token {
 	#[token("not")]    Not,
 	#[token("or")]     Or,
 	#[token("proc")]   Proc,
+	#[token("return")] Return,
 	#[token("skip")]   Skip,
 	#[token("then")]   Then,
 	#[token("undo")]   Undo,
@@ -35,7 +36,6 @@ pub enum Token {
 	#[token("for")]    For,
 	#[token("match")]  Match,
 	#[token("when")]   When,
-	#[token("return")] Return,
 //	#[token("struct")] Struct,
 	#[token("tag")]    Tag,
 //	#[token("union")]  Union,
@@ -49,22 +49,23 @@ pub enum Token {
 	#[token("}")] RBrace,
 	
 	// relational
+	#[token("=")]  Eq,
 	#[token("!=")] Neq,
 	#[token("<")]  Lt,
 	#[token(">")]  Gt,
 	#[token("<=")] Lte,
 	#[token(">=")] Gte,
-	#[token("=")]  Eq,
-	#[token(":<")] Rol,
-	#[token(":>")] Ror,
 	
 	// assignments
 	#[token("<>")] Swap,
 	#[token(":=")] Assign,
+	#[token("^=")] XorAssign,
 	#[token("+=")] AddAssign,
 	#[token("-=")] SubAssign,
 	#[token("*=")] MulAssign,
 	#[token("/=")] DivAssign,
+	#[token(":<")] RolAssign,
+	#[token(":>")] RorAssign,
 	
 	// multi-purpose
 	#[token(":")] Colon,
@@ -87,6 +88,7 @@ pub enum Token {
 	#[token("::")] Scope,
 	#[token("->")] RightArrow,
 	#[token("?")]  QMark,
+	#[token(":-")] Impls,
 	
 	// v important
 	#[token("\n")] Newline,

@@ -16,7 +16,8 @@ pub struct Param {
 pub enum ProcDef {
 	/// Sequence of statements defining a user-provided procedure.
 	User(Vec<Stmt>),
-	/// Pair of irreversible functions defining an internal procedure.
+	/// Pair of irreversible functions defining an internal reversible 
+	/// procedure.
 	Internal {
 		fore: fn(&mut [Value]) -> EvalResult<()>,
 		back: fn(&mut [Value]) -> EvalResult<()>,
@@ -73,6 +74,7 @@ impl Parser<'_> {
 							Some(Token::VarIdent) => self.slice().to_string(),
 							_ => Err("parameter name in procedure declaration")?,
 						};
+						self.next();
 						
 						self.expect(Token::Colon)
 							.ok_or("`:` after parameter name")?;
