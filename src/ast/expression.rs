@@ -40,7 +40,7 @@ pub enum Expr {
 	// precedence 1
 	Lit(Literal),
 	LVal(LValue),
-	Cast(Box<Self>, Type),
+	//Cast(Box<Self>, Type),
 	
 	// precedence 3
 	Neg(Box<Self>),
@@ -242,13 +242,14 @@ impl Parser<'_> {
 			}
 			
 			Some(_) => {
-				Expr::Lit(self.parse_lit()?)
+				Expr::Lit(self.parse_literal()?)
 			}
 			
 			None => Err("`(`, l-value, or literal")?,
 		};
 		
 		// check for `as` casting
+		/*
 		while self.peek() == Some(&Token::As) {
 			self.next();
 			
@@ -257,7 +258,7 @@ impl Parser<'_> {
 			
 			expr = Expr::Cast(Box::new(expr), ty);
 		}
-		
+		*/
 		Ok(expr)
 	}
 }
@@ -275,7 +276,7 @@ impl Eval for Expr {
 		match self {
 			Expr::Lit(lit) => lit.eval(t),
 			Expr::LVal(lval) => lval.eval(t),
-			
+			/*
 			Expr::Cast(e, typ) => match (typ, e.eval(t)?) {
 				(Type::Unit, _) => Ok(Value::Nil),
 				(Type::Int, Value::Uint(u))  => Ok(Value::Int(u as i64)),
@@ -286,15 +287,12 @@ impl Eval for Expr {
 				(Type::String, Value::Char(c)) => Ok(Value::String(c.to_string())),
 				(typ, value) => panic!("tried casting {} to {:?}", value, typ),
 			}
-			
+			*/
 			Expr::Not(e) => match e.eval(t)? {
 				Value::Bool(b) => Ok(Value::Bool(!b)),
-				Value::Uint(n) => Ok(Value::Uint(!n)),
+				//Value::Uint(n) => Ok(Value::Uint(!n)),
 				Value::Int(n) => Ok(Value::Int(!n)),
-				val => Err(EvalError::TypeMismatch {
-					expected: Type::Bool,
-					got: val.get_type(),
-				})
+				val => unimplemented!(),
 			}
 			
 			Expr::Neg(e) => match e.eval(t)? {
@@ -319,14 +317,14 @@ impl Eval for Expr {
 						Ok(Value::from(l * r)),
 					(BinOp::Div, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l / r)),
-					(BinOp::Mod, Value::Uint(l), Value::Uint(r)) =>
-						Ok(Value::from((l % r + r) % r)),
+					//(BinOp::Mod, Value::Uint(l), Value::Uint(r)) =>
+					//	Ok(Value::from((l % r + r) % r)),
 					(BinOp::And, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l && r)),
 					
 					// 6
-					(BinOp::Add, Value::Uint(l), Value::Uint(r)) =>
-						Ok(Value::from(l + r)),
+					//(BinOp::Add, Value::Uint(l), Value::Uint(r)) =>
+					//	Ok(Value::from(l + r)),
 					(BinOp::Sub, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l - r)),
 					(BinOp::Or, Value::Bool(l), Value::Bool(r)) =>
@@ -353,8 +351,8 @@ impl Eval for Expr {
 						Ok(Value::from(l >= r)),
 					
 					
-					(BinOp::Lt, Value::Uint(l), Value::Uint(r)) =>
-						Ok(Value::from(l < r)),
+					//(BinOp::Lt, Value::Uint(l), Value::Uint(r)) =>
+					//	Ok(Value::from(l < r)),
 					
 					(op, left, right) =>
 						panic!(

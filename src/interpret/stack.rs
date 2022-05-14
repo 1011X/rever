@@ -83,11 +83,11 @@ impl StackFrame {
 				// TODO copy (array, index) case from get_mut
 				(Value::Array(arr), Deref { name: Some(field), args: None })
 				if field == "len" =>
-					Value::Int(arr.len() as i64),
+					Value::Int(arr.len() as i32),
 				
 				(Value::Array(a), Deref { name: None, args: Some(args) }) =>
 					match args[0].eval(self)? {
-						Value::Uint(i) =>
+						Value::Int(i) =>
 							a.get(i as usize).unwrap().clone(),
 						
 						value => todo!("{:?}.({})", a, value),
@@ -95,11 +95,11 @@ impl StackFrame {
 				
 				(Value::String(s), Deref { name: Some(field), args: None })
 				if field == "len" =>
-					Value::Int(s.len() as i64),
+					Value::Int(s.len() as i32),
 				
 				(Value::String(s), Deref { name: None, args: Some(args) }) =>
 					match args[0].eval(self)? {
-						Value::Uint(i) => {
+						Value::Int(i) => {
 							let c = s.chars().nth(i as usize);
 							match c {
 								Some(c) => c.into(),
@@ -129,14 +129,14 @@ impl StackFrame {
 			match (value, deref) {
 				(Value::Array(array), Deref { name: None, args: Some(args) }) =>
 					match args[0].eval(&clone)? {
-						Value::Uint(idx) => {
+						/*Value::Uint(idx) => {
 							value = &mut array[idx as usize];
-						}
+						}*/
 						Value::Int(idx) => {
 							value = &mut array[idx as usize];
 						}
 						value => return Err(EvalError::TypeMismatch {
-							expected: Type::UInt,
+							expected: Type::Int,
 							got: value.get_type(),
 						}),
 					}

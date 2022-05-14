@@ -41,8 +41,8 @@ pub fn print(args: &mut [Value]) -> EvalResult<()> {
 	let mut rstdout = super::io::RevStdout::new();
 	
 	match args {
-		[Value::String(string), Value::Uint(bytes)] => {
-			*bytes += rstdout.write(string.as_bytes()).unwrap() as u64;
+		[Value::String(string), Value::Int(bytes)] => {
+			*bytes += rstdout.write(string.as_bytes()).unwrap() as i32;
 		}
 		[Value::String(_), val] |
 		[val, _] =>
@@ -63,9 +63,9 @@ pub fn unprint(args: &mut [Value]) -> EvalResult<()> {
 	let mut rstdout = super::io::RevStdout::new();
 	
 	match args {
-		[Value::String(string), Value::Uint(len)] => {
+		[Value::String(string), Value::Int(len)] => {
 			let s = String::from_utf8(rstdout.unwrite(*len as usize)).unwrap();
-			*len -= s.len() as u64;
+			*len -= s.len() as i32;
 		}
 		[Value::String(_), val] |
 		[val, _] =>

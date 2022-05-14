@@ -1,3 +1,3 @@
 proc main
 	do show: "Hello, world!"
-end
+return

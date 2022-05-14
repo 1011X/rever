@@ -4,14 +4,13 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum Literal {
-	Nil,
-	Bool(bool),
+	//Nil,
 	//Int(i64),
 	Num(u32),
 	Char(char),
 	String(String),
 	Array(Vec<Expr>),
-	//Data(String),
+	Variant(String),
 	//Fn(Vec<String>, Box<Expr>),
 }
 
@@ -53,15 +52,9 @@ impl From<ParseIntError> for LitErr {
 }
 
 impl Parser<'_> {
-	pub fn parse_lit(&mut self) -> ParseResult<Literal> {
+	pub fn parse_literal(&mut self) -> ParseResult<Literal> {
 		let lit = match self.peek() {
-			Some(Token::ConIdent) => match self.slice() {
-				"Nil" => Literal::Nil,
-				"True" => Literal::Bool(true),
-				"False" => Literal::Bool(false),
-				_ => Err("`nil`, `True`, or `False`")?
-				//_ => return Err(LitErr::UnrecognizedIdent)
-			}
+			Some(Token::ConIdent) => Literal::Variant(self.slice().to_string()),
 			
 			Some(Token::Number) => {
 				//Literal::Num(u32::from_str_radix(self.slice(), 10)?),
@@ -216,11 +209,10 @@ impl Parser<'_> {
 impl Eval for Literal {
 	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 		Ok(match self {
-			Literal::Nil       => Value::Nil,
-			Literal::Bool(b)   => Value::Bool(*b),
+			//Literal::Nil       => Value::Nil,
 			//Literal::Int(n)    => Value::Int(*n),
-			Literal::Num(n)   => Value::Uint(*n as u64),
-			Literal::Char(c)   => Value::Char(*c),
+			Literal::Num(n)    => Value::Int(*n as i32),
+			Literal::Char(c)   => Value::Int(*c as i32),
 			Literal::String(s) => Value::String(s.clone()),
 			
 			Literal::Array(arr) => Value::Array({
@@ -230,6 +222,8 @@ impl Eval for Literal {
 				}
 				vec.into_boxed_slice()
 			}),
+			
+			Literal::Variant(_) => unimplemented!(),
 			//Literal::Fn(args, ret) => todo!(),
 		})
 	}
@@ -238,13 +232,12 @@ impl Eval for Literal {
 impl Literal {
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
-			Literal::Nil       => Some(Type::Unit),
-			Literal::Bool(_)   => Some(Type::Bool),
 			//Literal::Int(_)    => Some(Type::Int),
-			Literal::Num(_)   => Some(Type::UInt),
-			Literal::Char(_)   => Some(Type::Char),
+			Literal::Num(_)    => Some(Type::Int),
+			Literal::Char(_)   => Some(Type::Int),
 			Literal::String(_) => Some(Type::String),
-			Literal::Array(_)  => None,
+			Literal::Array(v)  => None,
+			Literal::Variant(_) => None,
 			//Literal::Fn(..)    => None,
 		}
 	}

@@ -7,9 +7,7 @@ pub enum Value {
 	Nil,
 	Bool(bool),
 	//Byte(u8),
-	Int(i64),
-	Uint(u64),
-	Char(char),
+	Int(i32),
 	String(String),
 	Array(Box<[Value]>),
 	//Proc(Path),
@@ -19,12 +17,10 @@ use crate::ast::Type;
 impl Value {
 	pub fn get_type(&self) -> Type {
 		match self {
-			Value::Nil       => Type::Unit,
-			Value::Bool(_)   => Type::Bool,
+			Value::Nil       => Type::Nil,
+			Value::Bool(_)   => Type::Int,
 			Value::Int(_)    => Type::Int,
-			Value::Uint(_)   => Type::UInt,
-			Value::Char(_)   => Type::Char,
-			Value::String(_) => Type::String,
+			Value::String(s) => Type::String,
 			
 			Value::Array(_)  => todo!()
 		}
@@ -64,9 +60,9 @@ impl fmt::Display for Value {
 			
 			Value::Bool(b) => b.fmt(fmt),
 			Value::Int(i)  => i.fmt(fmt),
-			Value::Uint(u) => u.fmt(fmt),
+			//Value::Uint(u) => u.fmt(fmt),
 			
-			Value::Char(c)   => write!(fmt, "{:?}", c),
+			//Value::Char(c)   => write!(fmt, "{:?}", c),
 			Value::String(s) => write!(fmt, "{:?}", s),
 			
 			Value::Array(array) => {
@@ -92,17 +88,12 @@ impl From<bool> for Value {
 
 impl From<char> for Value {
 	#[inline]
-	fn from(c: char) -> Self { Value::Char(c) }
+	fn from(c: char) -> Self { Value::Int(c as i32) }
 }
 
-impl From<u64> for Value {
+impl From<i32> for Value {
 	#[inline]
-	fn from(n: u64) -> Self { Value::Uint(n) }
-}
-
-impl From<i64> for Value {
-	#[inline]
-	fn from(n: i64) -> Self { Value::Int(n) }
+	fn from(n: i32) -> Self { Value::Int(n) }
 }
 
 impl From<String> for Value {

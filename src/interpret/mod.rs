@@ -27,7 +27,7 @@ pub enum EvalError {
 	IrreversibleState,
 }
 
-
+// Creates root module, loads intrinsics, finds `main`, and executes it.
 pub fn interpret_file(items: Vec<ast::Item>) {
 	// create root module
 	let mut root = Module::new("root".into(), items);
@@ -47,6 +47,7 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 		})
 	);
 	
+	// find main procedure
 	let main = root.items.iter()
 		.find(|item| matches!(item, Item::Proc(pr) if pr.name == "main"));
 	
