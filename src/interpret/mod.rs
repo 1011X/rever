@@ -37,7 +37,7 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 			name: "show".to_string(),
 			params: vec![Param {
 				name: "string".to_string(),
-				mutable: false,
+				constant: false,
 				typ: Type::String,
 			}],
 			code: ProcDef::Internal {

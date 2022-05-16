@@ -8,7 +8,7 @@ enum Dir { Fore, Back }
 #[derive(Debug, Clone)]
 pub struct Param {
 	pub name: String,
-	pub mutable: bool,
+	pub constant: bool,
 	pub typ: Type,
 }
 
@@ -57,19 +57,22 @@ impl Parser<'_> {
 		let mut params = Vec::new();
 		
 		// parse parameter list
-		// starting '('
-		if self.peek() == Some(&Token::LParen) {
+		// starting '{'
+		if self.peek() == Some(&Token::LBrace) {
 			self.next();
+			
+			// TODO add case for newline for multiline param declaration
 			loop {
-				// TODO add case for newline for multiline param declaration?
 				match self.peek() {
-					// ending ')'
-					Some(Token::RParen) => break,
+					// ending '}'
+					Some(Token::RBrace) => break,
 					
 					// parse as parameter
 					Some(_) => {
-						let mutable = self.expect(Token::Var).is_some();
+						// whether parameter is `const`
+						let constant = self.expect(Token::Const).is_some();
 						
+						// parameter name
 						let param_name = match self.peek() {
 							Some(Token::VarIdent) => self.slice().to_string(),
 							_ => Err("parameter name in procedure declaration")?,
@@ -79,29 +82,19 @@ impl Parser<'_> {
 						self.expect(Token::Colon)
 							.ok_or("`:` after parameter name")?;
 						
-						// get type
+						// parameter's type
 						let typ = self.parse_type()?;
 						
-						for Param { name, .. } in &params {
-							if *name == param_name {
-								eprintln!(
-									"Some parameter names in `proc {}` overlap: {:?}",
-									proc_name, name
-								);
-								Err("parameter names to be unique")?;
-							}
-						}
-						
-						params.push(Param { mutable, name: param_name, typ });
+						params.push(Param { constant, name: param_name, typ });
 						
 						match self.peek() {
 							Some(Token::Comma) => { self.next(); }
-							Some(Token::RParen) => {}
-							_ => Err("`,` or `)` in parameter list")?
+							Some(Token::RBrace) => {}
+							_ => Err("`,` or `}` in parameter list")?
 						}
 					}
 					
-					None => Err("`,` or `)` in parameter list")?,
+					None => Err("`,` or `}` in parameter list")?,
 				}
 			}
 			self.next();

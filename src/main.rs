@@ -12,13 +12,16 @@ TODO:
 
 */
 
-#![allow(unused_variables)]
 #![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 
+use clap::Parser;
 use logos::Logos;
 
 use std::env;
 use std::io;
+use std::path::PathBuf;
 
 //use crate::ast::Parse;
 //use crate::interpret;
@@ -32,10 +35,28 @@ mod ast;
 mod interpret;
 mod repl;
 
+
+/// Test.
+#[derive(Parser, Debug)]
+#[clap(version, about, long_about = None)]
+struct Args {
+	/*
+	/// Forces opening the REPL. If any paths are provided, they will be loaded
+	/// in.
+	#[clap(short, long)]
+	interactive: bool,
+	*/
+	/// Path to a Rever file.
+	file: Option<PathBuf>,
+}
+
 fn main() -> io::Result<()> {
-	let mut args = env::args().skip(1);
+	let args = Args::parse();
 	
-	match args.next() {
+	repl::init()?;
+	
+	/*
+	match args.file {
 		// start REPL
 		None => repl::init()?,
 		
@@ -61,10 +82,10 @@ fn main() -> io::Result<()> {
 		*/
 		
 		// interpret file
-		Some(file) => {
+		Some(path) => {
 			use std::fs::read_to_string as open;
 			
-			let source = open(file)?;
+			let source = open(path)?;
 			let tokens = Token::lexer(&source);
 			let mut parser = ast::Parser::new(tokens);
 			
@@ -91,6 +112,7 @@ fn main() -> io::Result<()> {
 			interpret::interpret_file(ast.into());
 		}
 	}
+	*/
 	
 	Ok(())
 }

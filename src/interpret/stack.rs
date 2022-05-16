@@ -9,7 +9,7 @@ pub type Stack = Vec<StackFrame>;
 #[derive(Debug, Clone)]
 pub struct StackFrame {
 	names: Vec<String>,
-	values: Vec<Value>,
+	pub(crate) values: Vec<Value>,
 }
 
 impl StackFrame {

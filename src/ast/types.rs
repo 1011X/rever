@@ -18,6 +18,7 @@ pub enum Type {
 	Int,
 	String,
 	Fn(Vec<Self>, Box<Self>),
+	Decl(String, Vec<Self>),
 }
 
 impl Default for Type {
@@ -41,33 +42,41 @@ impl Parser<'_> {
 	pub fn parse_type(&mut self) -> ParseResult<Type> {
 		let typ = match self.peek().ok_or("a type")? {
 			Token::Underscore => Type::Infer,
-			/*
-			// generics
+			
+			// named types with optional generics
 			Token::ConIdent => {
 				let name = self.slice().to_string();
 				self.next();
-
+				
 				let mut type_params = Vec::new();
-				loop {
-					match self.peek() {
-						Some(Token::RParen) => break,
-						Some(_) => {
-							type_params.push(self.parse_type()?);
+				
+				if let Some(Token::LBracket) = self.peek() {
+					self.next();
+					loop {
+						match self.peek() {
+							Some(Token::RBracket) => break,
+							Some(_) => {
+								type_params.push(self.parse_type()?);
 
-							match self.peek() {
-								Some(Token::Comma) => { self.next(); }
-								Some(Token::RParen) => {}
-								_ => Err("`,` or `)` in fn param list")?,
+								match self.peek() {
+									Some(Token::Comma) => { self.next(); }
+									Some(Token::RBracket) => {}
+									_ => Err("`,` or `]` in generic param list")?,
+								}
 							}
+							None => Err("`,` or `]` in generic param list")?,
 						}
-						None => Err("`,` or `)` in fn param list")?,
 					}
+					self.next();
 				}
-				self.next();
-
-				Type::Decl(name, type_params)
+				
+				match name.as_str() {
+					"Int" => Type::Int,
+					"Str" => Type::String,
+					_ => Type::Decl(name, type_params),
+				}
 			}
-			
+			/*
 			// tuples
 			Token::LParen => {
 				self.next();

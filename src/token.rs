@@ -32,6 +32,7 @@ pub enum Token {
 	
 	// reserved keywords
 	#[token("alias")]  Alias,
+	#[token("const")]  Const,
 	#[token("done")]   Done,
 	#[token("for")]    For,
 	#[token("match")]  Match,
@@ -102,8 +103,8 @@ pub enum Token {
 	
 	// literals
 	
-	#[regex("0|[1-9][0-9']*")]
-	#[regex("0d[1-9aA']*")]
+	#[regex("0[1-9aA']*")]
+	//#[regex("0d[0-9']+")]
 	#[regex("0b[01']+")]
 	#[regex("0x[0-9a-fA-F']+")]
 	Number,

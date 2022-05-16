@@ -61,6 +61,7 @@ impl Parser<'_> {
 			// TODO use this keyword as a prefix to comment out statements?
 			Token::Skip => {
 				self.next();
+				self.parse_stmt()?;
 				Stmt::Skip
 			}
 			
@@ -92,7 +93,8 @@ impl Parser<'_> {
 				
 				if self.peek() == Some(&Token::Newline) {
 					// do nothing on final newline
-				} else if self.peek() == Some(&Token::Colon) {
+				}
+				/*else if self.peek() == Some(&Token::Colon) {
 					self.next();
 					// TODO check for newline in case expression was forgotten
 					let expr = self.parse_expr()?;
@@ -111,11 +113,31 @@ impl Parser<'_> {
 							_ => Err("`,` or newline")?,
 						}
 					}
-				} else if self.peek() == Some(&Token::LParen) {
+				}*/
+				else if self.peek() == Some(&Token::LBrace) {
 					self.next();
-					unimplemented!();
+					
+					loop {
+						match self.peek() {
+							Some(Token::RBrace) => break,
+							Some(_) => {
+								args.push(self.parse_expr()?);
+								
+								match self.peek() {
+									Some(Token::Comma | Token::Newline) => {
+										self.next();
+									}
+									Some(Token::RBrace) => {}
+									_ => Err("`,`, `}`, or newline")?,
+								}
+							}
+							None => Err("`}` or expression")?,
+						}
+					}
+					
+					self.next();
 				} else {
-					return Err("`:`, or newline")?;
+					return Err("`{`, or newline")?;
 				}
 				
 				match kw {
@@ -444,14 +466,16 @@ impl Stmt {
 			
 			// sighhhhhhhhhhhhhhhhh
 			Stmt::Swap(left, right) => {
-				todo!("swapping is not currently supported");
+				t.swap(&left.id, &right.id)?
 				/*
 				// ensure types are the same
 				assert_eq!(
-					t.vars[left_idx].1.get_type(),
-					t.vars[right_idx].1.get_type(),
+					t.values[left_idx].1.get_type(),
+					t.values[right_idx].1.get_type(),
 					"tried to swap variables with different types"
 				);
+				
+				todo!("swapping is not currently supported");
 				
 				// get names of values being swapped for later
 				let left_name = t.vars[left_idx].clone();
@@ -520,7 +544,7 @@ impl Stmt {
 								panic!("{:?}", e);
 							}
 						}
-						assert_eq!(assert.eval(t)?, Value::Bool(false));
+						assert_eq!(dbg![assert].eval(dbg![t])?, Value::Bool(false));
 					}
 					_ => panic!("tried to do something illegal")
 				}

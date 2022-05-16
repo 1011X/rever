@@ -138,8 +138,7 @@
       <match extended="true">
         ((?&lt;=\.\.)|(?&lt;![\w\.]))
         (
-        [0-9][0-9']*\%{num-suffix}?|
-        0d[0-9aA']*\%{num-suffix}?|
+        0[1-9aA']*\%{num-suffix}?|
         0b[01']+\%{int-suffix}?|
         0x(\%{hex-digit}|_)+\%{int-suffix}?
         )

@@ -57,13 +57,13 @@ pub fn init() -> io::Result<()> {
 #[derive(Debug, Clone)]
 pub enum ReplLine {
 	Show(LValue),
-	//Expr(Expr),
 	
 	//Var(String, Expr),
 	//Drop(String),
 	
 	Item(Item),
 	Stmt(Stmt),
+	Expr(Expr),
 }
 
 impl ast::Parser<'_> {
@@ -88,8 +88,9 @@ impl ast::Parser<'_> {
 				self.parse_item()?.into()
 			}
 				
-			Some(_) => {
-				self.parse_stmt()?.into()
+			Some(_) => match self.parse_stmt() {
+				Ok(stmt) => stmt.into(),
+				Err(_) => self.parse_expr()?.into(),
 			}
 		})
 	}
@@ -100,6 +101,7 @@ impl ReplLine {
 		match self {
 			ReplLine::Show(lval) => {
 				println!(": {}", t.get(&lval)?);
+				Ok(Value::Nil)
 			}
 			/*
 			ReplLine::Var(name, expr) => {
@@ -114,12 +116,16 @@ impl ReplLine {
 			// TODO return Err for item and stmt when not enough input.
 			ReplLine::Item(item) => {
 				m.insert(item);
+				Ok(Value::Nil)
 			}
 			ReplLine::Stmt(stmt) => {
 				stmt.eval(t, m)?;
+				Ok(Value::Nil)
+			}
+			ReplLine::Expr(expr) => {
+				expr.eval(t)
 			}
 		}
-		Ok(Value::Nil)
 	}
 }
 
@@ -129,6 +135,10 @@ impl From<Item> for ReplLine {
 
 impl From<Stmt> for ReplLine {
 	fn from(stmt: Stmt) -> Self { ReplLine::Stmt(stmt) }
+}
+
+impl From<Expr> for ReplLine {
+	fn from(expr: Expr) -> Self { ReplLine::Expr(expr) }
 }
 
 enum Error {

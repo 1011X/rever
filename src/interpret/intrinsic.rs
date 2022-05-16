@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use super::{EvalResult, EvalError, Value};
 use crate::ast::Type;
 use std::io::prelude::*;

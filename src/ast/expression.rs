@@ -222,7 +222,7 @@ impl Parser<'_> {
 	
 	pub fn parse_expr_atom(&mut self) -> ParseResult<Expr> {
 		// check if there's an open parenthesis
-		let mut expr = match self.peek() {
+		let expr = match self.peek() {
 			Some(Token::LParen) => {
 				self.next();
 				
