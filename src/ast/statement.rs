@@ -356,7 +356,7 @@ impl Parser<'_> {
 			
 			// TODO: handle newline here for empty statement
 			token => {
-				eprintln!("Got {:?}: {}", token, self.slice());
+				//eprintln!("Got {:?}: {}", token, self.slice());
 				Err("a valid statement")?
 			}
 		};

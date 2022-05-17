@@ -317,14 +317,14 @@ impl Eval for Expr {
 						Ok(Value::from(l * r)),
 					(BinOp::Div, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l / r)),
-					//(BinOp::Mod, Value::Uint(l), Value::Uint(r)) =>
-					//	Ok(Value::from((l % r + r) % r)),
+					(BinOp::Mod, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from((l % r + r) % r)),
 					(BinOp::And, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l && r)),
 					
 					// 6
-					//(BinOp::Add, Value::Uint(l), Value::Uint(r)) =>
-					//	Ok(Value::from(l + r)),
+					(BinOp::Add, Value::Int(l), Value::Int(r)) =>
+						Ok(Value::from(l + r)),
 					(BinOp::Sub, Value::Int(l), Value::Int(r)) =>
 						Ok(Value::from(l - r)),
 					(BinOp::Or, Value::Bool(l), Value::Bool(r)) =>

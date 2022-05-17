@@ -6,7 +6,7 @@ use super::*;
 pub enum Literal {
 	//Nil,
 	//Int(i64),
-	Num(u32),
+	Num(i32),
 	Char(char),
 	String(String),
 	Array(Vec<Expr>),
@@ -57,8 +57,38 @@ impl Parser<'_> {
 			Some(Token::ConIdent) => Literal::Variant(self.slice().to_string()),
 			
 			Some(Token::Number) => {
-				//Literal::Num(u32::from_str_radix(self.slice(), 10)?),
-				match u32::from_str_radix(self.slice(), 10) {
+				let mut dec_repr = Vec::with_capacity(self.slice().len());
+				let mut carry = false;
+				
+				for digit in self.slice()[1..].chars().rev() {
+					match digit {
+						'1'..='8' if carry => {
+							let digit = digit.to_digit(10).unwrap() + 1;
+							dec_repr.push(char::from_digit(digit, 10).unwrap());
+							carry = false;
+						}
+						'9' if carry =>
+							dec_repr.push('0'),
+						'A' | 'a' if carry =>
+							dec_repr.push('1'),
+						
+						'1'..='9' =>
+							dec_repr.push(digit),
+						'A' | 'a' => {
+							dec_repr.push('0');
+							carry = true;
+						}
+						_ => unreachable!(),
+					}
+				}
+				
+				// this covers the empty string case
+				dec_repr.push(if carry { '1' } else { '0' });
+				dec_repr.reverse();
+				
+				let dec_repr: String = dec_repr.into_iter().collect();
+				
+				match i32::from_str_radix(&dec_repr, 10) {
 					Ok(n) => Literal::Num(n),
 					Err(_) => Err("a smaller number")?,
 				}

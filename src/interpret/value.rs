@@ -59,7 +59,46 @@ impl fmt::Display for Value {
 			Value::Nil => fmt.write_str("nil"),
 			
 			Value::Bool(b) => b.fmt(fmt),
-			Value::Int(i)  => i.fmt(fmt),
+			Value::Int(i) => i.fmt(fmt), /*{
+				// TODO modify this to show bijective numerals
+				let mut bij_repr = Vec::with_capacity(self.slice().len());
+				let mut carry = false;
+				
+				for digit in self.slice().chars() {
+					match digit {
+						'1'..='8' if carry => {
+							let digit = digit.to_digit(10).unwrap() + 1;
+							bij_repr.push(char::from_digit(digit, 10).unwrap());
+							carry = false;
+						}
+						'9' if carry =>
+							bij_repr.push('0'),
+						'A' | 'a' if carry =>
+							bij_repr.push('1'),
+						
+						'1'..='9' =>
+							bij_repr.push(digit),
+						'A' | 'a' => {
+							bij_repr.push('0');
+							carry = true;
+						}
+						_ => unreachable!(),
+					}
+				}
+				
+				if carry {
+					bij_repr.push('1');
+				} else {
+					bij_repr.push('0');
+				}
+				
+				let bij_repr: String = bij_repr.into_iter().collect();
+				
+				match i32::from_str_radix(&dec_repr, 10) {
+					Ok(n) => Literal::Num(n),
+					Err(_) => Err("a smaller number")?,
+				}
+			}*/
 			//Value::Uint(u) => u.fmt(fmt),
 			
 			//Value::Char(c)   => write!(fmt, "{:?}", c),

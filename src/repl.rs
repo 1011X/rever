@@ -2,7 +2,7 @@ use std::io::{self, prelude::*};
 use logos::Logos;
 
 use crate::token::Token;
-use crate::ast::{self, LValue, Expr, Item, Module, Stmt};
+use crate::ast::{self, LValue, Expr, Item, Module, Stmt, Type};
 use crate::interpret::{Eval, EvalResult, Stack, StackFrame, Value};
 
 pub fn init() -> io::Result<()> {
@@ -25,6 +25,10 @@ pub fn init() -> io::Result<()> {
 		stdout.flush()?;
 		stdin.read_line(&mut input)?;
 		
+		if input.is_empty() {
+			continue;
+		}
+		
 		// read
 		let tokens = Token::lexer(&input);
 		let mut parser = ast::Parser::new(tokens);
@@ -36,7 +40,7 @@ pub fn init() -> io::Result<()> {
 				continue;
 			}
 			Err(e) => {
-				eprintln!("! Invalid input: {}.", e);
+				eprintln!("! Invalid input: expected {}.", e);
 				input.clear();
 				continuing = false;
 				continue;
@@ -44,22 +48,27 @@ pub fn init() -> io::Result<()> {
 		};
 		
 		// eval
-		if line.eval(stack.last_mut().unwrap(), &mut module).is_ok() {
-			input.clear();
-		} else {
-			return Ok(());
+		match line.eval(stack.last_mut().unwrap(), &mut module) {
+			Ok(Value::Nil) => {}
+			Ok(value) => {
+				println!("> {}", value);
+			}
+			Err(e) => {
+				eprintln!("! Error occurred: {:?}.", e);
+			}
 		}
 		
+		input.clear();
 		continuing = false;
 	}
 }
 
 #[derive(Debug, Clone)]
 pub enum ReplLine {
-	Show(LValue),
+	//Show(LValue),
 	
-	//Var(String, Expr),
-	//Drop(String),
+	Var(String, Type, Expr),
+	Drop(String),
 	
 	Item(Item),
 	Stmt(Stmt),
@@ -87,10 +96,62 @@ impl ast::Parser<'_> {
 			| Some(Token::Mod) => {
 				self.parse_item()?.into()
 			}
+			
+			Some(Token::Var) => {
+				self.next();
 				
-			Some(_) => match self.parse_stmt() {
-				Ok(stmt) => stmt.into(),
-				Err(_) => self.parse_expr()?.into(),
+				// get name
+				let name = match self.peek() {
+					Some(Token::VarIdent) => self.slice().to_string(),
+					_ => Err("name in variable declaration")?,
+				};
+				self.next();
+				
+				// get optional type
+				let typ = match self.expect(Token::Colon) {
+					Some(_) => self.parse_type()?,
+					None => Type::Infer,
+				};
+				
+				// check for assignment op
+				self.expect(Token::Assign)
+					.ok_or("`:=` in variable declaration")?;
+				
+				// get initialization expression
+				let init = self.parse_expr()?;
+				/*
+				self.expect(Token::Newline)
+					.ok_or("newline after variable declaration")?;
+				*/
+				ReplLine::Var(name, typ, init)
+			}
+			
+			Some(Token::Drop) => {
+				self.next();
+				
+				// get name
+				let name = match self.peek() {
+					Some(Token::VarIdent) => self.slice().to_string(),
+					_ => Err("name in variable declaration")?,
+				};
+				self.next();
+				/*
+				self.expect(Token::Newline)
+					.ok_or("newline after variable declaration")?;
+				*/
+				ReplLine::Drop(name)
+			}
+				
+			Some(_) => {
+				let mut checkpoint = self.clone();
+				match self.parse_stmt() {
+					Ok(stmt) => stmt.into(),
+					Err(_) => {
+						let expr = checkpoint.parse_expr()?.into();
+						self.expect(Token::Newline);
+						expr
+					}
+				}
 			}
 		})
 	}
@@ -99,20 +160,22 @@ impl ast::Parser<'_> {
 impl ReplLine {
 	fn eval(self, t: &mut StackFrame, m: &mut Module) -> EvalResult<Value> {
 		match self {
+			/*
 			ReplLine::Show(lval) => {
 				println!(": {}", t.get(&lval)?);
 				Ok(Value::Nil)
 			}
-			/*
-			ReplLine::Var(name, expr) => {
+			*/
+			ReplLine::Var(name, _, expr) => {
 				let val = expr.eval(t)?;
 				t.push(name, val);
+				Ok(Value::Nil)
 			}
 			
 			ReplLine::Drop(name) => {
-				t.remove(&name)?;
+				Ok(t.remove(&name)?)
 			}
-			*/
+			
 			// TODO return Err for item and stmt when not enough input.
 			ReplLine::Item(item) => {
 				m.insert(item);
