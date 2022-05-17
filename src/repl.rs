@@ -17,7 +17,7 @@ pub fn init() -> io::Result<()> {
 	stack.push(root_frame);
 	
 	println!("Rever 0.0.1");
-	println!("Type \"show x\" to display the value of x.");
+	//println!("Type \"show x\" to display the value of x.");
 	
 	loop {
 		let prompt = if continuing { "|" } else { "<" };
@@ -25,9 +25,7 @@ pub fn init() -> io::Result<()> {
 		stdout.flush()?;
 		stdin.read_line(&mut input)?;
 		
-		if input.is_empty() {
-			continue;
-		}
+		//println!("{:?}", input);
 		
 		// read
 		let tokens = Token::lexer(&input);
@@ -39,8 +37,13 @@ pub fn init() -> io::Result<()> {
 				continuing = true;
 				continue;
 			}
+			Err(ast::ParseError::Expected(_)) if parser.peek() == None => {
+				continuing = true;
+				continue;
+			}
 			Err(e) => {
-				eprintln!("! Invalid input: expected {}.", e);
+				eprintln!("! Invalid input: {}, got {:?}.", e, parser.peek());
+				eprintln!("! Remaining input: {}", parser.remainder());
 				input.clear();
 				continuing = false;
 				continue;
@@ -91,11 +94,8 @@ impl ast::Parser<'_> {
 				ReplLine::Show(LValue { id: name, ops: Vec::new() })
 			}
 			*/
-			Some(Token::Fn)
-			| Some(Token::Proc)
-			| Some(Token::Mod) => {
-				self.parse_item()?.into()
-			}
+			Some(Token::Fn | Token::Proc | Token::Mod) =>
+				self.parse_item()?.into(),
 			
 			Some(Token::Var) => {
 				self.next();

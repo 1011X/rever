@@ -101,7 +101,7 @@ impl Parser<'_> {
 		}
 		
 		self.expect(Token::Newline)
-			.ok_or("newline after parameter list")?;
+			.ok_or("newline after procedure declaration")?;
 		
 		self.skip_newlines();
 		

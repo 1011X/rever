@@ -54,18 +54,6 @@ impl Parser<'_> {
 						None => Type::Infer,
 					};
 					
-					// ensure param name is unique
-					// TODO leave until hir translation?
-					for (name, _) in &params {
-						if *name == param_name {
-							eprintln!(
-								"A parameter name in `fn {}` was repeated: {:?}",
-								fn_name, param_name
-							);
-							Err("parameter names to be unique")?;
-						}
-					}
-					
 					// push to list of parameters
 					params.push((param_name, typ));
 					

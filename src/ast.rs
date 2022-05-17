@@ -44,8 +44,7 @@ pub trait AstNode: Sized {
 pub enum ParseError {
 	/// Parser reached an unexpected end-of-file.
 	Eof,
-	Empty,
-	Msg(&'static str),
+	Expected(&'static str),
 	InvalidChar,
 }
 
@@ -53,15 +52,16 @@ impl fmt::Display for ParseError {
 	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
 			ParseError::Eof => fmt.write_str("not end-of-file"),
-			ParseError::Empty => todo!(),
-			ParseError::Msg(s) => fmt.write_str(s),
+			ParseError::Expected(msg) => write!(fmt, "expected {}", msg),
 			ParseError::InvalidChar => fmt.write_str("valid character literal"),
 		}
 	}
 }
 
 impl From<&'static str> for ParseError {
-	fn from(msg: &'static str) -> Self { ParseError::Msg(msg) }
+	fn from(msg: &'static str) -> Self {
+		ParseError::Expected(msg)
+	}
 }
 
 
@@ -118,6 +118,7 @@ impl<'src> Parser<'src> {
 	}
 	
 	pub fn next(&mut self) -> Option<Token> {
+		let prev = self.curr;
 		self.curr = self.lexer.next();
 		
 		// adjust location state
@@ -126,7 +127,7 @@ impl<'src> Parser<'src> {
 			self.last_nl = self.span().end;
 		}
 		
-		self.curr.clone()
+		prev
 	}
 	
 	pub fn expect(&mut self, tok: Token) -> Option<Token> {

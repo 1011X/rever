@@ -61,7 +61,8 @@ impl Parser<'_> {
 			// TODO use this keyword as a prefix to comment out statements?
 			Token::Skip => {
 				self.next();
-				self.parse_stmt()?;
+				// TODO make this optional
+				//self.parse_stmt()?;
 				Stmt::Skip
 			}
 			
