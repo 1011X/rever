@@ -7,13 +7,13 @@ proc main
 	from pc = 0
 	until pc = prog.len
 		if prog.(pc) = '>'
-			ptr += 1
+			ptr += 01
 		else if prog.(pc) = '<'
-			ptr -= 1
+			ptr -= 01
 		else if prog.(pc) = '+'
-			mem.(ptr) += 1
+			mem.(ptr) += 01
 		else if prog.(pc) = '-'
-			mem.(ptr) -= 1
+			mem.(ptr) -= 01
 		else if prog.(pc) = ','
 			do get_char: mem.(ptr)
 		else if prog.(pc) = '.'
@@ -23,13 +23,13 @@ proc main
 				var count := 0
 				from count = 0
 					if prog.(pc) = '['
-						count += 1
+						count += 01
 					else if prog.(pc) = ']'
-						count -= 1
+						count -= 01
 					fi
 					fi
 				until count = 0
-					pc += 1
+					pc += 01
 				loop
 				drop count := 0
 			fi prog.(pc) = ']'
@@ -38,9 +38,9 @@ proc main
 				var count := 0
 				from count = 0
 					if prog.(pc) = ']'
-						count += 1
+						count += 01
 					else if prog.(pc) = '['
-						count -= 1
+						count -= 01
 					fi
 					fi
 				until count = 0
@@ -58,7 +58,7 @@ proc main
 		fi
 		fi
 		fi
-		pc += 1
+		pc += 01
 	loop
 	~do print: ptr
 	~do print: mem
@@ -66,4 +66,4 @@ proc main
 	drop ptr := 0
 	drop mem := [0, 0, 0, 0, 0, 0, 0, 0]
 	drop prog
-end
+return

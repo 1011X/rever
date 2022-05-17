@@ -1,21 +1,21 @@
-proc expression(curr: int, input: [int], ret: int)
+proc expression {curr: Int, input: [Int], ret: Int}
 	~ (operator expression expression)
 	if input.(curr) = '('
-		curr += 1
+		curr += 01
 		var op := input.(curr)
-		curr += 1
+		curr += 01
 		var a := 0
 		var b := 0
-		do expression(curr, input, a)
-		do expression(curr, input, b)
+		do expression {curr, input, a}
+		do expression {curr, input, b}
 		
-		if op = 43
+		if op = 043
 			ret += a + b
-		else if op = 45
+		else if op = 045
 			ret += a - b
-		else if op = 42
+		else if op = 042
 			ret += a * b
-		else if op = 47
+		else if op = 047
 			ret += a / b
 		else
 			error("unrecognized op")
@@ -23,33 +23,33 @@ proc expression(curr: int, input: [int], ret: int)
 		fi
 		fi
 		fi
-			
-		undo expression(curr, input, b)
-		undo expression(curr, input, a)
+		
+		undo expression {curr, input, b}
+		undo expression {curr, input, a}
 		drop b := 0
 		drop a := 0
-		curr -= 1
+		curr -= 01
 		drop op := input.(curr)
 		
-		curr += 3
+		curr += 03
 	~ number
-	else if input.(curr) >= 48 && input.(curr) < 58
-		ret += input.(curr) - 48
+	else if input.(curr) >= 048 && input.(curr) < 058
+		ret += input.(curr) - 048
 	~ error
 	else
 		error("neither a group nor a number")
 	fi
 	fi input.(curr) = ')'
-	curr += 1
-end
+	curr += 01
+return
 
 proc main
-	var curr = 0
-	var input[] = {open, divide, n3, n3, close}
-	var result = 0
-	do expression(curr, input, result)
-	show(result)
-	drop result
-	drop input
-	drop curr = 5
-end
+	var curr := 0
+	var input := "(/33)"
+	var result := 0
+	do expression {curr, input, result}
+	do show {result}
+	drop result := 0
+	drop input := 0
+	drop curr := 05
+return

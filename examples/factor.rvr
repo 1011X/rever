@@ -3,15 +3,15 @@
 ~ C. Lutz and H. Derby.
 
 ~ factor num into table in fact[]
-proc factor(num: int, fact: int[])
+proc factor {num: Int, fact: Vec[Int]}
     var try := 0     ~ Attempted factor.
     var i   := 0     ~ Pointer to last factor in factor table.
-    from (try = 0) and (num > 1)
+    from (try = 0) and (num > 01)
     until try * try > num                    ~ Exit early if possible
-        do nexttry: try
+        do nexttry {try}
         from fact[i] != try               ~ Divide out all occurrences of this
-        until num mod try != 0            ~ factor
-            i += 1
+        until num % try != 0            ~ factor
+            i += 01
             fact[i] += try
             var z := num / try
             z <> num
@@ -19,47 +19,47 @@ proc factor(num: int, fact: int[])
         loop
     loop
 
-    if num != 1
-        i += 1                                ~ Put last prime away, if not done
+    if num != 01
+        i += 01                                ~ Put last prime away, if not done
         fact[i] <> num                        ~ and zero num
     else
-        num -= 1
+        num -= 01
     fi fact[i] != fact[i-1]
 
-    if fact[i-1] * fact[i-1] < fact[i]    ~ Zero try
+    if fact[i-01] * fact[i-01] < fact[i]    ~ Zero try
         from (try * try) > fact[i] 
-            uncall nexttry(try)
+            undo nexttry {try}
         until try = 0
         loop
     else
         try -= fact[i-1]
-    fi (fact[i-1] * fact[i-1]) < fact[i]
+    fi (fact[i-01] * fact[i-01]) < fact[i]
 
-    do zeroi: i, fact                        ~ Zero i
+    do zeroi {i, fact}                        ~ Zero i
     drop i := 0
     drop try := 0
 end
 
-proc zeroi(i: int, fact: int[])
-    from fact[i+1] = 0
+proc zeroi {i: Int, fact: Vec[Int]}
+    from fact[i+01] = 0
     until i = 0
-        i -= 1
+        i -= 01
     loop
 end
 
 proc nexttry(try: int)
-    try += 2
-    if try = 4
-        try -= 1
-    fi try = 3
+    try += 02
+    if try = 04
+        try -= 01
+    fi try = 03
 end
 
 proc main
-    var num := 840       ~ Number to factor.  Ends up zero
-    var fact := [0; 10]  ~ Factor table.  Starts zero. Ends with factors in ascending order
+    var num := 083A       ~ Number to factor.  Ends up zero
+    var fact := [0; 0A]  ~ Factor table.  Starts zero. Ends with factors in ascending order
 
-    do factor: num, fact
-    drop fact := [0, 2, 2, 2, 3, 5, 7, 0, 0, 0]
+    do factor {num, fact}
+    drop fact := [0, 02, 02, 02, 03, 05, 07, 0, 0, 0]
     drop num := 0
 
 ~~    fact[1] += 2
@@ -68,5 +68,5 @@ proc main
 ~~    fact[4] += 3
 ~~    fact[5] += 5
 ~~    fact[6] += 7
-    undo factor: num, fact
+    undo factor {num, fact}
 end

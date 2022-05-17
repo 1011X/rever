@@ -2,21 +2,21 @@ proc main
 	var i := 0
 	
 	from i = 0
-		if (i % 3 = 0) and (i % 5 = 0)
-			do show: "fizzbuzz"
-		else if i % 3 = 0
-			do show: "fizz"
-		else if i % 5 = 0
-			do show: "buzz"
+		if (i % 03 = 0) and (i % 05 = 0)
+			do show {"fizzbuzz"}
+		else if i % 03 = 0
+			do show {"fizz"}
+		else if i % 05 = 0
+			do show {"buzz"}
 		else
-			do show: (i + 48) as Char as Str
+			do show {(i + 048) as Char as Str}
 		fi
 		fi
 		fi
 		do show: "\n"
-	until i = 10
-		i += 1
+	until i = 0A
+		i += 01
 	loop
 	
-	drop i := 10
+	drop i := 0A
 return

@@ -1,0 +1,9 @@
+proc div_mod {mod: Uint, quot: Uint, const divisor: Uint}
+	from quot = 0
+	until mod < divisor
+		mod -= divisor
+		quot += 01
+	loop
+return
+
+

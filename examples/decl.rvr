@@ -1,50 +1,49 @@
 proc main
 	var x := 0
-	var y := 1
-	do print: "hello world"
+	var y := 01
+	do print {"hello world"}
 	x <> y
-	x -= 1
-	y += 1
-	y := 1
+	x -= 01
+	y += 01
+	y := 01
 	drop y := 0
 	drop x := 0
-end
+return
 
 proc p
 	if a = 0
 		do x
-	else if a = 1
+	else if a = 01
 		do y
 	else
 		do z
 	fi
 	fi
-end
+return
 
-proc print_file(path: int)
-	var bytes := 80
+proc print_file {path: Int}
+	var bytes := 07A
 	var file := nil
 	var buf := nil
 	
-	do load: path, file
-	do take: file, buf, bytes
-	do print: buf, bytes
-	undo load: path, file
+	do load {path, file}
+	do take {file, buf, bytes}
+	do print {buf, bytes}
+	undo load {path, file}
 	
 	drop buf := nil
 	drop file := nil
-	drop bytes := 80
+	drop bytes := 07A
+return
+
+fn succ
+	x -> x + 1
 end
 
-fn succ(x: int): int
-	let y = x + 1
-	y
-end
-
-proc divmod(n: int, var x: int, var div: int)
+proc divmod {n: Int, x: Int, div: Int)
     from div = 0
         x -= n
         div += 1
     until x < n
     loop
-end
+return

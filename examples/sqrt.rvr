@@ -2,39 +2,33 @@
 ~ * Adapted version of example from "Janus: a time-reversible language" by
 ~ * C. Lutz and H. Derby.
 
-~ Calculates floor(sqrt(num))
-proc root(var num: int, var root: int)
-    var bit := 1
+~ Calculates {num - floor(sqrt(num)), floor(sqrt(num))}
+proc root {num: Int, root: Int}
+    var bit := 01
     
-    from bit = 1
-    until bit ^ 2 > num   ~ find exponential ball park
-        do doublebit: bit
+    from bit = 01
+    until bit ^ 02 > num   ~ find exponential ball park
+    	bit <<= 01
     loop
 
-    from bit ^ 2 > num
-        undo doublebit: bit
-        if (root + bit) ^ 2 <= num
+    from bit ^ 02 > num
+        bit >>= 01
+        if (root + bit) ^ 02 <= num
             root += bit
-        fi root / bit mod 2 != 0
-    until bit = 1
+        fi (root / bit) % 02 != 0
+    until bit = 01
     loop
     
     drop bit
-    num -= root ^ 2
-end
-
-proc doublebit(var bit: int)
-    var z := bit
-    bit += z
-    drop z := bit / 2
-end
+    num -= root ^ 02
+return
 
 proc main
-    var num := 66
+    var num := 066
     var root := 0
-    do root: num, root
-    drop root := 8
-    drop num := 2
-    ~root += 25
+    do root {num, root}
+    drop root := 08
+    drop num := 02
+    ~root += 025
     ~undo root: num, root
-end
+return
