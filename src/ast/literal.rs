@@ -106,16 +106,15 @@ impl Parser<'_> {
 						Some('t') => '\t',
 						Some('r') => '\r',
 						Some('0') => '\0',
-						_ => return Err(ParseError::InvalidChar),
+						_ => Err("a valid escape character")?,
 					}
-					Some(c) if ! "\'\n\t\r\0".contains(c) => c,
-					_ => return Err(ParseError::InvalidChar),
+					Some(c) if !"\'\n\t\r\0".contains(c) => c,
+					_ => Err("an accepted character in literal")?,
 				};
 				
 				match chars.next() {
 					Some('\'') => {}
-					Some(c) => return Err(ParseError::InvalidChar),
-					None => return Err(ParseError::Eof),
+					_ => Err("a terminated character literal")?,
 				}
 				
 				Literal::Char(c)
@@ -148,14 +147,10 @@ impl Parser<'_> {
 							Some('r')  => '\r',
 							Some('0')  => '\0',
 							
-							Some(c) =>
-								return Err(ParseError::InvalidChar),
-								//return Err(LitErr::InvalidEscChar),
-							None =>
-								return Err(ParseError::Eof),
+							_ => Err("a valid escape character")?,
 						}),
 						Some(c) => string.push(c),
-						None => return Err(ParseError::Eof),
+						None => Err("a terminated string")?,
 					}
 				}
 				

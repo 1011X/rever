@@ -44,12 +44,28 @@ impl Stmt {
 			Stmt::Do(p, args) => Stmt::Undo(p, args),
 			Stmt::Undo(p, args) => Stmt::Do(p, args),
 			
-			Stmt::Var(n, t, init, s, dest) =>
-				Stmt::Var(n, t, dest, s, init),
-			Stmt::If(test, b, eb, assert) =>
-				Stmt::If(assert, b, eb, test),
-			Stmt::From(assert, b, lb, test) =>
-				Stmt::From(test, b, lb, assert),
+			// recursively invert blocks
+			Stmt::Var(name, ty, init, scope, dest) =>
+				Stmt::Var(
+					name, ty,
+					dest,
+					scope.into_iter().map(|s| s.invert()).collect(),
+					init
+				),
+			Stmt::If(test, main_block, else_block, assert) =>
+				Stmt::If(
+					assert,
+					main_block.into_iter().map(|s| s.invert()).collect(),
+					else_block.into_iter().map(|s| s.invert()).collect(),
+					test
+				),
+			Stmt::From(assert, block, loop_block, test) =>
+				Stmt::From(
+					test,
+					block.into_iter().map(|s| s.invert()).collect(),
+					loop_block.into_iter().map(|s| s.invert()).collect(),
+					assert
+				),
 		}
 	}
 }
@@ -494,36 +510,44 @@ impl Stmt {
 			the "path" of the current module with the procedure, but for now
 			just having the items of the current module is good enough. So find
 			a way to make that available. */
-			Stmt::Do(callee_name, args) => {
+			kw @ Stmt::Do(callee_name, args)
+			| kw @ Stmt::Undo(callee_name, args) => {
 				let mut vals = Vec::new();
 				for arg in args {
 					vals.push(arg.eval(t)?);
 				}
-				// TODO error handling for when a procedure does not exist.
+				
+				// search items in current module for a matching procedure
+				let mut p = None;
 				for item in &m.items {
 					match item {
 						Item::Proc(pr) if pr.name == *callee_name => {
-							pr.call(vals, m)?;
+							p = Some(pr);
 							break;
 						}
 						_ => {}
 					}
 				}
-			}
-			Stmt::Undo(callee_name, args) => {
-				let mut vals = Vec::new();
-				for arg in args {
-					vals.push(arg.eval(t)?);
-				}
-				for item in &m.items {
-					match item {
-						Item::Proc(pr)
-						if pr.name == *callee_name => {
-							pr.uncall(vals, m)?;
-							break;
-						}
-						_ => {}
-					}
+				
+				// if procedure name found, call it. otherwise panic.
+				let results = match (kw, p) {
+					(Stmt::Do(..), Some(pr)) => pr.call(vals, m)?,
+					(Stmt::Undo(..), Some(pr)) => pr.uncall(vals, m)?,
+					_ => panic!("could not (un)call procedure {}: not found", callee_name),
+				};
+				
+				// update variables to new values
+				for (arg_expr, result) in args.iter().zip(results.into_iter()) {
+					// check for arguments that were just an l-value, then
+					// update those.
+					let var_value = match arg_expr {
+						Expr::LVal(lval) => t.get_mut(&lval)?,
+						_ => continue,
+					};
+					
+					// usually we'd do type checking here, but Procedure::call
+					// already handles that.
+					*var_value = result;
 				}
 			}
 			
@@ -545,7 +569,7 @@ impl Stmt {
 								panic!("{:?}", e);
 							}
 						}
-						assert_eq!(dbg![assert].eval(dbg![t])?, Value::Bool(false));
+						assert_eq!(assert.eval(t)?, Value::Bool(false));
 					}
 					_ => panic!("tried to do something illegal")
 				}
@@ -570,6 +594,7 @@ impl Stmt {
 						_ => panic!("tried to do something illegal")
 					}
 					
+					//eprintln!("{:?}", t);
 					assert_eq!(assert.eval(t)?, Value::Bool(false));
 				}
 			}

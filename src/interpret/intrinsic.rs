@@ -52,7 +52,7 @@ pub fn print(args: &mut [Value]) -> EvalResult<()> {
 				expected: Type::String,
 				got: val.get_type(),
 			}),
-		_ => panic!("wrong number of parameters: expected 2, got not 2"),
+		_ => panic!("wrong number of parameters: expected 2, got {}", args.len()),
 	}
 	
 	Ok(())

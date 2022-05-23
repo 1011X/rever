@@ -43,17 +43,13 @@ pub trait AstNode: Sized {
 #[derive(Debug, Clone)]
 pub enum ParseError {
 	/// Parser reached an unexpected end-of-file.
-	Eof,
 	Expected(&'static str),
-	InvalidChar,
 }
 
 impl fmt::Display for ParseError {
 	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			ParseError::Eof => fmt.write_str("not end-of-file"),
 			ParseError::Expected(msg) => write!(fmt, "expected {}", msg),
-			ParseError::InvalidChar => fmt.write_str("valid character literal"),
 		}
 	}
 }

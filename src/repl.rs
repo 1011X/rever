@@ -17,7 +17,6 @@ pub fn init() -> io::Result<()> {
 	stack.push(root_frame);
 	
 	println!("Rever 0.0.1");
-	//println!("Type \"show x\" to display the value of x.");
 	
 	loop {
 		let prompt = if continuing { "|" } else { "<" };
@@ -33,11 +32,7 @@ pub fn init() -> io::Result<()> {
 		
 		let line = match parser.parse_repl_line() {
 			Ok(line) => line,
-			Err(ast::ParseError::Eof) => {
-				continuing = true;
-				continue;
-			}
-			Err(ast::ParseError::Expected(_)) if parser.peek() == None => {
+			Err(_) if parser.peek() == None => {
 				continuing = true;
 				continue;
 			}
@@ -54,10 +49,10 @@ pub fn init() -> io::Result<()> {
 		match line.eval(stack.last_mut().unwrap(), &mut module) {
 			Ok(Value::Nil) => {}
 			Ok(value) => {
-				println!("> {}", value);
+				println!("{}", value);
 			}
 			Err(e) => {
-				eprintln!("! Error occurred: {:?}.", e);
+				eprintln!("! Error: {}.", e);
 			}
 		}
 		
@@ -68,6 +63,9 @@ pub fn init() -> io::Result<()> {
 
 #[derive(Debug, Clone)]
 pub enum ReplLine {
+	/// For blank or empty input, or input with only comments
+	Blank,
+	
 	//Show(LValue),
 	
 	Var(String, Type, Expr),
@@ -82,6 +80,8 @@ impl ast::Parser<'_> {
 	pub fn parse_repl_line(&mut self) -> ast::ParseResult<ReplLine> {
 		Ok(match self.peek() {
 			None => todo!(),
+			
+			Some(Token::Newline) => ReplLine::Blank,
 			/*
 			Some(Token::Ident) if self.slice() == "show" => {
 				self.next();
@@ -160,6 +160,7 @@ impl ast::Parser<'_> {
 impl ReplLine {
 	fn eval(self, t: &mut StackFrame, m: &mut Module) -> EvalResult<Value> {
 		match self {
+			ReplLine::Blank => Ok(Value::Nil),
 			/*
 			ReplLine::Show(lval) => {
 				println!(": {}", t.get(&lval)?);

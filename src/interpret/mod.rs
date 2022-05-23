@@ -1,4 +1,5 @@
 //use std::io::prelude::*;
+use std::fmt;
 
 use crate::ast::{self, Item, Module, Type, Procedure, Param, ProcDef};
 
@@ -25,6 +26,19 @@ pub enum EvalError {
 	},
 	UnknownIdent(String),
 	IrreversibleState,
+}
+
+impl fmt::Display for EvalError {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			EvalError::UnknownIdent(id) =>
+				write!(f, "name {:?} is not defined", id),
+			EvalError::TypeMismatch { expected, got } =>
+				write!(f, "expected {:?}, got {:?}", expected, got),
+			EvalError::IrreversibleState =>
+				f.write_str("hit an irreversible state"),
+		}
+	}
 }
 
 // Creates root module, loads intrinsics, finds `main`, and executes it.
