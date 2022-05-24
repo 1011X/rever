@@ -7,7 +7,7 @@ pub enum Value {
 	Nil,
 	Bool(bool),
 	//Byte(u8),
-	Int(i32),
+	U32(u32),
 	String(String),
 	Array(Box<[Value]>),
 	//Proc(Path),
@@ -18,8 +18,8 @@ impl Value {
 	pub fn get_type(&self) -> Type {
 		match self {
 			Value::Nil       => Type::Nil,
-			Value::Bool(_)   => Type::Int,
-			Value::Int(_)    => Type::Int,
+			Value::Bool(_)   => Type::U32,
+			Value::U32(_)    => Type::U32,
 			Value::String(s) => Type::String,
 			
 			Value::Array(_)  => todo!()
@@ -45,7 +45,7 @@ impl Value {
 			
 			(Value::Bool(a), Value::Bool(b)) => *a ^= b,
 			
-			(Value::Int(a), Value::Int(b)) => *a ^= b,
+			(Value::U32(a), Value::U32(b)) => *a ^= b,
 			
 			_ => todo!()
 		}
@@ -59,27 +59,29 @@ impl fmt::Display for Value {
 			Value::Nil => fmt.write_str("nil"),
 			
 			Value::Bool(b) => b.fmt(fmt),
-			Value::Int(i) => i.fmt(fmt), /*{
+			Value::U32(i) => i.fmt(fmt), /*{
 				// TODO modify this to show bijective numerals
-				let mut bij_repr = Vec::with_capacity(self.slice().len());
+				let mut bij_repr = Vec::new();
 				let mut carry = false;
 				
-				for digit in self.slice().chars() {
+				for digit in i.to_string().chars().rev() {
 					match digit {
-						'1'..='8' if carry => {
-							let digit = digit.to_digit(10).unwrap() + 1;
+						'2'..='9' if carry => {
+							let digit = digit.to_digit(10).unwrap() - 1;
 							bij_repr.push(char::from_digit(digit, 10).unwrap());
 							carry = false;
 						}
-						'9' if carry =>
-							bij_repr.push('0'),
-						'A' | 'a' if carry =>
-							bij_repr.push('1'),
+						'1' if carry => {
+							carry = false;
+						}
+						'0' if carry =>
+							bij_repr.push('9'),
 						
+						// no carry
 						'1'..='9' =>
 							bij_repr.push(digit),
-						'A' | 'a' => {
-							bij_repr.push('0');
+						'0' => {
+							bij_repr.push('A');
 							carry = true;
 						}
 						_ => unreachable!(),
@@ -88,9 +90,9 @@ impl fmt::Display for Value {
 				
 				if carry {
 					bij_repr.push('1');
-				} else {
-					bij_repr.push('0');
 				}
+				bij_repr.push('0');
+				bij_repr.reverse();
 				
 				let bij_repr: String = bij_repr.into_iter().collect();
 				
@@ -99,7 +101,6 @@ impl fmt::Display for Value {
 					Err(_) => Err("a smaller number")?,
 				}
 			}*/
-			//Value::Uint(u) => u.fmt(fmt),
 			
 			//Value::Char(c)   => write!(fmt, "{:?}", c),
 			Value::String(s) => write!(fmt, "{:?}", s),
@@ -127,12 +128,12 @@ impl From<bool> for Value {
 
 impl From<char> for Value {
 	#[inline]
-	fn from(c: char) -> Self { Value::Int(c as i32) }
+	fn from(c: char) -> Self { Value::U32(c as u32) }
 }
 
-impl From<i32> for Value {
+impl From<u32> for Value {
 	#[inline]
-	fn from(n: i32) -> Self { Value::Int(n) }
+	fn from(n: u32) -> Self { Value::U32(n) }
 }
 
 impl From<String> for Value {

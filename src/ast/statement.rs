@@ -415,7 +415,7 @@ impl Stmt {
 			Stmt::Xor(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval)?, &expr) {
-					(Value::Int(l), Value::Int(r)) =>
+					(Value::U32(l), Value::U32(r)) =>
 						*l ^= *r,
 					_ => panic!("tried to do something illegal")
 				}
@@ -424,7 +424,7 @@ impl Stmt {
 			Stmt::Add(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval)?, &expr) {
-					(Value::Int(l), Value::Int(r)) =>
+					(Value::U32(l), Value::U32(r)) =>
 						*l = l.wrapping_add(*r),
 					//(Value::Uint(l), Value::Uint(r)) =>
 					//	*l = l.wrapping_add(*r),
@@ -440,7 +440,7 @@ impl Stmt {
 			Stmt::Sub(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval)?, &expr) {
-					(Value::Int(l), Value::Int(r)) =>
+					(Value::U32(l), Value::U32(r)) =>
 						*l = l.wrapping_sub(*r),
 					//(Value::Uint(l), Value::Uint(r)) =>
 					//	*l = l.wrapping_sub(*r),
@@ -462,7 +462,7 @@ impl Stmt {
 			Stmt::RotLeft(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval)?, &expr) {
-					(Value::Int(l), Value::Int(r)) =>
+					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_left(*r as u32),
 					//(Value::Uint(l), Value::Uint(r)) =>
 					//	*l = l.rotate_left(*r as u32),
@@ -473,7 +473,7 @@ impl Stmt {
 			Stmt::RotRight(lval, expr) => {
 				let expr = expr.eval(t)?;
 				match (t.get_mut(&lval)?, &expr) {
-					(Value::Int(l), Value::Int(r)) =>
+					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_right(*r as u32),
 					//(Value::Uint(l), Value::Uint(r)) =>
 					//	*l = l.rotate_right(*r as u32),

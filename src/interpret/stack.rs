@@ -83,11 +83,11 @@ impl StackFrame {
 				// TODO copy (array, index) case from get_mut
 				(Value::Array(arr), Deref { name: Some(field), args: None })
 				if field == "len" =>
-					Value::Int(arr.len() as i32),
+					Value::U32(arr.len() as u32),
 				
 				(Value::Array(a), Deref { name: None, args: Some(args) }) =>
 					match args[0].eval(self)? {
-						Value::Int(i) =>
+						Value::U32(i) =>
 							a.get(i as usize).unwrap().clone(),
 						
 						value => todo!("{:?}.({})", a, value),
@@ -95,11 +95,11 @@ impl StackFrame {
 				
 				(Value::String(s), Deref { name: Some(field), args: None })
 				if field == "len" =>
-					Value::Int(s.len() as i32),
+					Value::U32(s.len() as u32),
 				
 				(Value::String(s), Deref { name: None, args: Some(args) }) =>
 					match args[0].eval(self)? {
-						Value::Int(i) => {
+						Value::U32(i) => {
 							let c = s.chars().nth(i as usize);
 							match c {
 								Some(c) => c.into(),
@@ -132,11 +132,11 @@ impl StackFrame {
 						/*Value::Uint(idx) => {
 							value = &mut array[idx as usize];
 						}*/
-						Value::Int(idx) => {
+						Value::U32(idx) => {
 							value = &mut array[idx as usize];
 						}
 						value => return Err(EvalError::TypeMismatch {
-							expected: Type::Int,
+							expected: Type::U32,
 							got: value.get_type(),
 						}),
 					}

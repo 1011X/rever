@@ -38,7 +38,7 @@ pub fn init() -> io::Result<()> {
 			}
 			Err(e) => {
 				eprintln!("! Invalid input: {}, got {:?}.", e, parser.peek());
-				eprintln!("! Remaining input: {}", parser.remainder());
+				eprintln!("! Remaining input: {:?}", parser.remainder());
 				input.clear();
 				continuing = false;
 				continue;

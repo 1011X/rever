@@ -235,9 +235,9 @@ impl Eval for Literal {
 	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
 		Ok(match self {
 			//Literal::Nil       => Value::Nil,
-			//Literal::Int(n)    => Value::Int(*n),
-			Literal::Num(n)    => Value::Int(*n as i32),
-			Literal::Char(c)   => Value::Int(*c as i32),
+			//Literal::Int(n)    => Value::U32(*n),
+			Literal::Num(n)    => Value::U32(*n as u32),
+			Literal::Char(c)   => Value::U32(*c as u32),
 			Literal::String(s) => Value::String(s.clone()),
 			
 			Literal::Array(arr) => Value::Array({
@@ -258,8 +258,8 @@ impl Literal {
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
 			//Literal::Int(_)    => Some(Type::Int),
-			Literal::Num(_)    => Some(Type::Int),
-			Literal::Char(_)   => Some(Type::Int),
+			Literal::Num(_)    => Some(Type::U32),
+			Literal::Char(_)   => Some(Type::U32),
 			Literal::String(_) => Some(Type::String),
 			Literal::Array(v)  => None,
 			Literal::Variant(_) => None,

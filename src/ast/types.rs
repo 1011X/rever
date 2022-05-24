@@ -15,7 +15,7 @@ pub enum Type {
 	Infer,
 	Nil,
 	Bool,
-	Int,
+	U32,
 	String,
 	Fn(Vec<Self>, Box<Self>),
 	Decl(String, Vec<Self>),
@@ -71,7 +71,7 @@ impl Parser<'_> {
 				}
 				
 				match name.as_str() {
-					"Int" => Type::Int,
+					"U32" => Type::U32,
 					"Str" => Type::String,
 					_ => Type::Decl(name, type_params),
 				}

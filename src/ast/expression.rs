@@ -279,10 +279,10 @@ impl Eval for Expr {
 			/*
 			Expr::Cast(e, typ) => match (typ, e.eval(t)?) {
 				(Type::Unit, _) => Ok(Value::Nil),
-				(Type::Int, Value::Uint(u))  => Ok(Value::Int(u as i64)),
+				(Type::Int, Value::Uint(u))  => Ok(Value::U32(u as i64)),
 				(Type::UInt, Value::Bool(b)) => Ok(Value::Uint(b as u64)),
-				(Type::UInt, Value::Int(i))  => Ok(Value::Uint(i as u64)),
-				(Type::Char, Value::Int(i)) => Ok(Value::Char(i as u8 as char)),
+				(Type::UInt, Value::U32(i))  => Ok(Value::Uint(i as u64)),
+				(Type::Char, Value::U32(i)) => Ok(Value::Char(i as u8 as char)),
 				(Type::Char, Value::Uint(i)) => Ok(Value::Char(i as u8 as char)),
 				(Type::String, Value::Char(c)) => Ok(Value::String(c.to_string())),
 				(typ, value) => panic!("tried casting {} to {:?}", value, typ),
@@ -291,14 +291,14 @@ impl Eval for Expr {
 			Expr::Not(e) => match e.eval(t)? {
 				Value::Bool(b) => Ok(Value::Bool(!b)),
 				//Value::Uint(n) => Ok(Value::Uint(!n)),
-				Value::Int(n) => Ok(Value::Int(!n)),
+				Value::U32(n) => Ok(Value::U32(!n)),
 				val => unimplemented!(),
 			}
 			
 			Expr::Neg(e) => match e.eval(t)? {
-				Value::Int(n) => Ok(Value::Int(n.wrapping_neg())),
+				Value::U32(n) => Ok(Value::U32(n.wrapping_neg())),
 				val => Err(EvalError::TypeMismatch {
-					expected: Type::Int,
+					expected: Type::U32,
 					got: val.get_type(),
 				})
 			}
@@ -309,30 +309,30 @@ impl Eval for Expr {
 				
 				match (op, left, right) {
 					// 4
-					(BinOp::Exp, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Exp, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l.pow(r as u32))),
 					
 					// 5
-					(BinOp::Mul, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Mul, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l * r)),
-					(BinOp::Div, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Div, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l / r)),
-					(BinOp::Mod, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Mod, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from((l % r + r) % r)),
 					(BinOp::And, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l && r)),
 					
 					// 6
-					(BinOp::Add, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Add, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l + r)),
-					(BinOp::Sub, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Sub, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l - r)),
 					(BinOp::Or, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l || r)),
 					/*
 					(BinOp::Xor, Value::Bool(l), Value::Bool(r)) =>
 						Ok(Value::from(l ^ r)),
-					(BinOp::Xor, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Xor, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l ^ r)),
 					*/
 					
@@ -341,13 +341,13 @@ impl Eval for Expr {
 						Ok(Value::from(l == r)),
 					(BinOp::Ne, l, r) =>
 						Ok(Value::from(l != r)),
-					(BinOp::Lt, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Lt, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l < r)),
-					(BinOp::Gt, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Gt, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l > r)),
-					(BinOp::Le, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Le, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l <= r)),
-					(BinOp::Ge, Value::Int(l), Value::Int(r)) =>
+					(BinOp::Ge, Value::U32(l), Value::U32(r)) =>
 						Ok(Value::from(l >= r)),
 					
 					

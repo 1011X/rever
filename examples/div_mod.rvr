@@ -1,4 +1,4 @@
-proc div_mod {mod: Uint, quot: Uint, const divisor: Uint}
+proc div_mod {mod: U32, quot: U32, const divisor: U32}
 	from quot = 0
 	until mod < divisor
 		mod -= divisor
