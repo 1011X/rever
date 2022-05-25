@@ -2,7 +2,7 @@ use std::io::{self, prelude::*};
 use logos::Logos;
 
 use crate::token::Token;
-use crate::ast::{self, LValue, Expr, Item, Module, Stmt, Type};
+use crate::ast::{self, LValue, Expr, Item, Module, Procedure, Param, Stmt, Type};
 use crate::interpret::{Eval, EvalResult, Stack, StackFrame, Value};
 
 pub fn init() -> io::Result<()> {
@@ -12,11 +12,28 @@ pub fn init() -> io::Result<()> {
 	let mut continuing = false;
 	
 	let mut module = Module::new("repl".into(), Vec::new());
+	module.insert(Item::Proc(Procedure {
+		name: "print".into(),
+		params: vec![
+			Param {
+				name: "msg".into(),
+				constant: false,
+				typ: Type::String,
+			},
+			Param {
+				name: "bytes_read".into(),
+				constant: false,
+				typ: Type::U32,
+			},
+		],
+		code: crate::interpret::intrinsic::PRINT_PROCDEF.clone(),
+	}));
+	
 	let mut stack = Stack::new();
 	let root_frame = StackFrame::new(Vec::new());
 	stack.push(root_frame);
 	
-	println!("Rever 0.0.1");
+	//println!("Rever 0.0.1");
 	
 	loop {
 		let prompt = if continuing { "|" } else { "<" };

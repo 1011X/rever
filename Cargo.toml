@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 clap = { version = "3.1.18", features = ["derive"] }
 logos = "0.11.4"
+lazy_static = "1.4.0"
 #rustyline = ""
 #rodeo = ""
 #codespan-report = ""

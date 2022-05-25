@@ -14,13 +14,16 @@ reverse), a backup buffer is kept of all the data that was passed. When
 */
 #[derive(Debug)]
 pub struct RevStdout {
+	careful: bool,
 	stdout: io::Stdout,
 	history: Vec<u8>,
 }
 
 impl RevStdout {
-	pub fn new() -> Self {
+	pub fn new(careful: bool) -> Self {
 		RevStdout {
+			// TODO make `careful` useful
+			careful,
 			stdout: io::stdout(),
 			history: Vec::new(),
 		}
@@ -38,7 +41,6 @@ impl RevStdout {
 	}
 }
 
-// TODO: Should stdout be written to immediately? or only when flushing?
 impl Write for RevStdout {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 		let bytes_read = self.stdout.write(buf)?;
@@ -97,7 +99,7 @@ impl Write for RevStderr {
 }
 
 
-
+*/
 /** A handle to a reversible standard input stream.
 
 To allow pushing data to stdin (e.g. when backtracking), a backup buffer is kept
@@ -142,4 +144,3 @@ impl Read for RevStdin {
 		}
 	}
 }
-*/

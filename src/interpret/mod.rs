@@ -8,7 +8,7 @@ pub use self::stack::{Stack, StackFrame};
 
 mod io;
 mod value;
-mod intrinsic;
+pub mod intrinsic;
 mod stack;
 
 //pub type Scope = Vec<(String, Value)>;
