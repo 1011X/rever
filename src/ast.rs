@@ -61,20 +61,6 @@ impl From<&'static str> for ParseError {
 }
 
 
-/**
-This parser makes a deliberate decision to deviate from the usual iterator.
- 
-This is mostly a result of wanting easier error-handling; I didn't want to keep
-storing the unexpected token in the error node, which I had to do since the
-lexer has already moved on and forgotten about it by the time I call `.next()`.
-
-Then it came to me: Why keep moving the token around when I could just... 
-leave it there? That way you still have access to `logos`'s `Lexer`
-information, including the source string.
-
-This "not consuming the token immediately" approach would likely fare well with
-token enums with payloads. Rever's tokens don't have payloads.
-*/
 #[derive(Clone)]
 pub struct Parser<'src> {
 	lexer: TokenStream<'src>,

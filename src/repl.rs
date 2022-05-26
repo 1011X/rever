@@ -83,10 +83,8 @@ pub enum ReplLine {
 	/// For blank or empty input, or input with only comments
 	Blank,
 	
-	//Show(LValue),
-	
 	Var(String, Type, Expr),
-	Drop(String),
+	Drop(String, Type, Option<Expr>),
 	
 	Item(Item),
 	Stmt(Stmt),
@@ -152,11 +150,24 @@ impl ast::Parser<'_> {
 					_ => Err("name in variable declaration")?,
 				};
 				self.next();
+				
+				// get optional type
+				let typ = match self.expect(Token::Colon) {
+					Some(_) => self.parse_type()?,
+					None => Type::Infer,
+				};
+				
+				// check for (optional) assignment op
+				let deinit = match self.expect(Token::Assign) {
+					Some(_) => Some(self.parse_expr()?),
+					None => None,
+				};
+				
 				/*
 				self.expect(Token::Newline)
 					.ok_or("newline after variable declaration")?;
 				*/
-				ReplLine::Drop(name)
+				ReplLine::Drop(name, typ, deinit)
 			}
 				
 			Some(_) => {
@@ -190,8 +201,15 @@ impl ReplLine {
 				Ok(Value::Nil)
 			}
 			
-			ReplLine::Drop(name) => {
-				Ok(t.remove(&name)?)
+			ReplLine::Drop(name, _, opt_deinit) => {
+				match opt_deinit {
+					None => Ok(t.remove(&name)?),
+					Some(expr) => {
+						let deinit = expr.eval(t)?;
+						assert_eq!(deinit, t.remove(&name)?);
+						Ok(Value::Nil)
+					}
+				}
 			}
 			
 			// TODO return Err for item and stmt when not enough input.
@@ -220,8 +238,4 @@ impl From<Stmt> for ReplLine {
 
 impl From<Expr> for ReplLine {
 	fn from(expr: Expr) -> Self { ReplLine::Expr(expr) }
-}
-
-enum Error {
-	SymbolNotFound,
 }

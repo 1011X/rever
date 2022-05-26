@@ -426,8 +426,6 @@ impl Stmt {
 				match (t.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.wrapping_add(*r),
-					//(Value::Uint(l), Value::Uint(r)) =>
-					//	*l = l.wrapping_add(*r),
 					(Value::String(l), Value::String(r)) =>
 						*l += r,
 					(l, r) => panic!(
@@ -442,8 +440,6 @@ impl Stmt {
 				match (t.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.wrapping_sub(*r),
-					//(Value::Uint(l), Value::Uint(r)) =>
-					//	*l = l.wrapping_sub(*r),
 					(Value::String(l), Value::String(r)) => {
 						assert!(
 							l.ends_with(r),
@@ -464,8 +460,6 @@ impl Stmt {
 				match (t.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_left(*r as u32),
-					//(Value::Uint(l), Value::Uint(r)) =>
-					//	*l = l.rotate_left(*r as u32),
 					_ => panic!("tried to do something illegal")
 				}
 			}
@@ -475,8 +469,6 @@ impl Stmt {
 				match (t.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_right(*r as u32),
-					//(Value::Uint(l), Value::Uint(r)) =>
-					//	*l = l.rotate_right(*r as u32),
 					_ => panic!("tried to do something illegal")
 				}
 			}

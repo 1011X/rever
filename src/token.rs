@@ -8,7 +8,7 @@ pub enum Token {
 	// keywords
 	#[token("and")]    And,
 	#[token("as")]     As,
-	#[token("begin")]  Begin,
+	#[token("const")]  Const,
 	#[token("do")]     Do,
 	#[token("drop")]   Drop,
 	#[token("else")]   Else,
@@ -25,20 +25,20 @@ pub enum Token {
 	#[token("proc")]   Proc,
 	#[token("return")] Return,
 	#[token("skip")]   Skip,
-	#[token("then")]   Then,
 	#[token("undo")]   Undo,
 	#[token("until")]  Until,
 	#[token("var")]    Var,
 	
 	// reserved keywords
 	#[token("alias")]  Alias,
-	#[token("const")]  Const,
+	#[token("begin")]  Begin,
 	#[token("done")]   Done,
 	#[token("for")]    For,
 	#[token("match")]  Match,
 	#[token("when")]   When,
 //	#[token("struct")] Struct,
 	#[token("tag")]    Tag,
+	#[token("then")]   Then,
 //	#[token("union")]  Union,
 	
 	// brackets
@@ -63,8 +63,8 @@ pub enum Token {
 	#[token("^=")] XorAssign,
 	#[token("+=")] AddAssign,
 	#[token("-=")] SubAssign,
-	#[token("*=")] MulAssign,
-	#[token("/=")] DivAssign,
+	//#[token("*=")] MulAssign,
+	//#[token("/=")] DivAssign,
 	#[token(":<")] RolAssign,
 	#[token(":>")] RorAssign,
 	

@@ -1,3 +1,38 @@
+enum TyTerm {
+    Term(Stmt, TyTerm),
+    Not(Type),
+
+    /// denotes no resources (aka `1` in theory)
+    Nothing,
+    /// denotes a resource that can never be produced (aka `0` in
+    /// theory)
+    Never,
+    Bottom,
+    /// denotes whatever resources remain from an operation (aka
+    /// `⊤` in theory)
+    Remains,
+
+    /// multiplicative conjunction, aka `⊗` in theory. denotes
+    /// concurrence of both resources.
+    Struct(Vec<TyTerm>),
+
+    /// additive disjunction, aka `⊕` in theory. denotes
+    /// possibility of either resource.
+    Tagged(Box<Term>, Box<Term>),
+
+    /// multiplicative disjunction, aka `⅋` in theory.
+    MulDis(Box<Term>, Box<Term>),
+
+    /// additive conjunction, aka `&` in theory. denotes choice
+    /// between either resource.
+    AddCon(Box<Term>, Box<Term>),
+
+    /// denotes unlimited amount of this resource (aka `!` in
+    /// theory)
+    OfCourse(Box<Term>),
+    WhyNot(Box<Term>),
+}
+
 ///! # Type inference in less than 100 lines of Rust
 ///!
 ///! - Do with it what you will
