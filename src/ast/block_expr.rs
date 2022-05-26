@@ -28,8 +28,11 @@ impl Parser<'_> {
 				
 				let test = self.parse_expr()?;
 				
-				self.expect_newlines()
+				self.expect(Token::Newline)
 					.ok_or("newline after `if` predicate")?;
+					//.ok_or(BlockExprErr::NoNlAfterCond)?;
+				
+				self.skip_newlines();
 				
 				// parse main block
 				let main_expr = Box::new(self.parse_block_expr()?);
@@ -78,8 +81,11 @@ impl Parser<'_> {
 				
 				let val = self.parse_expr()?;
 				
-				self.expect_newlines()
+				self.expect(Token::Newline)
 					.ok_or("newline at let binding")?;
+					//.ok_or(BlockExprErr::NoNlAfterBind)?;
+				
+				self.skip_newlines();
 				
 				let scope = Box::new(self.parse_block_expr()?);
 				

@@ -100,8 +100,10 @@ impl Parser<'_> {
 			self.next();
 		}
 		
-		self.expect_newlines()
+		self.expect(Token::Newline)
 			.ok_or("newline after procedure declaration")?;
+		
+		self.skip_newlines();
 		
 		// code block section
 		let mut code = Vec::new();
