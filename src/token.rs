@@ -91,8 +91,7 @@ pub enum Token {
 	#[token("?")]  QMark,
 	#[token(":-")] Impls,
 	
-	// v important
-	#[token("\n")] Newline,
+	#[token("\r?\n")] Newline,
 	
 	// identifiers
 	

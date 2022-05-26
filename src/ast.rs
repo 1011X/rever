@@ -134,6 +134,12 @@ impl<'src> Parser<'src> {
 		}
 	}
 	
+	pub fn expect_newlines(&mut self) -> Option<Token> {
+		let res = self.expect(Token::Newline);
+		self.skip_newlines();
+		res
+	}
+	
 	pub fn skip_newlines(&mut self) {
 		while self.expect(Token::Newline).is_some() {}
 	}
