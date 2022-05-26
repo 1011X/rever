@@ -7,7 +7,7 @@ use super::{EvalResult, EvalError, Value, io::{RevStdout, RevStdin}};
 use crate::ast::{Type, ProcDef};
 
 lazy_static::lazy_static! {
-	static ref STDOUT: Mutex<RevStdout> = Mutex::new(RevStdout::new(false));
+	static ref STDOUT: Mutex<RevStdout> = Mutex::new(RevStdout::new());
 	static ref STDIN: Mutex<RevStdin> = Mutex::new(RevStdin::new());
 }
 
@@ -63,8 +63,6 @@ pub fn unprint(args: &mut [Value]) -> EvalResult<()> {
 }
 
 
-use crate::ast::Procedure;
-
 pub static PRINT_PROCDEF: ProcDef = ProcDef::Internal {
 	fore: print,
 	back: unprint,
@@ -77,10 +75,10 @@ pub static PRINT_PROCDEF: ProcDef = ProcDef::Internal {
 pub fn show(args: &mut [Value]) -> EvalResult<()> {
 	assert!(args.len() == 1);
 	
-	let mut rstdout = RevStdout::new(false);
+	let mut stdout = STDOUT.lock().unwrap();
 	
 	if let Value::String(string) = &args[0] {
-		rstdout.write(string.as_bytes()).unwrap();
+		stdout.write(string.as_bytes()).unwrap();
 		Ok(())
 	} else {
 		Err(EvalError::TypeMismatch {
@@ -93,10 +91,10 @@ pub fn show(args: &mut [Value]) -> EvalResult<()> {
 pub fn unshow(args: &mut [Value]) -> EvalResult<()> {
 	assert!(args.len() == 1);
 	
-	let mut rstdout = RevStdout::new(false);
+	let mut stdout = STDOUT.lock().unwrap();
 	
 	if let Value::String(string) = &args[0] {
-		let extracted_data = rstdout.unwrite(string.len());
+		let extracted_data = stdout.unwrite(string.len());
 		assert_eq!(string.as_bytes(), extracted_data.as_slice());
 		Ok(())
 	} else {

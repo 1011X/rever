@@ -20,10 +20,10 @@ pub struct RevStdout {
 }
 
 impl RevStdout {
-	pub fn new(careful: bool) -> Self {
+	pub fn new() -> Self {
 		RevStdout {
 			// TODO make `careful` useful
-			careful,
+			careful: false,
 			stdout: io::stdout(),
 			history: Vec::new(),
 		}
