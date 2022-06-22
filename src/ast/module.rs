@@ -8,17 +8,13 @@ pub struct Module {
 	pub name: String,
 	pub items: Vec<Item>,
 }
-
+/*
 impl Module {
 	pub fn new(name: String, items: Vec<Item>) -> Self {
 		Module { name, items }
 	}
-	
-	pub fn insert(&mut self, item: Item) {
-		self.items.push(item);
-	}
 }
-
+*/
 impl Parser<'_> {
 	pub fn parse_mod(&mut self) -> ParseResult<Module> {
 		self.expect(Token::Mod).ok_or("`mod`")?;

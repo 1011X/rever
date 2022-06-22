@@ -389,32 +389,33 @@ impl Parser<'_> {
 	}
 }
 
+use crate::interpret::StackFrame;
 impl Stmt {
-	pub fn eval(&self, t: &mut StackFrame, m: &Module) -> EvalResult<()> {
+	pub fn eval(&self, ctx: &mut StackFrame) -> EvalResult<Value> {
 		match self {
 			Stmt::Skip => {}
 			
 			Stmt::Var(id, _, init, block, dest) => {
-				let init = init.eval(t)?;
-				t.push(id.clone(), init);
+				let init = init.eval(ctx)?;
+				ctx.push(id.clone(), init);
 				
 				for stmt in block {
-					if let Err(e) = stmt.eval(t, m) {
+					if let Err(e) = stmt.eval(ctx) {
 						eprintln!("{:?}", stmt);
 						panic!("var {}: {:?}", id, e);
 					}
 				}
 				
-				let (final_id, final_val) = t.pop().unwrap();
+				let (final_id, final_val) = ctx.pop().unwrap();
 				
 				assert_eq!(*id, final_id);
-				assert_eq!(final_val, dest.eval(t)?,
+				assert_eq!(final_val, dest.eval(ctx)?,
 					"variable {:?} had unexpected value", id);
 			}
 			
 			Stmt::Xor(lval, expr) => {
-				let expr = expr.eval(t)?;
-				match (t.get_mut(&lval)?, &expr) {
+				let expr = expr.eval(ctx)?;
+				match (ctx.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l ^= *r,
 					_ => panic!("tried to do something illegal")
@@ -422,8 +423,8 @@ impl Stmt {
 			}
 			
 			Stmt::Add(lval, expr) => {
-				let expr = expr.eval(t)?;
-				match (t.get_mut(&lval)?, &expr) {
+				let expr = expr.eval(ctx)?;
+				match (ctx.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.wrapping_add(*r),
 					(Value::String(l), Value::String(r)) =>
@@ -436,17 +437,16 @@ impl Stmt {
 			}
 			
 			Stmt::Sub(lval, expr) => {
-				let expr = expr.eval(t)?;
-				match (t.get_mut(&lval)?, &expr) {
+				let expr = expr.eval(ctx)?;
+				match (ctx.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.wrapping_sub(*r),
 					(Value::String(l), Value::String(r)) => {
-						assert!(
-							l.ends_with(r),
-							"string {:?} does not end with {:?}",
-							l, r
-						);
-						*l = l.strip_suffix(r).unwrap().to_string();
+						*l = match l.strip_suffix(r) {
+							//"string {:?} does not end with {:?}",
+							None => Err(EvalError::IrreversibleState)?,
+							Some(s) => s.into(),
+						};
 					}
 					(l, r) => panic!(
 						"tried to decrement a {:?} with a {:?}",
@@ -456,8 +456,8 @@ impl Stmt {
 			}
 			
 			Stmt::RotLeft(lval, expr) => {
-				let expr = expr.eval(t)?;
-				match (t.get_mut(&lval)?, &expr) {
+				let expr = expr.eval(ctx)?;
+				match (ctx.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_left(*r as u32),
 					_ => panic!("tried to do something illegal")
@@ -465,8 +465,8 @@ impl Stmt {
 			}
 			
 			Stmt::RotRight(lval, expr) => {
-				let expr = expr.eval(t)?;
-				match (t.get_mut(&lval)?, &expr) {
+				let expr = expr.eval(ctx)?;
+				match (ctx.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_right(*r as u32),
 					_ => panic!("tried to do something illegal")
@@ -475,7 +475,7 @@ impl Stmt {
 			
 			// sighhhhhhhhhhhhhhhhh
 			Stmt::Swap(left, right) => {
-				t.swap(&left.id, &right.id)?
+				ctx.swap(&left.id, &right.id)?
 				/*
 				// ensure types are the same
 				assert_eq!(
@@ -506,25 +506,22 @@ impl Stmt {
 			| kw @ Stmt::Undo(callee_name, args) => {
 				let mut vals = Vec::new();
 				for arg in args {
-					vals.push(arg.eval(t)?);
+					vals.push(arg.eval(ctx)?);
 				}
 				
 				// search items in current module for a matching procedure
-				let mut p = None;
-				for item in &m.items {
-					match item {
-						Item::Proc(pr) if pr.name == *callee_name => {
-							p = Some(pr);
-							break;
-						}
-						_ => {}
+				let mut proc = None;
+				for p in &ctx.items.procs {
+					if p.name == *callee_name {
+						proc = Some(p);
+						break;
 					}
 				}
 				
 				// if procedure name found, call it. otherwise panic.
-				let results = match (kw, p) {
-					(Stmt::Do(..), Some(pr)) => pr.call(vals, m)?,
-					(Stmt::Undo(..), Some(pr)) => pr.uncall(vals, m)?,
+				let results = match (kw, proc) {
+					(Stmt::Do(..), Some(pr)) => pr.call(ctx.items.clone(), vals)?,
+					(Stmt::Undo(..), Some(pr)) => pr.uncall(ctx.items.clone(), vals)?,
 					_ => panic!("could not (un)call procedure {}: not found", callee_name),
 				};
 				
@@ -533,7 +530,7 @@ impl Stmt {
 					// check for arguments that were just an l-value, then
 					// update those.
 					let var_value = match arg_expr {
-						Expr::LVal(lval) => t.get_mut(&lval)?,
+						Expr::LVal(lval) => ctx.get_mut(&lval)?,
 						_ => continue,
 					};
 					
@@ -544,41 +541,41 @@ impl Stmt {
 			}
 			
 			Stmt::If(test, block, else_block, assert) => {
-				match test.eval(t)? {
+				match test.eval(ctx)? {
 					Value::Bool(true) => {
 						for stmt in block {
-							if let Err(e) = stmt.eval(t, m) {
+							if let Err(e) = stmt.eval(ctx) {
 								eprintln!("{:?}", stmt);
 								panic!("{:?}", e);
 							}
 						}
-						assert_eq!(assert.eval(t)?, Value::Bool(true));
+						assert_eq!(assert.eval(ctx)?, Value::Bool(true));
 					}
 					Value::Bool(false) => {
 						for stmt in else_block {
-							if let Err(e) = stmt.eval(t, m) {
+							if let Err(e) = stmt.eval(ctx) {
 								eprintln!("{:?}", stmt);
 								panic!("{:?}", e);
 							}
 						}
-						assert_eq!(assert.eval(t)?, Value::Bool(false));
+						assert_eq!(assert.eval(ctx)?, Value::Bool(false));
 					}
 					_ => panic!("tried to do something illegal")
 				}
 			}
 			
 			Stmt::From(assert, do_block, loop_block, test) => {
-				assert_eq!(assert.eval(t)?, Value::Bool(true));
+				assert_eq!(assert.eval(ctx)?, Value::Bool(true));
 				loop {
 					for stmt in do_block {
-						stmt.eval(t, m)?;
+						stmt.eval(ctx)?;
 					}
 					
-					match test.eval(t)? {
+					match test.eval(ctx)? {
 						Value::Bool(true) => break,
 						Value::Bool(false) =>
 							for stmt in loop_block {
-								if let Err(e) = stmt.eval(t, m) {
+								if let Err(e) = stmt.eval(ctx) {
 									eprintln!("{:?}", stmt);
 									panic!("{:?}", e);
 								}
@@ -587,11 +584,11 @@ impl Stmt {
 					}
 					
 					//eprintln!("{:?}", t);
-					assert_eq!(assert.eval(t)?, Value::Bool(false));
+					assert_eq!(assert.eval(ctx)?, Value::Bool(false));
 				}
 			}
 		}
 		
-		Ok(())
+		Ok(Value::Nil)
 	}
 }

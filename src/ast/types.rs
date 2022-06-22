@@ -2,30 +2,52 @@ use std::error;
 
 use super::*;
 
-/// A type annotation on the AST.
+/// A type annotation.
 ///
-/// This is used wherever a type annotation can occur in the syntax,
-/// such as a variable declaration, procedure data, or function
-/// parameters.
-///
-/// In the type checking phase, a separate enum is used that does not
-/// have an `Infer` case.
+/// This is used wherever a type annotation occurs in the syntax, such as a
+/// variable declaration, procedure data, or function parameters.
+//
+// In the type checking phase, a separate enum is used that does not have an
+// `Infer` case.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
+	/// placeholder for when a type isn't given or known at a point in the ast
 	Infer,
+	
 	Nil,
-	Bool,
+	
+	/// 32-bit unsigned integer, default number type
 	U32,
+	
+	/// resizeable utf-8 string type
 	String,
-	Fn(Vec<Self>, Box<Self>),
-	Decl(String, Vec<Self>),
+	
+	/// a type covering the range of unsigned numbers from 0 to N-1, where N is
+	/// given by a numeric literal. when paired with function type syntax, can
+	/// be used to specify an array of a certain size.
+	/// 
+	/// for example, the type `0256` would cover 0-255, equivalent to a `u8` in
+	/// rust. there's also `0` (the empty type), `01` (the unit type), `02` (the
+	/// boolean type), etc.
+	Index(u32),
+	
+	Stack(Box<Self>),
+	
+	/// a type that takes a value of the first type and returns a value of the
+	/// second type.
+	/// 
+	/// for example, `u32 -> str` takes a number of type `u32` and returns a
+	/// string. you can also do `03 -> u32` for an array of three `u32`s.
+	Fn(Box<Self>, Box<Self>),
+	
+	//Decl(String, Vec<Self>),
 }
 
 impl Default for Type {
 	fn default() -> Self { Type::Infer }
 }
 
-
+/// a generic type error.
 #[derive(Debug, Clone)]
 pub struct TypeErr;
 
@@ -40,7 +62,7 @@ impl error::Error for TypeErr {}
 
 impl Parser<'_> {
 	pub fn parse_type(&mut self) -> ParseResult<Type> {
-		let typ = match self.peek().ok_or("a type")? {
+		Ok(match self.peek().ok_or("a type")? {
 			Token::Underscore => Type::Infer,
 			
 			// named types with optional generics
@@ -73,8 +95,12 @@ impl Parser<'_> {
 				match name.as_str() {
 					"U32" => Type::U32,
 					"Str" => Type::String,
-					_ => Type::Decl(name, type_params),
+					_ => todo!()
 				}
+			}
+			
+			Token::Number => {
+				todo!()
 			}
 			/*
 			// tuples
@@ -121,7 +147,7 @@ impl Parser<'_> {
 
 				Type::Array(Box::new(inner_type), Some(size))
 			}
-			*/
+			
 			Token::Fn => {
 				self.next();
 				
@@ -153,7 +179,7 @@ impl Parser<'_> {
 				
 				Type::Fn(params, Box::new(ret))
 			}
-			/*
+			
 			Token::Proc => {
 				self.next();
 				
@@ -185,8 +211,6 @@ impl Parser<'_> {
 			}
 			*/
 			_ => Err("a valid type")?
-		};
-		
-		Ok(typ)
+		})
 	}
 }

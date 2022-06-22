@@ -4,7 +4,7 @@ use std::fmt;
 use crate::ast::{self, Item, Module, Type, Procedure, Param, ProcDef};
 
 pub use self::value::Value;
-pub use self::stack::{Stack, StackFrame};
+pub use self::stack::{Stack, StackFrame, Context};
 
 mod io;
 mod value;
@@ -13,10 +13,6 @@ mod stack;
 
 //pub type Scope = Vec<(String, Value)>;
 pub type EvalResult<T> = Result<T, EvalError>;
-
-pub trait Eval {
-	fn eval(&self, scope: &StackFrame) -> EvalResult<Value>;
-}
 
 #[derive(Debug)]
 pub enum EvalError {
@@ -40,7 +36,7 @@ impl fmt::Display for EvalError {
 		}
 	}
 }
-
+/*
 // Creates root module, loads intrinsics, finds `main`, and executes it.
 pub fn interpret_file(items: Vec<ast::Item>) {
 	// create root module
@@ -74,3 +70,4 @@ pub fn interpret_file(items: Vec<ast::Item>) {
 		eprintln!("No main procedure found.");
 	}
 }
+*/
