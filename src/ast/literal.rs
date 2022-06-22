@@ -4,7 +4,7 @@ use super::*;
 
 #[derive(Debug, Clone)]
 pub enum Literal {
-	//Nil,
+	Nil,
 	//Int(i64),
 	Num(i32),
 	Char(char),
@@ -231,10 +231,11 @@ impl Parser<'_> {
 	}
 }
 
-impl Eval for Literal {
-	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
+use crate::interpret::StackFrame;
+impl Literal {
+	pub fn eval(&self, ctx: &StackFrame) -> EvalResult<Value> {
 		Ok(match self {
-			//Literal::Nil       => Value::Nil,
+			Literal::Nil       => Value::Nil,
 			//Literal::Int(n)    => Value::U32(*n),
 			Literal::Num(n)    => Value::U32(*n as u32),
 			Literal::Char(c)   => Value::U32(*c as u32),
@@ -243,7 +244,7 @@ impl Eval for Literal {
 			Literal::Array(arr) => Value::Array({
 				let mut vec = Vec::with_capacity(arr.len());
 				for expr in arr.iter() {
-					vec.push(expr.eval(t)?);
+					vec.push(expr.eval(ctx)?);
 				}
 				vec.into_boxed_slice()
 			}),
@@ -258,6 +259,7 @@ impl Literal {
 	pub fn get_type(&self) -> Option<Type> {
 		match self {
 			//Literal::Int(_)    => Some(Type::Int),
+			Literal::Nil       => None,
 			Literal::Num(_)    => Some(Type::U32),
 			Literal::Char(_)   => Some(Type::U32),
 			Literal::String(_) => Some(Type::String),

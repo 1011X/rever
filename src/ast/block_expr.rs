@@ -105,24 +105,26 @@ impl Parser<'_> {
 	}
 }
 
-impl Eval for BlockExpr {
-	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
+use crate::interpret::StackFrame;
+impl BlockExpr {
+	pub fn eval(&self, ctx: &mut StackFrame) -> EvalResult<Value> {
 		match self {
-			BlockExpr::Inline(expr) => expr.eval(t),
+			BlockExpr::Inline(expr) => expr.eval(ctx),
 			
 			BlockExpr::If(test, expr, else_expr) => {
-				if test.eval(t)? == Value::Bool(true) {
-					expr.eval(t)
+				if test.eval(ctx)? == Value::Bool(true) {
+					expr.eval(ctx)
 				} else {
-					else_expr.eval(t)
+					else_expr.eval(ctx)
 				}
 			}
 			
 			BlockExpr::Let(name, _, val, scope) => {
-				let val = val.eval(t)?;
-				let mut t_copy = t.clone();
-				t_copy.push(name.clone(), val);
-				scope.eval(&t_copy)
+				let val = val.eval(ctx)?;
+				ctx.push(name.clone(), val);
+				let res = scope.eval(ctx);
+				ctx.pop();
+				res
 			}
 		}
 	}

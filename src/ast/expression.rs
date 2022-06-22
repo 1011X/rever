@@ -45,6 +45,7 @@ pub enum Expr {
 	// precedence 3
 	Neg(Box<Self>),
 	Not(Box<Self>),
+	App(String, Vec<Self>),
 	
 	// binary op, precendeces 4-7
 	BinOp(Box<Self>, BinOp, Box<Self>),
@@ -133,7 +134,7 @@ impl Parser<'_> {
 		let first = self.parse_expr_mul()?;
 		let mut terms: Vec<(BinOp, Expr)> = Vec::new();
 		
-		// { ('+' | '-' | 'or' | ':') <term> }
+		// { ('+' | '-' | 'or') <term> }
 		loop {
 			let op = match self.peek() {
 				Some(Token::Plus)  => BinOp::Add,
@@ -271,11 +272,11 @@ impl Parser<'_> {
 // atom -> ( expr )
 //      -> expr 'as' type
 //      -> factor
-impl Eval for Expr {
-	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
+impl Expr {
+	pub fn eval(&self, ctx: &StackFrame) -> EvalResult<Value> {
 		match self {
-			Expr::Lit(lit) => lit.eval(t),
-			Expr::LVal(lval) => lval.eval(t),
+			Expr::Lit(lit) => lit.eval(ctx),
+			Expr::LVal(lval) => lval.eval(ctx),
 			/*
 			Expr::Cast(e, typ) => match (typ, e.eval(t)?) {
 				(Type::Unit, _) => Ok(Value::Nil),
@@ -288,14 +289,14 @@ impl Eval for Expr {
 				(typ, value) => panic!("tried casting {} to {:?}", value, typ),
 			}
 			*/
-			Expr::Not(e) => match e.eval(t)? {
+			Expr::Not(e) => match e.eval(ctx)? {
 				Value::Bool(b) => Ok(Value::Bool(!b)),
 				//Value::Uint(n) => Ok(Value::Uint(!n)),
 				Value::U32(n) => Ok(Value::U32(!n)),
 				val => unimplemented!(),
 			}
 			
-			Expr::Neg(e) => match e.eval(t)? {
+			Expr::Neg(e) => match e.eval(ctx)? {
 				Value::U32(n) => Ok(Value::U32(n.wrapping_neg())),
 				val => Err(EvalError::TypeMismatch {
 					expected: Type::U32,
@@ -303,9 +304,31 @@ impl Eval for Expr {
 				})
 			}
 			
+			Expr::App(fn_name, arg_exprs) => {
+				let mut args = Vec::new();
+				
+				for arg_expr in arg_exprs {
+					args.push(arg_expr.eval(ctx)?);
+				}
+				
+				let mut func = None;
+				for f in &ctx.items.funcs {
+					if f.name == *fn_name {
+						func = Some(f);
+						break;
+					}
+				}
+				
+				if let Some(f) = func {
+					f.apply(ctx, &args)
+				} else {
+					Err(EvalError::UnknownIdent(fn_name.clone()))
+				}
+			}
+			
 			Expr::BinOp(left, op, right) => {
-				let left = left.eval(t)?;
-				let right = right.eval(t)?;
+				let left = left.eval(ctx)?;
+				let right = right.eval(ctx)?;
 				
 				match (op, left, right) {
 					// 4

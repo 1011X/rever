@@ -126,9 +126,10 @@ impl Parser<'_> {
 	}
 }
 
-impl Eval for LValue {
-	fn eval(&self, t: &StackFrame) -> EvalResult<Value> {
-		let var = t.get(self)?.clone();
+use crate::interpret::StackFrame;
+impl LValue {
+	pub fn eval(&self, ctx: &StackFrame) -> EvalResult<Value> {
+		let var = ctx.get(self)?.clone();
 		
 		/*for op in &self.ops {
 			var = match op {

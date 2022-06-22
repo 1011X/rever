@@ -1,14 +1,15 @@
 use std::fmt;
 
-use crate::interpret::{EvalError, EvalResult};
+use crate::ast::{Module, Deref};
+use crate::interpret::{EvalResult, EvalError, StackFrame};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Value {
 	Nil,
 	Bool(bool),
-	//Byte(u8),
 	U32(u32),
 	String(String),
+	Stack(Vec<Self>, Type),
 	Array(Box<[Value]>),
 	//Proc(Path),
 }
@@ -17,12 +18,13 @@ use crate::ast::Type;
 impl Value {
 	pub fn get_type(&self) -> Type {
 		match self {
-			Value::Nil       => Type::Nil,
+			//Value::Nil       => Type::Nil,
 			Value::Bool(_)   => Type::U32,
 			Value::U32(_)    => Type::U32,
-			Value::String(s) => Type::String,
+			Value::String(_) => Type::String,
+			Value::Stack(..)  => Type::Stack(Box::new(Type::U32)),
 			
-			Value::Array(_)  => todo!()
+			_ => todo!()
 		}
 	}
 	
@@ -38,27 +40,14 @@ impl Value {
 		std::mem::swap(self, val);
 		Ok(())
 	}
-	
-	pub fn xor(&mut self, val: &Value) -> EvalResult<()> {
-		match (self, val) {
-			(Value::Nil, Value::Nil) => {}
-			
-			(Value::Bool(a), Value::Bool(b)) => *a ^= b,
-			
-			(Value::U32(a), Value::U32(b)) => *a ^= b,
-			
-			_ => todo!()
-		}
-		Ok(())
-	}
 }
 
 impl fmt::Display for Value {
 	fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
-			Value::Nil => fmt.write_str("nil"),
+			Value::Nil => fmt.write_str("Nil"),
 			
-			Value::Bool(b) => b.fmt(fmt),
+			Value::Bool(b) => fmt.write_str(if *b { "True" } else { "False" }),
 			Value::U32(i) => i.fmt(fmt), /*{
 				// TODO modify this to show bijective numerals
 				let mut bij_repr = Vec::new();
@@ -105,13 +94,15 @@ impl fmt::Display for Value {
 			//Value::Char(c)   => write!(fmt, "{:?}", c),
 			Value::String(s) => write!(fmt, "{:?}", s),
 			
-			Value::Array(array) => {
+			Value::Stack(stack, _) => {
 				fmt.write_str("[")?;
-				for value in array.iter() {
+				for value in stack.iter() {
 					write!(fmt, "{}, ", value)?;
 				}
-				fmt.write_str("]")
+				fmt.write_str(">")
 			}
+			
+			Value::Array(_) => todo!(),
 		}
 	}
 }

@@ -2,11 +2,11 @@
 
 use std::fmt;
 
-use logos::Span;
+use logos::{Logos, Span};
 
 use crate::token::{Token, TokenStream};
 use crate::interpret::{
-	Eval, EvalError, EvalResult,
+	EvalError, EvalResult,
 	StackFrame, Value,
 };
 
@@ -42,7 +42,7 @@ pub trait AstNode: Sized {
 
 #[derive(Debug, Clone)]
 pub enum ParseError {
-	/// Parser reached an unexpected end-of-file.
+	/// Parser reached an unexpected token
 	Expected(&'static str),
 }
 
@@ -61,16 +61,22 @@ impl From<&'static str> for ParseError {
 }
 
 
+/// parser state information.
 #[derive(Clone)]
 pub struct Parser<'src> {
+	/// iterator for getting tokens
 	lexer: TokenStream<'src>,
+	/// stores current token for peeking purposes
 	curr: Option<Token>,
+	/// the current line number in source
 	line: usize,
+	/// byte position of last newline character in source
 	last_nl: usize,
 }
 
 impl<'src> Parser<'src> {
-	pub fn new(mut lexer: TokenStream<'src>) -> Self {
+	pub fn new(src: &'src str) -> Self {
+		let mut lexer = Token::lexer(src);
 		let curr = lexer.next();
 		Parser { lexer, curr, line: 1, last_nl: 0 }
 	}
@@ -144,4 +150,56 @@ impl<'src> Parser<'src> {
 	pub fn debug(&self) {
 		eprintln!("{},{}: {:?}", self.line(), self.column(), self.slice());
 	}
+}
+
+
+/// converts a bijective numeral string into an ordinary decimal number string.
+///
+/// this function assumes i's characters only match `[1-9Aa]*`
+pub fn bij_to_dec(i: &str) -> ParseResult<std::borrow::Cow<'_, str>> {
+	// empty string is zero
+	if i.is_empty() {
+		return Ok(Cow::Borrowed("0"));
+	}
+	// no A's means no need to convert, reuse string as-is
+	if i.find(['A', 'a']).is_none() {
+		return Ok(Cow::Borrowed(i));
+	}
+	
+	// make a vec of bools marking where there are a's
+	let mut carries: Vec<_> = i.chars()
+		.map(|digit| digit == 'A' || digit == 'a')
+		.collect();
+	
+	let mut digits: Vec<_> = i.chars()
+		.map(|d| if d == 'A' || d == 'a' { '0' } else { d })
+		.collect();
+	
+	let mut result = String::with_capacity(i.len());
+	// get rid of first carry immediately
+	if carries[0] {
+		result += "1";
+	}
+	// conveniently shifts all carries up for processing
+	carries.remove(0);
+	
+	// continue as long as there are carries
+	while carries.iter().any(|c| *c) {
+		for i in 0..carries.len() {
+			match (digits[i], carries[i]) {
+				(_, false) => {}
+				(c @ '0'..='8', true) => {
+					digits[i] = char::from_digit(c.to_digit(10).unwrap() + 1, 10)
+						.unwrap();
+				}
+				_ => todo!()
+			}
+		}
+		if carries[0] {
+			result += "";
+		}
+		carries.remove(0);
+	}
+	
+	Ok(Cow::Owned(result))
 }

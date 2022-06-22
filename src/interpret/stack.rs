@@ -1,8 +1,14 @@
 use super::*;
 
-use crate::ast::{LValue, Deref};
+use crate::ast::{LValue, Deref, Module, Function, Procedure};
 
-pub type Stack = Vec<StackFrame>;
+/// Contains the various items that can be used within the evoking item.
+#[derive(Debug, Clone)]
+pub struct Context {
+	pub funcs: Vec<Function>,
+	pub procs: Vec<Procedure>,
+	pub mods: Vec<Module>,
+}
 
 /// Stores values of parameters and local variables during a function or
 /// procedure call.
@@ -10,15 +16,45 @@ pub type Stack = Vec<StackFrame>;
 pub struct StackFrame {
 	names: Vec<String>,
 	pub(crate) values: Vec<Value>,
+	pub(crate) items: Context,
+}
+
+pub type Stack = Vec<StackFrame>;
+
+impl Context {
+	pub fn new() -> Self {
+		Self {
+			funcs: Vec::new(),
+			procs: Vec::new(),
+			mods: Vec::new(),
+		}
+	}
+	
+	pub fn from_module(module: &Module) -> Self {
+		let mut ctx = Context::new();
+		for item in &module.items {
+			ctx.insert(item.clone());
+		}
+		ctx
+	}
+	
+	pub fn insert(&mut self, item: Item) {
+		match item {
+			Item::Proc(p) => self.procs.push(p),
+			Item::Fn(f) => self.funcs.push(f),
+			_ => todo!()
+		}
+	}
 }
 
 impl StackFrame {
-	pub fn new(args: Vec<(String, Value)>) -> Self {
+	pub fn new(items: Context, args: Vec<(String, Value)>) -> Self {
 		let (names, values) = args.into_iter()
 			.unzip(); // owo
-		Self { names, values }
+		Self { names, values, items }
 	}
 	
+	// used when calling internal procedures
 	pub fn values(&mut self) -> &mut [Value] {
 		&mut self.values
 	}
@@ -69,52 +105,58 @@ impl StackFrame {
 		Ok(())
 	}
 	
+	// this function returns `Value` instead of `&Value` in order to allow us to
+	// do ~~ h a c k s ~~. See: `string.len`.
 	pub fn get(&self, deref_path: &LValue) -> EvalResult<Value> {
 		let pos = self.names.iter()
 			.rposition(|var_name| *var_name == deref_path.id)
 			.ok_or(EvalError::UnknownIdent(deref_path.id.clone()))?;
 		
-		let clone = self.clone();
 		let mut value = self.values[pos].clone();
 		
-		for deref in &deref_path.ops {
-			// TODO move all this into Value.
-			value = match (&value, deref) {
-				// TODO copy (array, index) case from get_mut
-				(Value::Array(arr), Deref { name: Some(field), args: None })
-				if field == "len" =>
-					Value::U32(arr.len() as u32),
-				
-				(Value::Array(a), Deref { name: None, args: Some(args) }) =>
-					match args[0].eval(self)? {
-						Value::U32(i) =>
-							a.get(i as usize).unwrap().clone(),
-						
-						value => todo!("{:?}.({})", a, value),
-					}
-				
-				(Value::String(s), Deref { name: Some(field), args: None })
-				if field == "len" =>
-					Value::U32(s.len() as u32),
-				
-				(Value::String(s), Deref { name: None, args: Some(args) }) =>
-					match args[0].eval(self)? {
-						Value::U32(i) => {
-							let c = s.chars().nth(i as usize);
-							match c {
-								Some(c) => c.into(),
-								None => panic!("XX str: {:?}, i: {}, len: {}", s, i, s.len()),
-							}
+		for deref_op in &deref_path.ops {
+			value = match value {
+				Value::Stack(stack, _) => match deref_op {
+					// this *should* be a temporary hack for now. remove once
+					// stack values can store their length.
+					Deref { name: Some(field), args: None } if field == "len" =>
+						Value::U32(stack.len() as u32),
+					
+					Deref { name: None, args: Some(args) } =>
+						match args[0].eval(self)? {
+							Value::U32(i) =>
+								stack.get(i as usize).unwrap().clone(),
+							
+							value => panic!("tried to do {:?}.({})", stack, value),
 						}
-						
-						value => todo!("{:?}.({:?})", s, value)
-					}
+					
+					_ => todo!()
+				}
 				
-				(l, r) => todo!("{} {:?}", l, r)
+				Value::String(string) => match deref_op {
+					// this *should* be a temporary hack for now. remove once
+					// string values can store their length.
+					Deref {name: Some(field), args: None} if field == "len" =>
+						Value::U32(string.len() as u32),
+					
+					Deref {name: None, args: Some(args)} =>
+						match args[0].eval(self)? {
+							Value::U32(i) => match string.chars().nth(i as usize) {
+								Some(c) => c.into(),
+								None => panic!("XX str: {:?}, i: {}, len: {}", string, i, string.len()),
+							}
+							
+							value => todo!("{:?}.({:?})", string, value)
+						}
+					
+					_ => todo!()
+				}
+				
+				val => todo!("{} {:?}", val, deref_op)
 			};
 		}
 		
-		Ok(value.clone())
+		Ok(value)
 	}
 	
 	pub fn get_mut(&mut self, deref_path: &LValue) -> EvalResult<&mut Value> {
@@ -122,16 +164,18 @@ impl StackFrame {
 			.rposition(|var_name| *var_name == deref_path.id)
 			.ok_or(EvalError::UnknownIdent(deref_path.id.clone()))?;
 		
+		// v important variables. `clone` is here because we can't borrow the
+		// stack frame while it's already mutably borrowed. `value` cannot be
+		// decoupled from the loop's body or we'd be returning a temporary
+		// value.
 		let clone = self.clone();
 		let mut value = &mut self.values[pos];
 		
 		for deref in &deref_path.ops {
 			match (value, deref) {
-				(Value::Array(array), Deref { name: None, args: Some(args) }) =>
+				(Value::Array(array),
+				Deref { name: None, args: Some(args) }) =>
 					match args[0].eval(&clone)? {
-						/*Value::Uint(idx) => {
-							value = &mut array[idx as usize];
-						}*/
 						Value::U32(idx) => {
 							value = &mut array[idx as usize];
 						}

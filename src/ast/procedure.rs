@@ -125,10 +125,10 @@ impl Parser<'_> {
 }
 
 
-use crate::interpret::StackFrame;
+use crate::interpret::{Context, StackFrame};
 
 impl Procedure {
-	fn call_base(&self, dir: Dir, args: Vec<Value>, m: &Module) -> EvalResult<Vec<Value>> {
+	fn call_base(&self, items: Context, dir: Dir, args: Vec<Value>) -> EvalResult<Vec<Value>> {
 		// verify number of arguments and their types
 		assert_eq!(args.len(), self.params.len(),
 			"wrong number of parameters before calling proc {}", self.name
@@ -140,34 +140,36 @@ impl Procedure {
 		}
 		
 		// make stack frame with parameter names bound to argument values
-		let mut vars = StackFrame::new(self.params.iter()
-			.map(|param| param.name.clone())
-			.zip(args.clone())
-			.collect()
+		let mut ctx = StackFrame::new(
+			items,
+			self.params.iter()
+				.map(|param| param.name.clone())
+				.zip(args.clone())
+				.collect(),
 		);
 		
 		// execute the actual code
 		match (dir, &self.code) {
 			(Dir::Fore, ProcDef::User(code)) => {
 				for stmt in code {
-					stmt.eval(&mut vars, m)?;
+					stmt.eval(&mut ctx)?;
 				}
 			}
 			(Dir::Back, ProcDef::User(code)) => {
 				for stmt in code {
-					stmt.clone().invert().eval(&mut vars, m)?;
+					stmt.clone().invert().eval(&mut ctx)?;
 				}
 			}
 			(Dir::Fore, ProcDef::Internal { fore, .. }) => {
-				fore(vars.values())?;
+				fore(ctx.values())?;
 			}
 			(Dir::Back, ProcDef::Internal { back, .. }) => {
-				back(vars.values())?;
+				back(ctx.values())?;
 			}
 			_ => todo!()
 		}
 		
-		let args = vars.into_inner();
+		let args = ctx.into_inner();
 		
 		// verify number of arguments and their types again
 		assert_eq!(args.len(), self.params.len(),
@@ -182,17 +184,11 @@ impl Procedure {
 		Ok(args)
 	}
 	
-	pub fn call(&self, args: Vec<Value>, m: &Module) -> EvalResult<Vec<Value>> {
-		self.call_base(Dir::Fore, args, m)
+	pub fn call(&self, items: Context, args: Vec<Value>) -> EvalResult<Vec<Value>> {
+		self.call_base(items, Dir::Fore, args)
 	}
 	
-	pub fn uncall(&self, args: Vec<Value>, m: &Module) -> EvalResult<Vec<Value>> {
-		self.call_base(Dir::Back, args, m)
+	pub fn uncall(&self, items: Context, args: Vec<Value>) -> EvalResult<Vec<Value>> {
+		self.call_base(items, Dir::Back, args)
 	}
-	/*
-	// add the procedure to the scope
-	pub fn eval(&self, t: &mut Scope) -> EvalResult {
-		unimplemented!()
-	}
-	*/
 }

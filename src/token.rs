@@ -1,13 +1,14 @@
 use logos::Logos;
 
+
 pub type TokenStream<'src> = logos::Lexer<'src, Token>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// The different tokens produced by the lexer.
 #[derive(Logos)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Token {
 	// keywords
 	#[token("and")]    And,
-	#[token("as")]     As,
 	#[token("const")]  Const,
 	#[token("do")]     Do,
 	#[token("drop")]   Drop,
@@ -31,15 +32,16 @@ pub enum Token {
 	
 	// reserved keywords
 	#[token("alias")]  Alias,
+	#[token("as")]     As,
 	#[token("begin")]  Begin,
 	#[token("done")]   Done,
+	#[token("extern")] Extern,
 	#[token("for")]    For,
 	#[token("match")]  Match,
-	#[token("when")]   When,
-//	#[token("struct")] Struct,
+	#[token("struct")] Struct,
 	#[token("tag")]    Tag,
 	#[token("then")]   Then,
-//	#[token("union")]  Union,
+	#[token("union")]  Union,
 	
 	// brackets
 	#[token("(")] LParen,
@@ -60,32 +62,31 @@ pub enum Token {
 	// assignments
 	#[token("<>")] Swap,
 	#[token(":=")] Assign,
-	#[token("^=")] XorAssign,
 	#[token("+=")] AddAssign,
 	#[token("-=")] SubAssign,
 	//#[token("*=")] MulAssign,
 	//#[token("/=")] DivAssign,
 	#[token(":<")] RolAssign,
 	#[token(":>")] RorAssign,
+	#[token("^=")] XorAssign,
 	
 	// multi-purpose
 	#[token(":")] Colon,
+	#[token(".")] Period,
 	#[token(",")] Comma,
 	#[token(";")] Semicolon,
 	
 	#[token("+")] Plus,
 	#[token("-")] Minus,
-	#[token(".")] Period,
 	#[token("*")] Star,
 	#[token("/")] FSlash,
 	#[token("%")] Percent,
 	#[token("!")] Bang,
 	#[token("^")] Caret,
-	#[token("#")] Hash,
+	#[token("~")] Tilde,
 	#[token("_")] Underscore,
 	
 	// unused
-	#[token("..")] Range,
 	#[token("::")] Scope,
 	#[token("->")] RightArrow,
 	#[token("?")]  QMark,
@@ -114,7 +115,7 @@ pub enum Token {
 	#[regex(r"'(\\[ntr0'\\]|[^'\\])'")]
 	Char,
 	
-	#[regex("~.*", logos::skip)]
+	#[regex("#.*", logos::skip)]
 	Comment,
 	
 	#[error]

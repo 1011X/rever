@@ -3,7 +3,7 @@ use logos::Logos;
 
 use crate::token::Token;
 use crate::ast::{self, LValue, Expr, Item, Module, Procedure, Param, Stmt, Type};
-use crate::interpret::{Eval, EvalResult, Stack, StackFrame, Value};
+use crate::interpret::{EvalResult, Stack, StackFrame, Context, Value};
 
 pub fn init() -> io::Result<()> {
 	let stdin = io::stdin();
@@ -11,26 +11,31 @@ pub fn init() -> io::Result<()> {
 	let mut stdout = io::stdout();
 	let mut continuing = false;
 	
-	let mut module = Module::new("repl".into(), Vec::new());
-	module.insert(Item::Proc(Procedure {
-		name: "print".into(),
-		params: vec![
-			Param {
-				name: "msg".into(),
-				constant: false,
-				typ: Type::String,
-			},
-			Param {
-				name: "bytes_read".into(),
-				constant: false,
-				typ: Type::U32,
+	let items = Context {
+		procs: vec![
+			Procedure {
+				name: "print".into(),
+				params: vec![
+					Param {
+						name: "msg".into(),
+						constant: false,
+						typ: Type::String,
+					},
+					Param {
+						name: "bytes_read".into(),
+						constant: false,
+						typ: Type::U32,
+					},
+				],
+				code: crate::interpret::intrinsic::PRINT_PROCDEF.clone(),
 			},
 		],
-		code: crate::interpret::intrinsic::PRINT_PROCDEF.clone(),
-	}));
+		funcs: vec![],
+		mods: vec![],
+	};
 	
 	let mut stack = Stack::new();
-	let root_frame = StackFrame::new(Vec::new());
+	let root_frame = StackFrame::new(items, Vec::new());
 	stack.push(root_frame);
 	
 	//println!("Rever 0.0.1");
@@ -44,8 +49,7 @@ pub fn init() -> io::Result<()> {
 		//println!("{:?}", input);
 		
 		// read
-		let tokens = Token::lexer(&input);
-		let mut parser = ast::Parser::new(tokens);
+		let mut parser = ast::Parser::new(&input);
 		
 		let line = match parser.parse_repl_line() {
 			Ok(line) => line,
@@ -63,7 +67,7 @@ pub fn init() -> io::Result<()> {
 		};
 		
 		// eval
-		match line.eval(stack.last_mut().unwrap(), &mut module) {
+		match line.eval(stack.last_mut().unwrap()) {
 			Ok(Value::Nil) => {}
 			Ok(value) => {
 				println!("{}", value);
@@ -186,43 +190,37 @@ impl ast::Parser<'_> {
 }
 
 impl ReplLine {
-	fn eval(self, t: &mut StackFrame, m: &mut Module) -> EvalResult<Value> {
+	fn eval(self, ctx: &mut StackFrame) -> EvalResult<Value> {
 		match self {
 			ReplLine::Blank => Ok(Value::Nil),
-			/*
-			ReplLine::Show(lval) => {
-				println!(": {}", t.get(&lval)?);
-				Ok(Value::Nil)
-			}
-			*/
+			
 			ReplLine::Var(name, _, expr) => {
-				let val = expr.eval(t)?;
-				t.push(name, val);
+				let val = expr.eval(ctx)?;
+				ctx.push(name, val);
 				Ok(Value::Nil)
 			}
 			
 			ReplLine::Drop(name, _, opt_deinit) => {
 				match opt_deinit {
-					None => Ok(t.remove(&name)?),
+					None => Ok(ctx.remove(&name)?),
 					Some(expr) => {
-						let deinit = expr.eval(t)?;
-						assert_eq!(deinit, t.remove(&name)?);
+						let deinit = expr.eval(ctx)?;
+						assert_eq!(deinit, ctx.remove(&name)?);
 						Ok(Value::Nil)
 					}
 				}
 			}
 			
-			// TODO return Err for item and stmt when not enough input.
 			ReplLine::Item(item) => {
-				m.insert(item);
+				ctx.items.insert(item);
 				Ok(Value::Nil)
 			}
 			ReplLine::Stmt(stmt) => {
-				stmt.eval(t, m)?;
+				stmt.eval(ctx)?;
 				Ok(Value::Nil)
 			}
 			ReplLine::Expr(expr) => {
-				expr.eval(t)
+				expr.eval(ctx)
 			}
 		}
 	}

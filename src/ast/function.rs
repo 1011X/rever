@@ -109,3 +109,10 @@ impl Parser<'_> {
 		Ok(Function { name: fn_name, params, body, ret })
 	}
 }
+
+
+impl Function {
+	pub fn apply(&self, ctx: &StackFrame, args: &[Value]) -> EvalResult<Value> {
+		todo!()
+	}
+}
