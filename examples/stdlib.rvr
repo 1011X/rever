@@ -1,9 +1,175 @@
-proc div_mod {mod: Uint, quot: Uint, const divisor: Uint}
+proc extern print {str, u32}
+proc extern show {const str}
+
+# divides `mod` by the given `divisor`, stores the result in `quot`, and leaves
+# the remainder in `mod`.
+# div_mod {m + q*d, 0, d} -> {m, q, d}
+proc div_mod {mod: u32, quot: u32, const divisor: u32}
 	from quot = 0
 	until mod < divisor
 		mod -= divisor
 		quot += 01
 	loop
 return
+
+# this extracts the largest square root from the given number.
+# root {n + r^2, x} -> {n, x + r}
+proc root {num: u32, root: u32}
+    var bit := 01
+    
+    from bit = 01
+    until bit * bit > num   # find exponential ball park
+    	bit :< 01
+    loop
+
+    from bit * bit > num
+        bit :> 01
+        if (root + bit) * (root + bit) <= num
+            root += bit
+        fi (root / bit) % 02 != 0
+    until bit = 01
+    loop
+    
+    drop bit := 01
+    num -= root * root
+return
+
+
+proc u32_to_str_bin {int: u32, s: str}
+	var i := 0
+	from i = 0
+		int :< 01
+		if int % 02 = 0
+			s += "0"
+		else
+			s += "1"
+		fi
+		i += 01
+	until i = 032
+	loop
+	drop i := 032
+return
+
+proc extern push_char {str, u32}
+
+proc from_digit {digit: u32}
+	if 0 <= digit and digit <= 09
+		num += '0'
+	fi '0' <= digit and digit <= '9'
+return
+
+proc zero_destroyer_rec {s: stack}
+	skip
+return
+
+proc zero_destroyer {s: stack}
+	if s.len > 01
+		var first := 0
+		var second := 0
+		
+		do pop {first, s}
+		do pop {second, s}
+		
+		if second = 0
+			first -= 01
+			second += 0A
+		fi second = 0A
+		
+		do push {second, s}
+		drop second := 0
+		
+		if first != 0
+			do push {first, s}
+		fi first = 0
+		
+		drop first := 0
+	fi s.len > 0
+return
+
+proc u32_to_str_dec {int: u32, s: str}
+	var digits := nil
+	
+	# extract individual digits first, from least to most significant
+	from digits = nil
+	until int = 0
+		var digit := 0
+		do div_mod {int, digit, 0A}
+		int <> digit
+		do push {digit, digits}
+		drop digit := 0
+	loop
+	
+	# write digits to string, from most to least significant
+	from s = ""
+	until digits = nil
+		var digit := 0
+		do pop {digit, digits}
+		
+		proc p {s:str, c:u32}
+			if s = ""
+				if c = '1'
+					s += "A"
+				else
+					c -= 01
+				fi
+			else
+				skip
+		return
+				
+		
+		if digit = 0
+			# TODO: pop last char, decrement it, push it, push 0A
+			# NOTE: we'll never have 0 as most-significant digit, only
+			#       afterwards, so we're free to work under that assumption.
+			var count := 0
+			
+			# TODO: loop back through previously written digits in string, check
+			#      if `0` or `1`
+			from digit = 0
+			until digit != 0 or digits = nil
+			loop
+			
+			var last_digit := 0
+			do pop {last_digit, s}
+			last_digit -= 01
+			do push {last_digit, s}
+			drop last_digit := 0
+			s += "A"
+		else if digit = 01
+			s += "1"
+		else if digit = 02
+			s += "2"
+		else if digit = 03
+			s += "3"
+		else if digit = 04
+			s += "4"
+		else if digit = 05
+			s += "5"
+		else if digit = 06
+			s += "6"
+		else if digit = 07
+			s += "7"
+		else if digit = 08
+			s += "8"
+		else if digit = 09
+			s += "9"
+		else
+			skip  # unreachable
+		fi
+		fi
+		fi
+		fi
+		fi
+		fi
+		fi
+		fi
+		fi
+		fi
+		drop digit = s.(last) - '0'
+	loop
+	
+	drop digits := nil
+return
+
 
 
