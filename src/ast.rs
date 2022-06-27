@@ -153,10 +153,13 @@ impl<'src> Parser<'src> {
 }
 
 
+use std::borrow::Cow;
+
+// TODO finish this
 /// converts a bijective numeral string into an ordinary decimal number string.
 ///
 /// this function assumes i's characters only match `[1-9Aa]*`
-pub fn bij_to_dec(i: &str) -> ParseResult<std::borrow::Cow<'_, str>> {
+pub fn bij_to_dec(i: &str) -> ParseResult<Cow<'_, str>> {
 	// empty string is zero
 	if i.is_empty() {
 		return Ok(Cow::Borrowed("0"));

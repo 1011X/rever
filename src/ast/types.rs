@@ -11,7 +11,7 @@ use super::*;
 // `Infer` case.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
-	/// placeholder for when a type isn't given or known at a point in the ast
+	/// placeholder for when a type isn't given or known
 	Infer,
 	
 	Nil,
