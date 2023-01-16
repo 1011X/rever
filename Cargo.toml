@@ -2,7 +2,12 @@
 name = "rever"
 version = "0.0.1"
 authors = ["1011X <1011XXXXX@gmail.com>"]
-edition = "2018"
+edition = "2021"
+description = "Interpreter and REPL for the Rever language"
+
+categories = ["compilers"]
+repository = "https://git.sr.ht/~x1011/rever/"
+license = "0BSD"
 
 [dependencies]
 clap = { version = "3.1.18", features = ["derive"] }

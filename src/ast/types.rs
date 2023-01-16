@@ -9,9 +9,10 @@ use super::*;
 //
 // In the type checking phase, a separate enum is used that does not have an
 // `Infer` case.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub enum Type {
 	/// placeholder for when a type isn't given or known
+	#[default]
 	Infer,
 	
 	Nil,
@@ -41,10 +42,6 @@ pub enum Type {
 	Fn(Box<Self>, Box<Self>),
 	
 	//Decl(String, Vec<Self>),
-}
-
-impl Default for Type {
-	fn default() -> Self { Type::Infer }
 }
 
 /// a generic type error.

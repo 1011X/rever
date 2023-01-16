@@ -13,7 +13,7 @@ The link to Wikipedia above goes into more detail, but here's the gist: All numb
 
 This means `019` is 19, `01A` is 20, `021` is 21, and so on. `020` is not a valid number. `09'99A` is 10,000. `0A'AAA` is 11,110. Zero is just `0`.
 
-This is done to make number parsing easier in Rever, since bijective functions are trivially reversible. Of course, this means it'll be *slightly* harder to read numbers, but honestly not by much.
+This is done to make number parsing easier in Rever in the future, since bijective functions are trivially reversible. Since this makes numbers a bit harder to read, this feature is being reconsidered.
 
 
 Simple statements
