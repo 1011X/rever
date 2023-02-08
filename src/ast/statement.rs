@@ -460,6 +460,14 @@ impl Stmt {
 				match (ctx.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_left(*r as u32),
+					(Value::String(s), Value::U32(rot_amt)) => {
+						// copy the substring that will wrap around
+						let left_str = s[..*rot_amt as usize].to_string();
+						// remove substring from original string
+						*s = s[*rot_amt as usize..].to_string();
+						// put left substring on the right
+						s.push_str(&left_str);
+					}
 					_ => panic!("tried to do something illegal")
 				}
 			}
@@ -469,6 +477,14 @@ impl Stmt {
 				match (ctx.get_mut(&lval)?, &expr) {
 					(Value::U32(l), Value::U32(r)) =>
 						*l = l.rotate_right(*r as u32),
+					(Value::String(s), Value::U32(rot_amt)) => {
+						// calculate length to be preserved
+						let len = s.len() - *rot_amt as usize;
+						// chop off the right substring to wrap around
+						let right_str = s.split_off(len);
+						// insert substring at the start
+						s.insert_str(0, &right_str);
+					}
 					_ => panic!("tried to do something illegal")
 				}
 			}
