@@ -147,8 +147,8 @@ impl<'src> Parser<'src> {
 		Ok(items)
 	}
 	
-	pub fn debug(&self) {
-		eprintln!("{},{}: {:?}", self.line(), self.column(), self.slice());
+	pub fn debug(&self, file: &'static str, line: u32) {
+		eprintln!("{file}:{line}: {:?} at {},{} -- {:?}", self.slice(), self.line(), self.column(), self.remainder());
 	}
 }
 

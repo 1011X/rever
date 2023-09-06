@@ -377,7 +377,7 @@ impl Parser<'_> {
 				Err("a valid statement")?
 			}
 		};
-				
+
 		// mandatory newline after statement
 		self.expect(Token::Newline)
 			.ok_or("newline after statement")?;

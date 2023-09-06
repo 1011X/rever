@@ -23,21 +23,21 @@ The most trivial statement is `skip`. It does absolutely nothing. It may be usef
 
 Next come the assignment statements. These include add-assign (`+=`), sub-assign (`-=`), and xor-assign (`:=`). They each do what their names say.
 
-	hash.(0)    := 03
-	sum         += 04
-	name.len    -= sum + 01
+	hash.(0)    := 3
+	sum         += 4
+	name.len    -= sum + 1
 
 There's also left-rotate (`:<`) and right-rotate (`:>`), which rotate the bits in a number by the given amount. They're very similar to bit shifts, except the last and first bits wrap around to the other end.
 
-	n := 1  ~ n = 0b001
-	n :< 2  ~ n = 0b100
-	n :> 1  ~ n = 0b010
+	n := 1  # n = 0b001
+	n :< 2  # n = 0b100
+	n :> 1  # n = 0b010
 
 Lastly, there's swap (`<>`), which takes 2 variables and swaps their values.
 
 	a := 3
 	b := 5
-	a <> b   ~ a = 5 and b = 3
+	a <> b   # a = 5 and b = 3
 
 Now we get into the interesting stuff: procedure calls. You can either call a procedure with `do` to run it forwards, or with `undo` to run it backwards. `undo` will reverse and invert all statements in a procedure before the call.
 

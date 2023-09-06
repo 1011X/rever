@@ -46,7 +46,7 @@ pub fn init() -> io::Result<()> {
 		stdout.flush()?;
 		stdin.read_line(&mut input)?;
 		
-		//println!("{:?}", input);
+		// println!("{:?}", input);
 		
 		// read
 		let mut parser = ast::Parser::new(&input);
@@ -65,6 +65,8 @@ pub fn init() -> io::Result<()> {
 				continue;
 			}
 		};
+
+		// println!("i AST: {:?}", line);
 		
 		// eval
 		match line.eval(stack.last_mut().unwrap()) {
@@ -176,8 +178,11 @@ impl ast::Parser<'_> {
 				
 			Some(_) => {
 				let mut checkpoint = self.clone();
+
 				match self.parse_stmt() {
 					Ok(stmt) => stmt.into(),
+					// TODO: check specifically what kind of error we got before
+					// trying to parse as an expression.
 					Err(_) => {
 						let expr = checkpoint.parse_expr()?.into();
 						self.expect(Token::Newline);

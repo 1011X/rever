@@ -6,7 +6,7 @@ use super::*;
 pub enum Literal {
 	Nil,
 	//Int(i64),
-	Num(i32),
+	Num(u32),
 	Char(char),
 	String(String),
 	Array(Vec<Expr>),
@@ -56,7 +56,28 @@ impl Parser<'_> {
 		let lit = match self.peek() {
 			Some(Token::ConIdent) => Literal::Variant(self.slice().to_string()),
 			
-			Some(Token::Number) => {
+			// binary form
+			Some(Token::Number) if self.slice().starts_with("0b") => {
+				let value = match u32::from_str_radix(&self.slice()[2..], 2) {
+					Ok(num) => num,
+					Err(_) => Err("malformed binary number literal")?,
+				};
+
+				Literal::Num(value)
+			}
+
+			// hexadecimal form
+			Some(Token::Number) if self.slice().starts_with("0x") => {
+				let value = match u32::from_str_radix(&self.slice()[2..], 16) {
+					Ok(num) => num,
+					Err(_) => Err("malformed hexadecimal number literal")?,
+				};
+
+				Literal::Num(value)
+			}
+
+			// bijective numeral form
+			Some(Token::Number) if self.slice().starts_with("0") => {
 				let mut dec_repr = Vec::with_capacity(self.slice().len());
 				let mut carry = false;
 				
@@ -88,9 +109,17 @@ impl Parser<'_> {
 				
 				let dec_repr: String = dec_repr.into_iter().collect();
 				
-				match i32::from_str_radix(&dec_repr, 10) {
+				match u32::from_str_radix(&dec_repr, 10) {
 					Ok(n) => Literal::Num(n),
-					Err(_) => Err("a smaller number")?,
+					Err(_) => Err("malformed bijective numeral")?,
+				}
+			}
+				
+			// default: decimal form
+			Some(Token::Number) => {
+				match u32::from_str_radix(self.slice(), 10) {
+					Ok(value) => Literal::Num(value),
+					Err(_) => Err("malformed decimal number")?,
 				}
 			}
 			
