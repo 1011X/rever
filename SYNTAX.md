@@ -15,6 +15,8 @@ This means `019` is 19, `01A` is 20, `021` is 21, and so on. `020` is not a vali
 
 This is done to make number parsing easier in Rever in the future, since bijective functions are trivially reversible. Since this makes numbers a bit harder to read, this feature is being reconsidered.
 
+[bijective numerals]: https://en.wikipedia.org/wiki/Bijective_numeration
+
 
 Simple statements
 -----------------
