@@ -10,7 +10,7 @@ repository = "https://git.sr.ht/~x1011/rever/"
 license = "0BSD"
 
 [dependencies]
-clap = { version = "3.1.18", features = ["derive"] }
+clap = { version = "4.4.2", features = ["derive"] }
 logos = "0.12.1"
 lazy_static = "1.4.0"
 #rustyline = ""
